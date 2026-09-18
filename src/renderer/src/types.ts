@@ -75,3 +75,5 @@ export interface ResponseRun {
   url: string
   response: ResponseData
 }
+
+export type Language = 'zh-CN' | 'en-US'

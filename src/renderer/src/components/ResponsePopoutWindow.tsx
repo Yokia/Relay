@@ -11,8 +11,9 @@ import {
   ListFilter,
   Search
 } from 'lucide-react'
-import { ResponseData } from '../types'
+import { ResponseData, Language } from '../types'
 import { CodeEditor } from './CodeEditor'
+import { I18nProvider, useI18n } from '../i18n'
 
 const methodBadgeColor: Record<string, string> = {
   GET: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
@@ -24,14 +25,15 @@ const methodBadgeColor: Record<string, string> = {
   OPTIONS: 'text-slate-400 bg-slate-500/10 border-slate-500/30'
 }
 
-export const ResponsePopoutWindow: React.FC = () => {
-  const [data, setData] = useState<{
-    response: ResponseData
-    url?: string
-    method?: string
-    name?: string
-  } | null>(null)
-  const [loading, setLoading] = useState(true)
+interface PopoutData {
+  response: ResponseData
+  url?: string
+  method?: string
+  name?: string
+}
+
+const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
   const [headersCopied, setHeadersCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<'body' | 'headers'>('body')
@@ -39,45 +41,6 @@ export const ResponsePopoutWindow: React.FC = () => {
   const [wrapLines, setWrapLines] = useState(true)
   const [headerSearch, setHeaderSearch] = useState('')
   const [savedNotice, setSavedNotice] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchPopoutData = async () => {
-      try {
-        if (window.electronAPI?.getPopoutData) {
-          const res = await window.electronAPI.getPopoutData()
-          setData(res)
-        }
-      } catch (err) {
-        console.error('Failed to get popout data', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchPopoutData()
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-slate-950 text-slate-400 select-none">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs font-medium tracking-wider">Loading response data...</span>
-        </div>
-      </div>
-    )
-  }
-
-  if (!data || !data.response) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-slate-500 gap-3 select-none p-6">
-        <AlertCircle className="w-8 h-8 text-amber-400" />
-        <span className="text-sm font-medium text-slate-300">No response data found for this window</span>
-        <p className="text-xs text-slate-500 text-center max-w-sm">
-          The window might have been reloaded or closed without active response payload.
-        </p>
-      </div>
-    )
-  }
 
   const { response, url, method = 'GET', name } = data
 
@@ -129,7 +92,7 @@ export const ResponsePopoutWindow: React.FC = () => {
       content: currentBody
     })
     if (result && result.success) {
-      setSavedNotice('Saved to ' + result.filePath.split(/[\\/]/).pop())
+      setSavedNotice(t('response.savedNotice', { path: result.filePath.split(/[\\/]/).pop() || '' }))
       setTimeout(() => setSavedNotice(null), 3000)
     }
   }
@@ -174,7 +137,7 @@ export const ResponsePopoutWindow: React.FC = () => {
           <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded border font-mono text-xs font-semibold ${statusBadgeClass}`}>
             {response.status === 0 ? (
               <>
-                <AlertCircle className="w-3.5 h-3.5" /> Error
+                <AlertCircle className="w-3.5 h-3.5" /> Err
               </>
             ) : (
               <>
@@ -186,12 +149,12 @@ export const ResponsePopoutWindow: React.FC = () => {
 
           {/* Metrics */}
           <div className="flex items-center gap-3 text-xs text-slate-400 font-mono bg-slate-950/60 px-2.5 py-1 rounded border border-slate-800/80">
-            <div className="flex items-center gap-1" title="Response Time">
+            <div className="flex items-center gap-1" title={t('response.time')}>
               <Clock className="w-3.5 h-3.5 text-sky-400" />
               <span>{formatTime(response.time)}</span>
             </div>
             <div className="h-3 w-px bg-slate-800" />
-            <div className="flex items-center gap-1" title="Response Size">
+            <div className="flex items-center gap-1" title={t('response.size')}>
               <Database className="w-3.5 h-3.5 text-indigo-400" />
               <span>{formatSize(response.size)}</span>
             </div>
@@ -210,27 +173,27 @@ export const ResponsePopoutWindow: React.FC = () => {
             type="button"
             onClick={handleSaveFile}
             className="flex items-center gap-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2.5 py-1 rounded transition-colors"
-            title="Save response to local file"
+            title={t('response.downloadResponse')}
           >
             <Download className="w-3.5 h-3.5 text-sky-400" />
-            <span>Save File</span>
+            <span>{t('common.save')}</span>
           </button>
 
           <button
             type="button"
             onClick={handleCopyBody}
             className="flex items-center gap-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2.5 py-1 rounded transition-colors"
-            title="Copy full response body"
+            title={t('response.copyResponse')}
           >
             {copied ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400">Copied</span>
+                <span className="text-emerald-400">{t('common.copied')}</span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5 text-slate-400" />
-                <span>Copy Body</span>
+                <span>{t('common.copy')}</span>
               </>
             )}
           </button>
@@ -246,7 +209,7 @@ export const ResponsePopoutWindow: React.FC = () => {
             className={`py-2.5 relative transition-colors flex items-center gap-1.5 ${activeTab === 'body' ? 'text-sky-400 font-semibold' : 'hover:text-slate-200'}`}
           >
             <FileCode className="w-3.5 h-3.5" />
-            <span>Body</span>
+            <span>{t('response.tabBody')}</span>
             {activeTab === 'body' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />
             )}
@@ -258,7 +221,7 @@ export const ResponsePopoutWindow: React.FC = () => {
             className={`py-2.5 relative transition-colors flex items-center gap-1.5 ${activeTab === 'headers' ? 'text-sky-400 font-semibold' : 'hover:text-slate-200'}`}
           >
             <ListFilter className="w-3.5 h-3.5" />
-            <span>Headers</span>
+            <span>{t('response.tabHeaders')}</span>
             <span className="text-[10px] text-slate-500 font-mono">
               ({Object.keys(response.headers || {}).length})
             </span>
@@ -276,10 +239,10 @@ export const ResponsePopoutWindow: React.FC = () => {
               type="button"
               onClick={() => setWrapLines((prev) => !prev)}
               className={`flex items-center gap-1 px-2 py-1 rounded border text-[11px] transition-colors ${wrapLines ? 'bg-sky-500/20 text-sky-300 border-sky-500/40' : 'bg-slate-800/80 text-slate-400 border-slate-700/60 hover:text-slate-200'}`}
-              title="Toggle Line Wrap"
+              title={t('editor.wordWrap')}
             >
               <WrapText className="w-3.5 h-3.5" />
-              <span>Wrap</span>
+              <span>{t('editor.wordWrap')}</span>
             </button>
 
             {/* Pretty / Raw toggle */}
@@ -290,14 +253,14 @@ export const ResponsePopoutWindow: React.FC = () => {
                   onClick={() => setBodyFormat('pretty')}
                   className={`px-2 py-0.5 rounded ${bodyFormat === 'pretty' ? 'bg-sky-500 text-white font-medium' : 'text-slate-400 hover:text-slate-200'}`}
                 >
-                  Pretty
+                  {t('response.pretty')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setBodyFormat('raw')}
                   className={`px-2 py-0.5 rounded ${bodyFormat === 'raw' ? 'bg-sky-500 text-white font-medium' : 'text-slate-400 hover:text-slate-200'}`}
                 >
-                  Raw
+                  {t('response.raw')}
                 </button>
               </div>
             )}
@@ -310,7 +273,7 @@ export const ResponsePopoutWindow: React.FC = () => {
               <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-slate-500" />
               <input
                 type="text"
-                placeholder="Filter headers..."
+                placeholder={t('sidebar.searchPlaceholder')}
                 value={headerSearch}
                 onChange={(e) => setHeaderSearch(e.target.value)}
                 className="bg-slate-950 border border-slate-700/80 rounded pl-7 pr-3 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-sans w-48"
@@ -320,17 +283,17 @@ export const ResponsePopoutWindow: React.FC = () => {
               type="button"
               onClick={handleCopyAllHeaders}
               className="flex items-center gap-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2 py-1 rounded transition-colors"
-              title="Copy all headers"
+              title={t('common.copy')}
             >
               {headersCopied ? (
                 <>
                   <Check className="w-3 h-3 text-emerald-400" />
-                  <span className="text-emerald-400 text-[11px]">Copied</span>
+                  <span className="text-emerald-400 text-[11px]">{t('common.copied')}</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-3 h-3 text-slate-400" />
-                  <span className="text-[11px]">Copy All</span>
+                  <span className="text-[11px]">{t('common.copy')}</span>
                 </>
               )}
             </button>
@@ -362,7 +325,7 @@ export const ResponsePopoutWindow: React.FC = () => {
           <div className="flex-1 overflow-y-auto bg-[#0d131f] border border-slate-800 rounded-lg p-3 font-mono text-xs select-text">
             {filteredHeaders.length === 0 ? (
               <div className="text-center py-8 text-slate-500 italic">
-                {headerSearch ? 'No matching headers found.' : 'No headers received.'}
+                {t('response.noHeaders')}
               </div>
             ) : (
               <div className="flex flex-col divide-y divide-slate-800">
@@ -378,7 +341,7 @@ export const ResponsePopoutWindow: React.FC = () => {
                       type="button"
                       onClick={() => navigator.clipboard.writeText(v)}
                       className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-slate-300 p-0.5 rounded transition-opacity"
-                      title="Copy header value"
+                      title={t('common.copy')}
                     >
                       <Copy className="w-3 h-3" />
                     </button>
@@ -390,5 +353,59 @@ export const ResponsePopoutWindow: React.FC = () => {
         )}
       </div>
     </div>
+  )
+}
+
+export const ResponsePopoutWindow: React.FC = () => {
+  const [data, setData] = useState<PopoutData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [language, setLanguage] = useState<Language>('zh-CN')
+
+  useEffect(() => {
+    const fetchPopoutData = async () => {
+      try {
+        if (window.electronAPI?.getPopoutData) {
+          const res = await window.electronAPI.getPopoutData()
+          setData(res)
+        }
+        if (window.electronAPI?.getData) {
+          const allData = await window.electronAPI.getData()
+          if (allData?.settings?.language) {
+            setLanguage(allData.settings.language)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to get popout data', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchPopoutData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-950 text-slate-400 select-none">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-medium tracking-wider">Loading...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (!data || !data.response) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-slate-500 gap-3 select-none p-6">
+        <AlertCircle className="w-8 h-8 text-amber-400" />
+        <span className="text-sm font-medium text-slate-300">No response data found</span>
+      </div>
+    )
+  }
+
+  return (
+    <I18nProvider language={language}>
+      <PopoutContent data={data} />
+    </I18nProvider>
   )
 }

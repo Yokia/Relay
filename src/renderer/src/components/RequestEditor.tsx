@@ -4,6 +4,7 @@ import { CodeEditor } from './CodeEditor'
 import { RequestItem } from '../types'
 import { Sparkles, WrapText } from 'lucide-react'
 import { stripJsonComments } from '../utils/jsonUtils'
+import { useI18n } from '../i18n'
 
 interface Props {
   request: RequestItem
@@ -13,6 +14,7 @@ interface Props {
 type TabType = 'params' | 'headers' | 'body'
 
 export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
+  const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<TabType>('params')
   const [wrapLines, setWrapLines] = useState(true)
 
@@ -43,7 +45,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
           onClick={() => setActiveTab('params')}
           className={"py-2.5 relative transition-colors " + (activeTab === 'params' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
         >
-          <span>Params</span>
+          <span>{t('editor.params')}</span>
           {activeParamsCount > 0 && (
             <span className="ml-1.5 px-1.5 py-0.2 bg-slate-800 text-sky-400 rounded-full text-[10px]">
               {activeParamsCount}
@@ -58,7 +60,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
           onClick={() => setActiveTab('headers')}
           className={"py-2.5 relative transition-colors " + (activeTab === 'headers' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
         >
-          <span>Headers</span>
+          <span>{t('editor.headers')}</span>
           {activeHeadersCount > 0 && (
             <span className="ml-1.5 px-1.5 py-0.2 bg-slate-800 text-sky-400 rounded-full text-[10px]">
               {activeHeadersCount}
@@ -73,7 +75,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
           onClick={() => setActiveTab('body')}
           className={"py-2.5 relative transition-colors " + (activeTab === 'body' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
         >
-          <span>Body</span>
+          <span>{t('editor.body')}</span>
           {request.bodyType !== 'none' && (
             <span className="ml-1.5 w-1.5 h-1.5 inline-block bg-sky-400 rounded-full align-middle" />
           )}
@@ -89,8 +91,8 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
           <KeyValueEditor
             items={request.params || []}
             onChange={(params) => onChange({ params })}
-            placeholderKey="Parameter"
-            placeholderValue="Value"
+            placeholderKey={t('editor.paramKeyPlaceholder')}
+            placeholderValue={t('editor.paramValPlaceholder')}
           />
         )}
 
@@ -98,8 +100,8 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
           <KeyValueEditor
             items={request.headers || []}
             onChange={(headers) => onChange({ headers })}
-            placeholderKey="Header"
-            placeholderValue="Value"
+            placeholderKey={t('editor.headerKeyPlaceholder')}
+            placeholderValue={t('editor.headerValPlaceholder')}
           />
         )}
 
@@ -108,18 +110,46 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
             {/* Body Type Radio Selector */}
             <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80 text-xs text-slate-400">
               <div className="flex items-center gap-3">
-                {(['none', 'json', 'x-www-form-urlencoded', 'raw'] as const).map((type) => (
-                  <label key={type} className="flex items-center gap-1.5 cursor-pointer hover:text-slate-200">
-                    <input
-                      type="radio"
-                      name="bodyType"
-                      checked={request.bodyType === type}
-                      onChange={() => onChange({ bodyType: type })}
-                      className="accent-sky-500 w-3 h-3"
-                    />
-                    <span className="capitalize">{type === 'none' ? 'none' : type}</span>
-                  </label>
-                ))}
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-200">
+                  <input
+                    type="radio"
+                    name="bodyType"
+                    checked={request.bodyType === 'none'}
+                    onChange={() => onChange({ bodyType: 'none' })}
+                    className="accent-sky-500 w-3 h-3"
+                  />
+                  <span>{t('editor.bodyNone')}</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-200">
+                  <input
+                    type="radio"
+                    name="bodyType"
+                    checked={request.bodyType === 'json'}
+                    onChange={() => onChange({ bodyType: 'json' })}
+                    className="accent-sky-500 w-3 h-3"
+                  />
+                  <span>{t('editor.bodyJson')}</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-200">
+                  <input
+                    type="radio"
+                    name="bodyType"
+                    checked={request.bodyType === 'x-www-form-urlencoded'}
+                    onChange={() => onChange({ bodyType: 'x-www-form-urlencoded' })}
+                    className="accent-sky-500 w-3 h-3"
+                  />
+                  <span>{t('editor.bodyUrlEncoded')}</span>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-200">
+                  <input
+                    type="radio"
+                    name="bodyType"
+                    checked={request.bodyType === 'raw'}
+                    onChange={() => onChange({ bodyType: 'raw' })}
+                    className="accent-sky-500 w-3 h-3"
+                  />
+                  <span>{t('editor.bodyRaw')}</span>
+                </label>
               </div>
 
               <div className="flex items-center gap-2">
@@ -128,10 +158,10 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
                     type="button"
                     onClick={() => setWrapLines((prev) => !prev)}
                     className={"px-1.5 py-0.5 rounded flex items-center gap-1 text-[11px] transition-colors " + (wrapLines ? "bg-sky-500/20 text-sky-300 border border-sky-500/30" : "text-slate-400 hover:text-slate-200 border border-transparent")}
-                    title="Toggle Line Wrap (自动换行)"
+                    title={t('editor.wordWrap')}
                   >
                     <WrapText className="w-3 h-3" />
-                    <span>Wrap</span>
+                    <span>{t('editor.wordWrap')}</span>
                   </button>
                 )}
 
@@ -139,10 +169,10 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
                   <button
                     type="button"
                     onClick={handleFormatJson}
-                    title="Format JSON"
+                    title={t('editor.formatJson')}
                     className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 font-medium px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 transition-colors"
                   >
-                    <Sparkles className="w-3 h-3" /> Format
+                    <Sparkles className="w-3 h-3" /> {t('editor.formatJson')}
                   </button>
                 )}
               </div>
@@ -151,7 +181,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
             {/* Body Form or Editor */}
             {request.bodyType === 'none' && (
               <div className="text-center py-12 text-xs text-slate-500">
-                This request does not have a body.
+                {t('editor.bodyNone')}
               </div>
             )}
 

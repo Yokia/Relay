@@ -36,6 +36,7 @@ import {
   collectAllCollectionIds,
   isDescendant
 } from '../utils/collectionTree'
+import { useI18n } from '../i18n'
 
 interface Props {
   collections: CollectionItem[]
@@ -138,6 +139,7 @@ export const Sidebar: React.FC<Props> = ({
   dirtyIds,
   onOpenSettings
 }) => {
+  const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<'collections' | 'history' | 'constants'>('collections')
   const [collapsedCols, setCollapsedCols] = useState<Record<string, boolean>>({})
   const [searchQuery, setSearchQuery] = useState('')
@@ -222,7 +224,7 @@ export const Sidebar: React.FC<Props> = ({
 
   const handleCreateCol = () => {
     const newId = 'col-' + Date.now()
-    const defaultName = 'New Collection'
+    const defaultName = t('sidebar.newCollection')
     onCreateCollection(defaultName, newId)
     setActiveTab('collections')
     setCollapsedCols((prev) => ({ ...prev, [newId]: false }))
@@ -233,7 +235,7 @@ export const Sidebar: React.FC<Props> = ({
 
   const handleCreateSubCol = (parentColId: string) => {
     const newId = 'col-' + Date.now()
-    const defaultName = 'New Sub-collection'
+    const defaultName = t('sidebar.newSubCollection')
     onCreateSubCollection(parentColId, defaultName)
     setActiveTab('collections')
     setCollapsedCols((prev) => ({ ...prev, [parentColId]: false }))
@@ -350,14 +352,14 @@ export const Sidebar: React.FC<Props> = ({
                 setEditingTarget({ type: 'request', id: req.id, name: req.name, colId: col.id })
               }}
               className="truncate text-xs"
-              title={req.name || req.url || 'Untitled (Double click or right-click to rename)'}
+              title={req.name || req.url || t('common.untitled')}
             >
-              {req.name || req.url || 'Untitled'}
+              {req.name || req.url || t('common.untitled')}
             </span>
           )}
 
           {dirtyIds?.has(req.id) && (
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Unsaved changes" />
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title={t('header.autoSaveOffTip')} />
           )}
         </div>
 
@@ -379,7 +381,7 @@ export const Sidebar: React.FC<Props> = ({
               })
             }}
             className="p-1 hover:text-slate-200 text-slate-500 rounded hover:bg-slate-800"
-            title="更多选项 (More options)"
+            title={t('common.edit')}
           >
             <MoreHorizontal className="w-3 h-3" />
           </button>
@@ -512,14 +514,14 @@ export const Sidebar: React.FC<Props> = ({
                   setEditingTarget({ type: 'collection', id: col.id, name: col.name })
                 }}
                 className="font-medium truncate"
-                title={col.name + ' (双击重命名，右键更多操作)'}
+                title={col.name}
               >
                 {col.name}
               </span>
             )}
 
             <span className="text-[10px] text-slate-500 font-mono shrink-0">
-              ({totalReqs}{subColCount > 0 ? ` · ${subColCount}集` : ''})
+              ({totalReqs}{subColCount > 0 ? ` · ${t('sidebar.subColCountBadge', { count: subColCount })}` : ''})
             </span>
           </div>
 
@@ -532,7 +534,7 @@ export const Sidebar: React.FC<Props> = ({
                 onNewRequestInCollection(col.id)
               }}
               className="p-1 hover:text-sky-400 text-slate-500 rounded hover:bg-slate-800"
-              title="新建请求 (New Request)"
+              title={t('sidebar.addRequest')}
             >
               <Plus className="w-3 h-3" />
             </button>
@@ -543,7 +545,7 @@ export const Sidebar: React.FC<Props> = ({
                 handleCreateSubCol(col.id)
               }}
               className="p-1 hover:text-amber-400 text-slate-500 rounded hover:bg-slate-800"
-              title="新建子集合 (New Sub-collection)"
+              title={t('sidebar.addSubCollection')}
             >
               <FolderPlus className="w-3 h-3" />
             </button>
@@ -561,7 +563,7 @@ export const Sidebar: React.FC<Props> = ({
                 })
               }}
               className="p-1 hover:text-slate-200 text-slate-500 rounded hover:bg-slate-800"
-              title="更多选项 (More options)"
+              title={t('common.edit')}
             >
               <MoreHorizontal className="w-3 h-3" />
             </button>
@@ -594,7 +596,7 @@ export const Sidebar: React.FC<Props> = ({
                 style={{ paddingLeft: `${24 + depth * 14}px` }}
                 className="py-1 text-[11px] text-slate-500 italic"
               >
-                {searchQuery ? '无匹配项' : '空集合 (可拖放请求或子集合)'}
+                {searchQuery ? t('sidebar.noMatches') : t('sidebar.emptyFolder')}
               </div>
             )}
           </div>
@@ -617,7 +619,7 @@ export const Sidebar: React.FC<Props> = ({
           <button
             type="button"
             onClick={onOpenCurlModal}
-            title="Import cURL"
+            title={t('sidebar.importCurl')}
             className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition-colors"
           >
             <Terminal className="w-4 h-4" />
@@ -625,7 +627,7 @@ export const Sidebar: React.FC<Props> = ({
           <button
             type="button"
             onClick={handleCreateCol}
-            title="New Collection (新建集合)"
+            title={t('sidebar.newCollection')}
             className="p-1 text-amber-400 hover:text-amber-300 hover:bg-slate-800 rounded transition-colors"
           >
             <FolderPlus className="w-4 h-4" />
@@ -633,7 +635,7 @@ export const Sidebar: React.FC<Props> = ({
           <button
             type="button"
             onClick={onNewRequest}
-            title="New Request (新建请求)"
+            title={t('sidebar.newRequest')}
             className="p-1 text-sky-400 hover:text-sky-300 hover:bg-slate-800 rounded transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -651,7 +653,7 @@ export const Sidebar: React.FC<Props> = ({
               ? "border-sky-400 text-sky-300 bg-slate-850/40 font-semibold"
               : "border-transparent hover:text-slate-200")}
         >
-          <Layers className="w-3 h-3" /> Collections
+          <Layers className="w-3 h-3" /> {t('sidebar.collections')}
         </button>
         <button
           type="button"
@@ -661,7 +663,7 @@ export const Sidebar: React.FC<Props> = ({
               ? "border-sky-400 text-sky-300 bg-slate-850/40 font-semibold"
               : "border-transparent hover:text-slate-200")}
         >
-          <Zap className="w-3 h-3 text-amber-400" /> Constants
+          <Zap className="w-3 h-3 text-amber-400" /> {t('sidebar.constants')}
         </button>
         <button
           type="button"
@@ -671,7 +673,7 @@ export const Sidebar: React.FC<Props> = ({
               ? "border-sky-400 text-sky-300 bg-slate-850/40 font-semibold"
               : "border-transparent hover:text-slate-200")}
         >
-          <History className="w-3 h-3" /> History
+          <History className="w-3 h-3" /> {t('sidebar.history')}
         </button>
       </div>
 
@@ -684,7 +686,7 @@ export const Sidebar: React.FC<Props> = ({
               <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-slate-500" />
               <input
                 type="text"
-                placeholder="Search requests..."
+                placeholder={t('sidebar.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-950/80 border border-slate-800 rounded pl-7 pr-7 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-sans"
@@ -703,14 +705,14 @@ export const Sidebar: React.FC<Props> = ({
             {/* Collections Header with Expand/Collapse and New Collection */}
             <div className="flex items-center justify-between px-1 py-0.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <div className="flex items-center gap-1.5">
-                <span>Collections</span>
+                <span>{t('sidebar.collections')}</span>
                 <span className="text-[10px] text-slate-500 font-normal font-mono">({flattenAllCollections(collections).length})</span>
               </div>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={toggleCollapseAll}
-                  title={isAllCollapsed ? 'Expand All' : 'Collapse All'}
+                  title={isAllCollapsed ? t('sidebar.expandAll') : t('sidebar.collapseAll')}
                   className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 rounded transition-colors"
                 >
                   {isAllCollapsed ? <ChevronsUpDown className="w-3.5 h-3.5" /> : <ChevronsDownUp className="w-3.5 h-3.5" />}
@@ -718,7 +720,7 @@ export const Sidebar: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={handleCreateCol}
-                  title="Add Collection"
+                  title={t('sidebar.newCollection')}
                   className="p-1 text-sky-400 hover:text-sky-300 hover:bg-slate-800/60 rounded transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -728,13 +730,13 @@ export const Sidebar: React.FC<Props> = ({
 
             {collections.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-500 flex flex-col items-center gap-2">
-                <span>No collections yet.</span>
+                <span>{t('sidebar.noCollections')}</span>
                 <button
                   type="button"
                   onClick={handleCreateCol}
                   className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded text-xs transition-colors flex items-center gap-1 font-medium"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Create Collection
+                  <Plus className="w-3.5 h-3.5" /> {t('sidebar.createCollection')}
                 </button>
               </div>
             ) : (
@@ -771,7 +773,7 @@ export const Sidebar: React.FC<Props> = ({
                         : 'border-slate-800 text-slate-500 hover:border-slate-700'
                     }`}
                   >
-                    <span>拖到此处转为顶级集合 (Drop here as root)</span>
+                    <span>{t('sidebar.dropAsRoot')}</span>
                   </div>
                 )}
               </>
@@ -783,19 +785,19 @@ export const Sidebar: React.FC<Props> = ({
         {activeTab === 'constants' && (
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              <span>Custom Constants</span>
+              <span>{t('sidebar.constants')}</span>
               <button
                 type="button"
                 onClick={onOpenConstantModal}
                 className="flex items-center gap-1 text-sky-400 hover:text-sky-300 font-medium capitalize text-xs"
               >
-                <Plus className="w-3.5 h-3.5" /> Add
+                <Plus className="w-3.5 h-3.5" /> {t('common.add')}
               </button>
             </div>
 
             {constants.length === 0 ? (
               <div className="text-center py-8 text-xs text-slate-500">
-                No constants added yet.<br />Click 'Add' to define servers or ports.
+                {t('sidebar.noConstants')}
               </div>
             ) : (
               constants.map((c) => {
@@ -810,14 +812,14 @@ export const Sidebar: React.FC<Props> = ({
                         type="button"
                         onClick={onOpenConstantModal}
                         className="text-slate-500 hover:text-slate-300 p-0.5 rounded"
-                        title="Edit options"
+                        title={t('sidebar.editOptions')}
                       >
                         <Sliders className="w-3 h-3" />
                       </button>
                     </div>
 
                     <div className="flex flex-col gap-1">
-                      <span className="text-[10px] text-slate-500">Switch Active Value:</span>
+                      <span className="text-[10px] text-slate-500">{t('sidebar.switchActiveValue')}</span>
                       <select
                         value={c.currentValue}
                         onChange={(e) => onSwitchConstant(c.name, e.target.value)}
@@ -841,16 +843,16 @@ export const Sidebar: React.FC<Props> = ({
         {activeTab === 'history' && (
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              <span>Recent</span>
+              <span>{t('sidebar.recentHistory')}</span>
               {history.length > 0 && (
                 <button type="button" onClick={onClearHistory} className="text-[10px] text-slate-500 hover:text-rose-400">
-                  Clear
+                  {t('sidebar.clearHistory')}
                 </button>
               )}
             </div>
 
             {history.length === 0 ? (
-              <div className="text-center py-8 text-xs text-slate-500">No history recorded.</div>
+              <div className="text-center py-8 text-xs text-slate-500">{t('sidebar.noHistory')}</div>
             ) : (
               history.map((item) => (
                 <div
@@ -883,7 +885,7 @@ export const Sidebar: React.FC<Props> = ({
             onChange={(e) => onSelectEnv(e.target.value)}
             className="bg-transparent text-xs text-slate-300 focus:outline-none truncate w-full cursor-pointer"
           >
-            <option value="" className="bg-slate-900 text-slate-400">No Environment</option>
+            <option value="" className="bg-slate-900 text-slate-400">{t('sidebar.noEnv')}</option>
             {environments.map((env) => (
               <option key={env.id} value={env.id} className="bg-slate-900 text-slate-200">
                 {env.name}
@@ -895,7 +897,7 @@ export const Sidebar: React.FC<Props> = ({
           <button
             type="button"
             onClick={onOpenEnvModal}
-            title="Environment Settings"
+            title={t('sidebar.envSettings')}
             className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition-colors"
           >
             <Globe className="w-3.5 h-3.5" />
@@ -903,7 +905,7 @@ export const Sidebar: React.FC<Props> = ({
           <button
             type="button"
             onClick={onOpenSettings}
-            title="Preferences & Auto Save Settings"
+            title={t('sidebar.prefSettings')}
             className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition-colors"
           >
             <Settings className="w-3.5 h-3.5" />
@@ -932,7 +934,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
               >
                 <Edit3 className="w-3.5 h-3.5 text-sky-400" />
-                <span>Rename Collection (重命名)</span>
+                <span>{t('sidebar.renameCollection')}</span>
               </button>
 
               <button
@@ -944,7 +946,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Add Request (新建请求)</span>
+                <span>{t('sidebar.addRequest')}</span>
               </button>
 
               <button
@@ -956,7 +958,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
               >
                 <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
-                <span>Add Sub-collection (新建子集合)</span>
+                <span>{t('sidebar.addSubCollection')}</span>
               </button>
 
               <button
@@ -968,7 +970,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
               >
                 <Copy className="w-3.5 h-3.5 text-amber-400" />
-                <span>Duplicate Collection (复制集合)</span>
+                <span>{t('sidebar.duplicateCollection')}</span>
               </button>
 
               <div className="h-px bg-slate-800 my-0.5" />
@@ -985,7 +987,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-rose-500/20 hover:text-rose-400 rounded flex items-center gap-2 transition-colors text-rose-400"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete Collection (删除集合)</span>
+                <span>{t('sidebar.deleteCollection')}</span>
               </button>
             </>
           )}
@@ -1006,7 +1008,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
               >
                 <Edit3 className="w-3.5 h-3.5 text-sky-400" />
-                <span>Rename Request</span>
+                <span>{t('sidebar.renameRequest')}</span>
               </button>
 
               <button
@@ -1018,7 +1020,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
               >
                 <Copy className="w-3.5 h-3.5 text-amber-400" />
-                <span>Duplicate Request</span>
+                <span>{t('sidebar.duplicateRequest')}</span>
               </button>
 
               <button
@@ -1030,7 +1032,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
               >
                 <Link className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Copy URL</span>
+                <span>{t('sidebar.copyUrl')}</span>
               </button>
 
               <button
@@ -1042,7 +1044,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
               >
                 <Terminal className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Copy as cURL</span>
+                <span>{t('sidebar.copyAsCurl')}</span>
               </button>
 
               {/* Move to Collection Submenu */}
@@ -1058,7 +1060,7 @@ export const Sidebar: React.FC<Props> = ({
                 >
                   <div className="flex items-center gap-2">
                     <MoveRight className="w-3.5 h-3.5 text-purple-400" />
-                    <span>Move to...</span>
+                    <span>{t('sidebar.moveTo')}</span>
                   </div>
                   <ChevronRight className="w-3 h-3 text-slate-500" />
                 </button>
@@ -1067,7 +1069,7 @@ export const Sidebar: React.FC<Props> = ({
                   <div className="absolute left-full top-0 ml-1 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-lg shadow-2xl p-1 w-52 max-h-64 overflow-y-auto text-xs text-slate-200 flex flex-col gap-0.5">
                     {flattenAllCollections(collections).filter((c) => c.id !== contextMenu.colId).length === 0 ? (
                       <div className="px-2.5 py-1.5 text-slate-500 italic text-[11px]">
-                        No other collections
+                        {t('sidebar.noOtherCollections')}
                       </div>
                     ) : (
                       flattenAllCollections(collections)
@@ -1104,7 +1106,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-rose-500/20 hover:text-rose-400 rounded flex items-center gap-2 transition-colors text-rose-400"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete Request</span>
+                <span>{t('sidebar.deleteRequest')}</span>
               </button>
             </>
           )}
@@ -1130,22 +1132,22 @@ export const Sidebar: React.FC<Props> = ({
               </div>
               <div className="flex flex-col gap-1">
                 <h3 className="text-sm font-semibold text-slate-100">
-                  Delete Collection / 删除集合
+                  {t('sidebar.deleteColTitle')}
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Are you sure you want to delete <span className="font-semibold text-white">"{deleteConfirmCol.name}"</span>?
+                  {t('sidebar.deleteColConfirmMsg', { name: deleteConfirmCol.name })}
                   {(() => {
                     const reqCount = countAllRequests(deleteConfirmCol)
                     const subColCount = countAllSubCollections(deleteConfirmCol)
                     if (reqCount > 0 || subColCount > 0) {
                       const parts: string[] = []
-                      if (subColCount > 0) parts.push(`${subColCount} 个子集合`)
-                      if (reqCount > 0) parts.push(`${reqCount} 个请求`)
+                      if (subColCount > 0) parts.push(t('sidebar.subCollectionsUnit', { count: subColCount }))
+                      if (reqCount > 0) parts.push(t('sidebar.requestsUnit', { count: reqCount }))
                       return (
-                        <> 此集合包含 <span className="text-amber-400 font-semibold">{parts.join('、')}</span>，将被一并永久删除。</>
+                        <> {t('sidebar.deleteColContainsMsg', { parts: parts.join('、') })}</>
                       )
                     }
-                    return <> 此操作无法撤销。</>
+                    return <> {t('sidebar.deleteColCannotUndo')}</>
                   })()}
                 </p>
               </div>
@@ -1157,7 +1159,7 @@ export const Sidebar: React.FC<Props> = ({
                 onClick={() => setDeleteConfirmCol(null)}
                 className="px-3.5 py-1.5 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 rounded-md transition-colors font-medium"
               >
-                Cancel / 取消
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -1169,7 +1171,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-3.5 py-1.5 text-xs text-white bg-rose-600 hover:bg-rose-500 rounded-md transition-colors font-medium flex items-center gap-1.5 shadow-lg shadow-rose-900/30"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete / 确认删除</span>
+                <span>{t('common.confirmDelete')}</span>
               </button>
             </div>
           </div>

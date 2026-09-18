@@ -8,8 +8,9 @@ import { CurlModal } from './components/CurlModal'
 import { ConstantManagerModal } from './components/ConstantManagerModal'
 import { SettingsModal, AppSettings } from './components/SettingsModal'
 import { ToastContainer, ToastMessage } from './components/Toast'
-import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun } from './types'
+import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language } from './types'
 import { stripJsonComments } from './utils/jsonUtils'
+import { I18nProvider, useI18n } from './i18n'
 import {
   findCollectionInTree,
   findRequestInTree,
@@ -65,10 +66,12 @@ const defaultSettings: AppSettings = {
   autoSave: false,
   timeout: 30000,
   sslVerify: true,
-  maxResponsesPerRequest: 5
+  maxResponsesPerRequest: 5,
+  language: 'zh-CN'
 }
 
-export default function App() {
+function MainApp({ onLanguageChange }: { onLanguageChange: (lang: Language) => void }) {
+  const { t } = useI18n()
   const [collections, setCollections] = useState<CollectionItem[]>([])
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [environments, setEnvironments] = useState<Environment[]>([])
@@ -124,6 +127,9 @@ export default function App() {
           }
           if (data.settings) {
             setSettings((prev) => ({ ...prev, ...data.settings }))
+            if (data.settings.language) {
+              onLanguageChange(data.settings.language)
+            }
           }
           if (data.activeEnvironmentId) setActiveEnvId(data.activeEnvironmentId)
           if (data.responseHistoryMap) {
@@ -196,7 +202,7 @@ export default function App() {
     const next = constants.map((c) => (c.name === name ? { ...c, currentValue: value } : c))
     setConstants(next)
     persist({ constants: next })
-    addToast(`Switched global {{${name}}} to ${value}`, 'info')
+    addToast(t('sidebar.switchActiveValue') + ` {{${name}}} -> ${value}`, 'info')
   }
 
   // Switch constant for current request (request-level override or reset to global)
@@ -224,9 +230,9 @@ export default function App() {
     }
 
     if (value === null) {
-      addToast(`{{${name}}} 恢复跟随全局默认值`, 'info')
+      addToast(`{{${name}}} -> ${t('header.followGlobalDefault')}`, 'info')
     } else {
-      addToast(`已为当前请求锁定 {{${name}}} = ${value}`, 'success')
+      addToast(`{{${name}}} = ${value} (${t('header.exclusiveValue')})`, 'success')
     }
   }
 
@@ -234,13 +240,16 @@ export default function App() {
   const handleSaveConstants = (updated: ConstantItem[]) => {
     setConstants(updated)
     persist({ constants: updated })
-    addToast('Constants updated successfully!', 'success')
+    addToast(t('toast.constantsUpdated'), 'success')
   }
 
   // Update Settings
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
     const next = { ...settings, ...newSettings }
     setSettings(next)
+    if (newSettings.language) {
+      onLanguageChange(newSettings.language)
+    }
 
     if (newSettings.maxResponsesPerRequest !== undefined) {
       const maxLimit = newSettings.maxResponsesPerRequest
@@ -256,15 +265,20 @@ export default function App() {
       persist({ settings: next })
     }
 
+    if (newSettings.language && Object.keys(newSettings).length === 1) {
+      addToast(t('toast.settingsSaved'), 'success')
+      return
+    }
+
     if (next.autoSave) {
       // When turning on auto-save, automatically save current dirty requests
       if (dirtyIds.has(currentRequest.id)) {
         syncToCollections(currentRequest)
         setDirtyIds(new Set())
       }
-      addToast('Auto Save enabled (changes save automatically)', 'success')
+      addToast(t('toast.autoSaveOn'), 'success')
     } else {
-      addToast('Auto Save disabled (manual save mode)', 'info')
+      addToast(t('toast.autoSaveOff'), 'info')
     }
   }
 
@@ -428,7 +442,7 @@ export default function App() {
         next.delete(currentRequest.id)
         return next
       })
-      addToast('Request saved successfully!', 'success')
+      addToast(t('toast.requestSaved'), 'success')
     } else {
       if (collections.length === 0) {
         const newCol: CollectionItem = {
@@ -445,7 +459,7 @@ export default function App() {
           next.delete(currentRequest.id)
           return next
         })
-        addToast('Saved to new collection "My Collection"!', 'success')
+        addToast(t('toast.collectionCreated', { name: 'My Collection' }), 'success')
       } else {
         const target = collections[0]
         const updatedCols = addRequestToCollection(
@@ -460,7 +474,7 @@ export default function App() {
           next.delete(currentRequest.id)
           return next
         })
-        addToast('Saved to collection "' + target.name + '"!', 'success')
+        addToast(t('toast.requestSaved'), 'success')
       }
     }
   }
@@ -472,7 +486,7 @@ export default function App() {
     const next = renameCollectionInTree(collections, colId, trimmed)
     setCollections(next)
     persist({ collections: next })
-    addToast(`Renamed collection to "${trimmed}"`, 'success')
+    addToast(t('toast.collectionRenamed', { name: trimmed }), 'success')
   }
 
   // Duplicate Collection or Sub-collection
@@ -482,7 +496,7 @@ export default function App() {
     const next = duplicateCollectionInTree(collections, colId)
     setCollections(next)
     persist({ collections: next })
-    addToast(`Duplicated collection "${target.name}"`, 'success')
+    addToast(t('toast.collectionDuplicated'), 'success')
   }
 
   // Delete Collection or Sub-collection
@@ -490,7 +504,7 @@ export default function App() {
     const next = deleteCollectionFromTree(collections, colId)
     setCollections(next)
     persist({ collections: next })
-    addToast('Collection deleted', 'info')
+    addToast(t('toast.collectionDeleted'), 'info')
   }
 
   // Add new request into specific collection or sub-collection
@@ -505,7 +519,7 @@ export default function App() {
     persist({ collections: next })
     setCurrentRequest(newReq)
     setResponse(null)
-    addToast(`Added request to collection`, 'success')
+    addToast(t('toast.requestAdded'), 'success')
   }
 
   // Add new sub-collection into a parent collection
@@ -519,7 +533,7 @@ export default function App() {
     const next = addSubCollection(collections, parentColId, newSubCol)
     setCollections(next)
     persist({ collections: next })
-    addToast(`Created sub-collection "${name}"`, 'success')
+    addToast(t('toast.subCollectionCreated', { name }), 'success')
   }
 
   // Rename Request in any collection/sub-collection
@@ -532,7 +546,7 @@ export default function App() {
     if (currentRequest.id === reqId) {
       setCurrentRequest((prev) => ({ ...prev, name: trimmed }))
     }
-    addToast(`Renamed request to "${trimmed}"`, 'success')
+    addToast(t('toast.requestRenamed', { name: trimmed }), 'success')
   }
 
   // Duplicate Request in any collection/sub-collection
@@ -542,7 +556,7 @@ export default function App() {
       setCollections(updated)
       persist({ collections: updated })
       setCurrentRequest(duplicatedReq)
-      addToast(`Duplicated request`, 'success')
+      addToast(t('toast.requestDuplicated'), 'success')
     }
   }
 
@@ -551,7 +565,7 @@ export default function App() {
     const next = deleteRequestFromTree(collections, colId, reqId)
     setCollections(next)
     persist({ collections: next })
-    addToast('Request deleted', 'info')
+    addToast(t('toast.requestDeleted'), 'info')
   }
 
   // Move Request (supports moving across any collections/sub-collections or reordering within the same collection)
@@ -566,7 +580,7 @@ export default function App() {
     persist({ collections: next })
     const targetCol = findCollectionInTree(collections, targetColId)
     if (sourceColId !== targetColId && targetCol) {
-      addToast(`Moved request to "${targetCol.name}"`, 'success')
+      addToast(t('toast.requestMoved', { name: targetCol.name }), 'success')
     }
   }
 
@@ -583,9 +597,9 @@ export default function App() {
     persist({ collections: next })
     if (targetColId && position === 'inside') {
       const targetCol = findCollectionInTree(collections, targetColId)
-      addToast(`Moved "${sourceCol.name}" into "${targetCol?.name || 'Collection'}"`, 'success')
+      addToast(t('toast.collectionMoved', { name: sourceCol.name, target: targetCol?.name || 'Collection' }), 'success')
     } else {
-      addToast(`Reordered "${sourceCol.name}"`, 'success')
+      addToast(t('toast.collectionReordered', { name: sourceCol.name }), 'success')
     }
   }
 
@@ -605,14 +619,14 @@ export default function App() {
       curl += ` \\\n  --header 'Content-Type: application/json' \\\n  --data-raw '${cleanJson.replace(/'/g, "'\\''")}'`
     }
     navigator.clipboard.writeText(curl)
-    addToast('Copied cURL command to clipboard!', 'success')
+    addToast(t('toast.curlCopied'), 'success')
   }
 
   // Quick copy URL
   const handleCopyUrl = (url: string) => {
     if (!url) return
     navigator.clipboard.writeText(interpolate(url))
-    addToast('Copied URL to clipboard!', 'success')
+    addToast(t('toast.urlCopied'), 'success')
   }
 
   // Keyboard shortcuts
@@ -687,7 +701,7 @@ export default function App() {
           const next = [...collections, { id: newId, name, requests: [] }]
           setCollections(next)
           persist({ collections: next })
-          addToast('Collection created: ' + name, 'success')
+          addToast(t('toast.collectionCreated', { name }), 'success')
         }}
         onRenameCollection={handleRenameCollection}
         onDuplicateCollection={handleDuplicateCollection}
@@ -704,7 +718,7 @@ export default function App() {
         onClearHistory={() => {
           setHistory([])
           persist({ history: [] })
-          addToast('History cleared', 'info')
+          addToast(t('toast.historyCleared'), 'info')
         }}
         onOpenEnvModal={() => setIsEnvModalOpen(true)}
         onOpenCurlModal={() => setCurlModalState({ isOpen: true, mode: 'import' })}
@@ -732,8 +746,8 @@ export default function App() {
             )}
           </div>
           <div className="flex items-center gap-2 text-[11px] text-slate-500">
-            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400">Ctrl+Enter</kbd> to send
-            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400 ml-1">Ctrl+S</kbd> to save
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400">Ctrl+Enter</kbd> {t('header.send')}
+            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400 ml-1">Ctrl+S</kbd> {t('header.save')}
           </div>
         </div>
 
@@ -819,7 +833,7 @@ export default function App() {
             setEnvironments(envs)
             setActiveEnvId(activeId)
             persist({ environments: envs, activeEnvironmentId: activeId })
-            addToast('Environment settings saved', 'success')
+            addToast(t('toast.envSaved'), 'success')
           }}
         />
       )}
@@ -840,10 +854,20 @@ export default function App() {
               name: parsed.url ? 'cURL: ' + parsed.url.slice(0, 30) : currentRequest.name
             }
             handleRequestChange(next)
-            addToast('cURL imported successfully!', 'success')
+            addToast(t('toast.curlImported'), 'success')
           }}
         />
       )}
     </div>
+  )
+}
+
+export default function App() {
+  const [language, setLanguage] = useState<Language>('zh-CN')
+
+  return (
+    <I18nProvider language={language} onLanguageChange={setLanguage}>
+      <MainApp onLanguageChange={setLanguage} />
+    </I18nProvider>
   )
 }

@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { X, Copy, Check } from 'lucide-react'
 import { RequestItem } from '../types'
 import { stripJsonComments } from '../utils/jsonUtils'
+import { useI18n } from '../i18n'
 
 interface Props {
   isOpen: boolean
@@ -18,6 +19,7 @@ export const CurlModal: React.FC<Props> = ({
   onImport,
   currentRequest
 }) => {
+  const { t } = useI18n()
   const [curlText, setCurlText] = useState('')
   const [copied, setCopied] = useState(false)
 
@@ -104,7 +106,7 @@ export const CurlModal: React.FC<Props> = ({
       <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-xl overflow-hidden shadow-2xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
           <h3 className="text-sm font-semibold text-slate-200">
-            {mode === 'import' ? 'Import cURL' : 'Export as cURL'}
+            {mode === 'import' ? t('curlModal.importTitle') : t('curlModal.exportTitle')}
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-200">
             <X className="w-4 h-4" />
@@ -115,7 +117,7 @@ export const CurlModal: React.FC<Props> = ({
           {mode === 'import' ? (
             <>
               <textarea
-                placeholder="Paste your cURL command here..."
+                placeholder={t('curlModal.pastePlaceholder')}
                 value={curlText}
                 onChange={(e) => setCurlText(e.target.value)}
                 className="w-full h-44 bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 focus:outline-none focus:border-sky-500 resize-none"
@@ -125,14 +127,14 @@ export const CurlModal: React.FC<Props> = ({
                   onClick={onClose}
                   className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 rounded"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   onClick={() => parseCurl(curlText)}
                   disabled={!curlText.trim()}
                   className="px-4 py-1.5 text-xs bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white font-medium rounded transition-colors"
                 >
-                  Import
+                  {t('curlModal.importBtn')}
                 </button>
               </div>
             </>
@@ -150,11 +152,11 @@ export const CurlModal: React.FC<Props> = ({
                 >
                   {copied ? (
                     <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400" /> Copied
+                      <Check className="w-3.5 h-3.5 text-emerald-400" /> {t('common.copied')}
                     </>
                   ) : (
                     <>
-                      <Copy className="w-3.5 h-3.5" /> Copy
+                      <Copy className="w-3.5 h-3.5" /> {t('curlModal.copyBtn')}
                     </>
                   )}
                 </button>

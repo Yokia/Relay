@@ -15,6 +15,7 @@ import {
   Plus
 } from 'lucide-react'
 import { HttpMethod, RequestItem, ConstantItem } from '../types'
+import { useI18n } from '../i18n'
 
 interface Props {
   request: RequestItem
@@ -124,6 +125,7 @@ export const RequestHeader: React.FC<Props> = ({
   onToggleAutoSave,
   resolvedUrl: passedResolvedUrl
 }) => {
+  const { t } = useI18n()
   const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
   const [showVarPicker, setShowVarPicker] = useState(false)
   const [copiedPreview, setCopiedPreview] = useState(false)
@@ -424,7 +426,7 @@ export const RequestHeader: React.FC<Props> = ({
             <span>Constants</span>
           </button>
 
-          {/* Quick Auto-save Toggle */}
+          {/* Auto Save Status Badge & Toggle */}
           <button
             type="button"
             onClick={onToggleAutoSave}
@@ -433,17 +435,17 @@ export const RequestHeader: React.FC<Props> = ({
                 ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/20"
                 : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-300")
             }
-            title="Click to toggle Auto Save"
+            title={autoSave ? t('header.autoSaveOnTip') : t('header.autoSaveOffTip')}
           >
             <Zap className={"w-3 h-3 " + (autoSave ? "text-emerald-400" : "text-slate-500")} />
-            <span>Auto Save: {autoSave ? 'ON' : 'OFF'}</span>
+            <span>{t('header.autoSave')}: {autoSave ? 'ON' : 'OFF'}</span>
           </button>
 
           {/* Export cURL */}
           <button
             type="button"
             onClick={onExportCurl}
-            title="Export cURL"
+            title={t('header.copyCurl')}
             className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-800 px-2 py-1 rounded transition-colors"
           >
             <Code className="w-3.5 h-3.5" />
@@ -454,7 +456,7 @@ export const RequestHeader: React.FC<Props> = ({
           <button
             type="button"
             onClick={onSave}
-            title="Save Request (Ctrl+S)"
+            title={`${t('header.save')} (Ctrl+S)`}
             className={"flex items-center gap-1 text-xs px-2.5 py-1 rounded transition-colors active:scale-95 " +
               (isDirty && !autoSave
                 ? "bg-sky-500 hover:bg-sky-600 text-white font-medium shadow-sm ring-1 ring-sky-400/50"
@@ -462,7 +464,7 @@ export const RequestHeader: React.FC<Props> = ({
             }
           >
             <Save className="w-3.5 h-3.5" />
-            <span>{autoSave ? 'Saved' : isDirty ? 'Save*' : 'Save'}</span>
+            <span>{autoSave ? t('header.save') : isDirty ? `${t('header.save')}*` : t('header.save')}</span>
           </button>
         </div>
       </div>
@@ -521,7 +523,7 @@ export const RequestHeader: React.FC<Props> = ({
                   }
                 }}
                 autoFocus
-                placeholder="Enter URL (e.g. {{server}}:{{port}}/api/users)"
+                placeholder={t('header.urlPlaceholder')}
                 className="w-full bg-slate-900 border border-sky-500 rounded px-3 py-1.5 pr-16 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none transition-colors shadow-inner min-h-[34px]"
               />
 
@@ -534,7 +536,7 @@ export const RequestHeader: React.FC<Props> = ({
                   <div className="px-3 py-1.5 flex items-center justify-between border-b border-slate-800 bg-slate-950/80 text-[11px] text-slate-400">
                     <div className="flex items-center gap-1.5">
                       <Braces className="w-3.5 h-3.5 text-sky-400" />
-                      <span className="font-medium text-slate-300">选择要插入的常量</span>
+                      <span className="font-medium text-slate-300">{t('header.constantsAutocomplete')}</span>
                       {autocompleteState.query && (
                         <span className="font-mono text-sky-400 bg-sky-500/10 px-1.5 py-0.2 rounded text-[10px]">
                           "{autocompleteState.query}"
@@ -542,18 +544,18 @@ export const RequestHeader: React.FC<Props> = ({
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-sans">
-                      <span>↑↓ 导航</span>
+                      <span>↑↓</span>
                       <span>·</span>
-                      <span>Enter 插入</span>
+                      <span>Enter</span>
                       <span>·</span>
-                      <span>Esc 关闭</span>
+                      <span>Esc</span>
                     </div>
                   </div>
 
                   <div ref={autoListRef} className="max-h-56 overflow-y-auto p-1.5 flex flex-col gap-1 scrollbar-thin">
                     {filteredAutoConstants.length === 0 ? (
                       <div className="px-3 py-4 text-center text-xs text-slate-400 flex flex-col items-center gap-1.5 font-sans">
-                        <span>未找到匹配 "{autocompleteState.query}" 的常量</span>
+                        <span>{t('header.noMatchingConstants')} "{autocompleteState.query}"</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -562,7 +564,7 @@ export const RequestHeader: React.FC<Props> = ({
                           }}
                           className="text-sky-400 hover:underline text-[11px] flex items-center gap-1 mt-1"
                         >
-                          <Plus className="w-3 h-3" /> 打开常量管理并添加
+                          <Plus className="w-3 h-3" /> {t('header.addThisConstant')}
                         </button>
                       </div>
                     ) : (
@@ -583,13 +585,13 @@ export const RequestHeader: React.FC<Props> = ({
                             <div className="flex items-center gap-2 truncate flex-1 mr-2">
                               <span className="font-bold text-sky-400 shrink-0">{'{{' + c.name + '}}'}</span>
                               <span className="text-[11px] text-slate-500 truncate font-mono">
-                                = {c.currentValue || <span className="italic">（未设置）</span>}
+                                = {c.currentValue || <span className="italic">--</span>}
                               </span>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-slate-500 font-sans">
                               {c.options && c.options.length > 1 && (
                                 <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
-                                  {c.options.length} 个候选值
+                                  {c.options.length}
                                 </span>
                               )}
                               {isSelected && <Check className="w-3.5 h-3.5 text-sky-400 ml-1 shrink-0" />}
@@ -610,9 +612,9 @@ export const RequestHeader: React.FC<Props> = ({
                       className="hover:text-sky-400 transition-colors flex items-center gap-1 font-sans"
                     >
                       <Zap className="w-3 h-3 text-amber-400" />
-                      <span>管理常量库</span>
+                      <span>{t('header.manageConstantsBtn')}</span>
                     </button>
-                    <span className="font-sans">共 {filteredAutoConstants.length} 个可用常量</span>
+                    <span className="font-sans">({filteredAutoConstants.length})</span>
                   </div>
                 </div>
               )}
@@ -622,11 +624,11 @@ export const RequestHeader: React.FC<Props> = ({
             <div
               onClick={() => startEditingAt(request.url?.length || 0)}
               className="w-full bg-slate-900 border border-slate-700/70 hover:border-slate-600 rounded px-3 py-1.5 pr-16 text-xs font-mono text-slate-200 transition-colors flex items-center flex-wrap gap-1 min-h-[34px] cursor-text"
-              title="Click to edit URL directly"
+              title={t('header.editUrlMode')}
             >
               {!request.url ? (
                 <span className="text-slate-500 italic select-none">
-                  Enter URL (e.g. &#123;&#123;server&#125;&#125;:&#123;&#123;port&#125;&#125;/api/users)
+                  {t('header.urlPlaceholder')}
                 </span>
               ) : (
                 urlSegments.map((seg, idx) => {
@@ -672,16 +674,16 @@ export const RequestHeader: React.FC<Props> = ({
                             ? "bg-purple-950/70 hover:bg-purple-900/90 border border-purple-500/70 text-purple-200 ring-1 ring-purple-500/30"
                             : "bg-sky-950/70 hover:bg-sky-900/90 border border-sky-500/70 text-sky-200 ring-1 ring-sky-500/30")
                         }
-                        title={isOverridden ? `{{${seg.value}}} 专属覆盖值: ${overrideVal} (点击切换)` : `{{${seg.value}}} 全局值: ${constant?.currentValue || ''} (点击切换)`}
+                        title={isOverridden ? `{{${seg.value}}} ${t('header.exclusiveValue')}: ${overrideVal}` : `{{${seg.value}}} ${t('header.globalValue')}: ${constant?.currentValue || ''}`}
                       >
                         <span className="font-semibold">{seg.raw}</span>
                         {isOverridden ? (
                           <span className="text-[9px] px-1 py-0.1 rounded bg-purple-500/30 text-purple-300 font-sans font-medium">
-                            专属
+                            {t('header.exclusiveValue')}
                           </span>
                         ) : (
                           <span className="text-[9px] px-1 py-0.1 rounded bg-sky-500/20 text-sky-300 font-sans font-medium">
-                            全局
+                            {t('header.globalValue')}
                           </span>
                         )}
                         <ChevronDown className="w-3 h-3 opacity-60 group-hover/pill:opacity-100 transition-opacity" />
@@ -692,7 +694,7 @@ export const RequestHeader: React.FC<Props> = ({
                             handleRemoveConstant(seg.start, seg.end)
                           }}
                           className="p-0.5 text-slate-400 hover:text-rose-300 hover:bg-rose-500/20 rounded transition-colors ml-0.5"
-                          title={`从地址中移除 {{${seg.value}}}`}
+                          title={`${t('header.removeConstantFromUrl')} {{${seg.value}}}`}
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -717,12 +719,12 @@ export const RequestHeader: React.FC<Props> = ({
                         })
                       }}
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono cursor-pointer bg-rose-950/70 hover:bg-rose-900/90 border border-rose-500/80 text-rose-200 ring-1 ring-rose-500/40 transition-all shadow-sm group/pill"
-                      title={`{{${seg.value}}} 未在常量库中定义 (点击查看详情)`}
+                      title={t('header.undefinedConstantWarn', { name: seg.value })}
                     >
                       <AlertTriangle className="w-3 h-3 text-rose-400 shrink-0" />
                       <span className="font-semibold underline decoration-rose-500/60 decoration-wavy">{seg.raw}</span>
                       <span className="text-[9px] px-1 py-0.1 rounded bg-rose-500/30 text-rose-300 border border-rose-500/40 font-sans font-medium">
-                        未定义
+                        {t('header.undefinedConstant')}
                       </span>
                       <button
                         type="button"
@@ -731,7 +733,7 @@ export const RequestHeader: React.FC<Props> = ({
                           handleRemoveConstant(seg.start, seg.end)
                         }}
                         className="p-0.5 text-rose-400 hover:text-white hover:bg-rose-600/40 rounded transition-colors ml-0.5"
-                        title={`从地址中移除 {{${seg.value}}}`}
+                        title={`${t('header.removeConstantFromUrl')} {{${seg.value}}}`}
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -750,7 +752,7 @@ export const RequestHeader: React.FC<Props> = ({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setIsEditingUrl(false)}
-                title="完成编辑并显示标签 (Enter)"
+                title={t('common.done')}
                 className="p-1 text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 rounded transition-colors"
               >
                 <Check className="w-3.5 h-3.5" />
@@ -759,7 +761,7 @@ export const RequestHeader: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => startEditingAt(request.url?.length || 0)}
-                title="编辑 URL 文本"
+                title={t('header.editUrlMode')}
                 className="p-1 text-slate-500 hover:text-sky-400 hover:bg-slate-800 rounded transition-colors"
               >
                 <Pencil className="w-3.5 h-3.5" />
@@ -772,7 +774,7 @@ export const RequestHeader: React.FC<Props> = ({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => setShowVarPicker(!showVarPicker)}
-                title="Insert constant into URL"
+                title={t('header.insertConstant')}
                 className="p-1 text-slate-500 hover:text-sky-400 hover:bg-slate-800 rounded transition-colors"
               >
                 <Braces className="w-3.5 h-3.5" />
@@ -781,7 +783,7 @@ export const RequestHeader: React.FC<Props> = ({
               {showVarPicker && (
                 <div className="absolute right-0 top-full mt-1.5 w-64 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-1.5 z-50 flex flex-col gap-0.5 text-xs select-none">
                   <div className="flex items-center justify-between px-2 py-1 text-[10px] uppercase font-semibold text-slate-500 border-b border-slate-800 mb-1">
-                    <span>Insert Constant</span>
+                    <span>{t('header.insertConstant')}</span>
                     <button
                       type="button"
                       onClick={() => {
@@ -790,12 +792,12 @@ export const RequestHeader: React.FC<Props> = ({
                       }}
                       className="text-sky-400 hover:underline capitalize text-[10px]"
                     >
-                      Manage
+                      {t('header.manageConstantsBtn')}
                     </button>
                   </div>
                   {constants.length === 0 ? (
                     <div className="px-2 py-2 text-slate-500 text-[11px] italic">
-                      No constants defined.<br />Click 'Manage' above to add one.
+                      {t('sidebar.noConstants')}
                     </div>
                   ) : (
                     constants.map((c) => (
@@ -824,7 +826,7 @@ export const RequestHeader: React.FC<Props> = ({
           className="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-medium px-4 py-1.5 rounded transition-all shadow-sm active:scale-95 shrink-0"
         >
           <Send className={"w-3.5 h-3.5 " + (isLoading ? "animate-pulse" : "")} />
-          <span>{isLoading ? 'Sending...' : 'Send'}</span>
+          <span>{isLoading ? t('header.sending') : t('header.send')}</span>
         </button>
       </div>
 
@@ -833,7 +835,7 @@ export const RequestHeader: React.FC<Props> = ({
         <div className="flex items-center gap-2 truncate flex-1 mr-2">
           <div className="flex items-center gap-1 text-[11px] font-sans font-medium text-slate-500 shrink-0 select-none">
             <Globe className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Preview:</span>
+            <span>{t('header.preview')}:</span>
           </div>
           <span className={"truncate " + (resolvedUrl ? "text-emerald-400 font-semibold" : "text-slate-600 italic font-sans")}>
             {resolvedUrl || '(Enter URL above to preview full request address)'}
@@ -845,17 +847,17 @@ export const RequestHeader: React.FC<Props> = ({
             type="button"
             onClick={handleCopyPreview}
             className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-slate-800 transition-colors shrink-0 select-none"
-            title="Copy resolved URL"
+            title={t('header.copyPreview')}
           >
             {copiedPreview ? (
               <>
                 <Check className="w-3 h-3 text-emerald-400" />
-                <span className="text-emerald-400">Copied</span>
+                <span className="text-emerald-400">{t('header.copySuccess')}</span>
               </>
             ) : (
               <>
                 <Copy className="w-3 h-3" />
-                <span>Copy</span>
+                <span>{t('common.copy')}</span>
               </>
             )}
           </button>
@@ -905,16 +907,16 @@ export const RequestHeader: React.FC<Props> = ({
                 {activePill.isValid ? (
                   request.constantOverrides && request.constantOverrides[activePill.name] !== undefined ? (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                      专属覆盖
+                      {t('header.exclusiveValue')}
                     </span>
                   ) : (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40">
-                      跟随全局
+                      {t('header.globalValue')}
                     </span>
                   )
                 ) : (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-semibold">
-                    未定义常量
+                    {t('header.undefinedConstant')}
                   </span>
                 )}
                 <button
@@ -948,17 +950,17 @@ export const RequestHeader: React.FC<Props> = ({
                   {/* Current effective value preview */}
                   <div className="flex flex-col gap-1">
                     <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
-                      当前请求生效值
+                      {t('header.activeValue')}
                     </span>
                     <div className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-emerald-400 text-xs break-all select-text font-medium">
-                      {effectiveVal || <span className="italic text-slate-500">（空值）</span>}
+                      {effectiveVal || <span className="italic text-slate-500">--</span>}
                     </div>
                   </div>
 
                   {/* Switch Candidate Values */}
                   <div className="flex flex-col gap-1 pt-1">
                     <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
-                      切换此请求的值 (专属覆盖)
+                      {t('header.switchCandidateValue')}
                     </span>
                     <div
                       className="max-h-48 overflow-y-auto flex flex-col gap-1 scrollbar-thin pr-1"
@@ -978,9 +980,9 @@ export const RequestHeader: React.FC<Props> = ({
                         }
                       >
                         <div className="flex items-center gap-1.5 truncate">
-                          <span>🌐 跟随全局默认</span>
+                          <span>🌐 {t('header.followGlobalDefault')}</span>
                           <span className="text-[10px] text-slate-400 truncate">
-                            ({activeConstantItem.currentValue || '未设置'})
+                            ({activeConstantItem.currentValue || '--'})
                           </span>
                         </div>
                         {!isOverridden && <Check className="w-3.5 h-3.5 text-sky-400 shrink-0 ml-1" />}
@@ -1006,7 +1008,7 @@ export const RequestHeader: React.FC<Props> = ({
                             <span className="truncate mr-1">{opt}</span>
                             <div className="flex items-center gap-1 shrink-0">
                               {opt === activeConstantItem.currentValue && (
-                                <span className="text-[9px] text-slate-500 font-sans">(全局默认)</span>
+                                <span className="text-[9px] text-slate-500 font-sans">({t('header.globalValue')})</span>
                               )}
                               {isSelected && <Check className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
                             </div>
@@ -1027,7 +1029,7 @@ export const RequestHeader: React.FC<Props> = ({
                       className="flex items-center gap-1 text-slate-400 hover:text-sky-300 transition-colors"
                     >
                       <Zap className="w-3 h-3 text-amber-400" />
-                      <span>管理此常量...</span>
+                      <span>{t('header.manageConstant')}...</span>
                     </button>
 
                     <button
@@ -1036,7 +1038,7 @@ export const RequestHeader: React.FC<Props> = ({
                       className="flex items-center gap-1 text-rose-400 hover:text-rose-300 transition-colors"
                     >
                       <X className="w-3 h-3" />
-                      <span>从 URL 移除</span>
+                      <span>{t('header.removeConstantFromUrl')}</span>
                     </button>
                   </div>
                 </div>
@@ -1045,8 +1047,7 @@ export const RequestHeader: React.FC<Props> = ({
               /* Invalid Constant Body */
               <div className="flex flex-col gap-2.5">
                 <div className="p-2 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-200 text-xs leading-relaxed">
-                  当前常量库中未找到名为 <code className="font-mono font-bold text-rose-300 bg-rose-900/50 px-1 py-0.5 rounded">{'{{' + activePill.name + '}}'}</code> 的配置。
-                  发送请求时该占位符将无法被替换，并将按原样发送。
+                  {t('header.undefinedConstantWarn', { name: activePill.name })}
                 </div>
 
                 <div className="flex items-center justify-between pt-1 text-[11px]">
@@ -1059,7 +1060,7 @@ export const RequestHeader: React.FC<Props> = ({
                     className="flex items-center gap-1 text-sky-400 hover:text-sky-300 transition-colors font-medium"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>打开常量管理并添加</span>
+                    <span>{t('header.addThisConstant')}</span>
                   </button>
 
                   <button
@@ -1068,7 +1069,7 @@ export const RequestHeader: React.FC<Props> = ({
                     className="flex items-center gap-1 text-rose-400 hover:text-rose-300 transition-colors font-medium"
                   >
                     <X className="w-3.5 h-3.5" />
-                    <span>从 URL 移除</span>
+                    <span>{t('header.removeConstantFromUrl')}</span>
                   </button>
                 </div>
               </div>

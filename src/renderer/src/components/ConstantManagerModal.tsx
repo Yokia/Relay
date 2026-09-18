@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { X, Plus, Trash2, Sliders, Check, HelpCircle } from 'lucide-react'
 import { ConstantItem } from '../types'
+import { useI18n } from '../i18n'
 
 interface Props {
   isOpen: boolean
@@ -15,6 +16,7 @@ export const ConstantManagerModal: React.FC<Props> = ({
   onClose,
   onSave
 }) => {
+  const { t } = useI18n()
   const [list, setList] = useState<ConstantItem[]>(() => JSON.parse(JSON.stringify(constants)))
   const [selectedId, setSelectedId] = useState<string>(constants[0]?.id || '')
   const [newOptionInput, setNewOptionInput] = useState('')
@@ -123,7 +125,7 @@ export const ConstantManagerModal: React.FC<Props> = ({
         <div className="flex items-center justify-between px-5 py-3 border-b border-slate-800 bg-slate-950/40">
           <div className="flex items-center gap-2 text-slate-200 font-semibold text-sm">
             <Sliders className="w-4 h-4 text-sky-400" />
-            <span>Manage Custom Constants & Servers</span>
+            <span>{t('constantsModal.title')}</span>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-200">
             <X className="w-4 h-4" />
@@ -135,13 +137,13 @@ export const ConstantManagerModal: React.FC<Props> = ({
           {/* Left List */}
           <div className="w-52 border-r border-slate-800 p-3 flex flex-col gap-1 bg-slate-950/30">
             <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80">
-              <span className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Constants</span>
+              <span className="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">{t('sidebar.constants')}</span>
               <button
                 onClick={handleAddConstant}
                 className="flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300 font-medium"
-                title="Add Constant"
+                title={t('common.add')}
               >
-                <Plus className="w-3.5 h-3.5" /> Add
+                <Plus className="w-3.5 h-3.5" /> {t('common.add')}
               </button>
             </div>
 
@@ -166,7 +168,7 @@ export const ConstantManagerModal: React.FC<Props> = ({
                       }}
                       className="opacity-0 group-hover:opacity-100 hover:text-rose-400 text-slate-500"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
@@ -179,14 +181,14 @@ export const ConstantManagerModal: React.FC<Props> = ({
             <div className="flex-1 flex flex-col p-4 overflow-y-auto gap-3">
               <div>
                 <label className="text-xs text-slate-400 font-medium block mb-1">
-                  Constant Name (常量名称，如 server、port、服务器、端口)
+                  {t('constantsModal.varName')}
                 </label>
                 <input
                   type="text"
                   value={current.name}
                   onChange={(e) => handleUpdateName(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-500"
-                  placeholder="例如: server, port, 服务器, 端口"
+                  placeholder="server, port, host..."
                 />
               </div>
 
@@ -194,7 +196,7 @@ export const ConstantManagerModal: React.FC<Props> = ({
               <div className="flex-1 flex flex-col gap-2 min-h-0">
                 <div className="flex items-center justify-between">
                   <label className="text-xs text-slate-400 font-medium">
-                    候选值列表（点击圆圈可设为当前全局生效值）：
+                    {t('constantsModal.optionsList')}
                   </label>
                 </div>
 
@@ -211,7 +213,7 @@ export const ConstantManagerModal: React.FC<Props> = ({
                         handleAddOption()
                       }
                     }}
-                    placeholder="添加候选值（如 http://localhost:8080 或 8081）..."
+                    placeholder={t('constantsModal.addOptionPlaceholder')}
                     className="flex-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-sky-500"
                   />
                   <button
@@ -220,7 +222,7 @@ export const ConstantManagerModal: React.FC<Props> = ({
                     disabled={!newOptionInput.trim()}
                     className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 text-xs font-medium rounded transition-colors"
                   >
-                    Add Value
+                    {t('common.add')}
                   </button>
                 </div>
 
@@ -228,7 +230,7 @@ export const ConstantManagerModal: React.FC<Props> = ({
                 <div className="flex-1 border border-slate-800/80 rounded-lg p-2 bg-slate-950/40 flex flex-col gap-1 overflow-y-auto max-h-56">
                   {current.options.length === 0 ? (
                     <div className="text-center py-6 text-xs text-slate-500 italic">
-                      No values configured yet. Add one above.
+                      {t('constantsModal.emptyOptionsTip')}
                     </div>
                   ) : (
                     current.options.map((opt) => {
@@ -249,7 +251,7 @@ export const ConstantManagerModal: React.FC<Props> = ({
                             </div>
                             <span className="truncate">{opt}</span>
                             {isSelected && (
-                              <span className="text-[10px] text-sky-400 font-sans font-normal px-1.5 py-0.2 bg-sky-950 rounded border border-sky-800">Active</span>
+                              <span className="text-[10px] text-sky-400 font-sans font-normal px-1.5 py-0.2 bg-sky-950 rounded border border-sky-800">{t('constantsModal.activeBadge')}</span>
                             )}
                           </div>
                           <button
@@ -259,7 +261,7 @@ export const ConstantManagerModal: React.FC<Props> = ({
                               handleDeleteOption(opt)
                             }}
                             className="opacity-0 group-hover:opacity-100 hover:text-rose-400 text-slate-500"
-                            title="Remove"
+                            title={t('common.remove')}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -272,7 +274,7 @@ export const ConstantManagerModal: React.FC<Props> = ({
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-xs text-slate-500">
-              Select or create a constant
+              {t('constantsModal.subtitle')}
             </div>
           )}
         </div>
@@ -285,13 +287,13 @@ export const ConstantManagerModal: React.FC<Props> = ({
           </div>
           <div className="flex items-center gap-2">
             <button onClick={onClose} className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 rounded">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleSaveAndClose}
               className="px-4 py-1.5 text-xs bg-sky-500 hover:bg-sky-600 text-white font-medium rounded transition-colors shadow-sm"
             >
-              Save & Apply
+              {t('common.save')}
             </button>
           </div>
         </div>

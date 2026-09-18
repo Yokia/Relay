@@ -16,7 +16,8 @@ const defaultData: StorageData = {
   settings: {
     autoSave: false,
     timeout: 30000,
-    sslVerify: true
+    sslVerify: true,
+    language: 'zh-CN'
   },
   constants: [
     {
