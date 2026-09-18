@@ -1,7 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { Send, Save, Code, Braces, Globe, Copy, Check, Zap } from 'lucide-react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
+import {
+  Send,
+  Save,
+  Code,
+  Braces,
+  Globe,
+  Copy,
+  Check,
+  Zap,
+  AlertTriangle,
+  ChevronDown,
+  X,
+  Pencil,
+  Plus
+} from 'lucide-react'
 import { HttpMethod, RequestItem, ConstantItem } from '../types'
-import { ConstantsBar } from './ConstantsBar'
 
 interface Props {
   request: RequestItem
@@ -20,6 +33,23 @@ interface Props {
   resolvedUrl?: string
 }
 
+interface UrlSegment {
+  type: 'text' | 'constant'
+  value: string
+  raw: string
+  start: number
+  end: number
+}
+
+interface ActivePill {
+  name: string
+  raw: string
+  start: number
+  end: number
+  isValid: boolean
+  rect: DOMRect
+}
+
 const methodColors: Record<HttpMethod, string> = {
   GET: 'text-emerald-400 font-bold',
   POST: 'text-amber-400 font-bold',
@@ -30,6 +60,49 @@ const methodColors: Record<HttpMethod, string> = {
   OPTIONS: 'text-slate-400 font-bold'
 }
 
+function parseUrlSegments(url: string): UrlSegment[] {
+  const segments: UrlSegment[] = []
+  if (!url) return segments
+
+  const regex = /\{\{([^}]+)\}\}/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = regex.exec(url)) !== null) {
+    if (match.index > lastIndex) {
+      const text = url.slice(lastIndex, match.index)
+      segments.push({
+        type: 'text',
+        value: text,
+        raw: text,
+        start: lastIndex,
+        end: match.index
+      })
+    }
+    segments.push({
+      type: 'constant',
+      value: match[1].trim(),
+      raw: match[0],
+      start: match.index,
+      end: regex.lastIndex
+    })
+    lastIndex = regex.lastIndex
+  }
+
+  if (lastIndex < url.length) {
+    const text = url.slice(lastIndex)
+    segments.push({
+      type: 'text',
+      value: text,
+      raw: text,
+      start: lastIndex,
+      end: url.length
+    })
+  }
+
+  return segments
+}
+
 export const RequestHeader: React.FC<Props> = ({
   request,
   onChange,
@@ -38,7 +111,6 @@ export const RequestHeader: React.FC<Props> = ({
   onExportCurl,
   isLoading,
   constants,
-  onSwitchConstant,
   onRequestSwitchConstant,
   onOpenManageConstants,
   isDirty = false,
@@ -49,9 +121,16 @@ export const RequestHeader: React.FC<Props> = ({
   const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
   const [showVarPicker, setShowVarPicker] = useState(false)
   const [copiedPreview, setCopiedPreview] = useState(false)
+  const [isEditingUrl, setIsEditingUrl] = useState(false)
+  const [activePill, setActivePill] = useState<ActivePill | null>(null)
+
   const varPickerRef = useRef<HTMLDivElement>(null)
   const urlInputRef = useRef<HTMLInputElement>(null)
+  const urlBarContainerRef = useRef<HTMLDivElement>(null)
+  const cursorPositionRef = useRef<number>(0)
+  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Listen clicks outside for var picker
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (varPickerRef.current && !varPickerRef.current.contains(e.target as Node)) {
@@ -64,39 +143,19 @@ export const RequestHeader: React.FC<Props> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showVarPicker])
 
-  const cursorPositionRef = useRef<number>(0)
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      e.preventDefault()
-      onSend()
+  // Close active pill on window resize or scroll
+  useEffect(() => {
+    const handleClosePill = () => setActivePill(null)
+    window.addEventListener('resize', handleClosePill)
+    window.addEventListener('scroll', handleClosePill, true)
+    return () => {
+      window.removeEventListener('resize', handleClosePill)
+      window.removeEventListener('scroll', handleClosePill, true)
     }
-  }
+  }, [])
 
-  const handleInsertConstant = (name: string) => {
-    const tag = '{{' + name + '}}'
-    const currentVal = request.url || ''
-    const input = urlInputRef.current
-    
-    // Get cursor position: use input selection if available, or fall back to last tracked position
-    const pos = (input && typeof input.selectionStart === 'number' && input.selectionStart >= 0)
-      ? input.selectionStart
-      : (cursorPositionRef.current ?? currentVal.length)
-
-    const newVal = currentVal.slice(0, pos) + tag + currentVal.slice(pos)
-    onChange({ url: newVal })
-    setShowVarPicker(false)
-
-    // Position cursor right after the newly inserted tag
-    const nextCursorPos = pos + tag.length
-    cursorPositionRef.current = nextCursorPos
-    setTimeout(() => {
-      if (urlInputRef.current) {
-        urlInputRef.current.focus()
-        urlInputRef.current.setSelectionRange(nextCursorPos, nextCursorPos)
-      }
-    }, 40)
-  }
+  // Parse current URL into segments (text & constants)
+  const urlSegments = useMemo(() => parseUrlSegments(request.url || ''), [request.url])
 
   // Compute resolved preview URL respecting request-level constant overrides
   const overrides = request.constantOverrides || {}
@@ -119,8 +178,99 @@ export const RequestHeader: React.FC<Props> = ({
     setTimeout(() => setCopiedPreview(false), 1500)
   }
 
+  // Switch to raw text editing mode and place cursor
+  const startEditingAt = (pos?: number) => {
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current)
+      blurTimeoutRef.current = null
+    }
+    setIsEditingUrl(true)
+    const targetPos = typeof pos === 'number' ? pos : (request.url?.length || 0)
+    cursorPositionRef.current = targetPos
+    setTimeout(() => {
+      if (urlInputRef.current) {
+        urlInputRef.current.focus()
+        urlInputRef.current.setSelectionRange(targetPos, targetPos)
+      }
+    }, 30)
+  }
+
+  const handleInputBlur = (e: React.FocusEvent) => {
+    const relatedTarget = e.relatedTarget as Node | null
+    if (urlBarContainerRef.current && relatedTarget && urlBarContainerRef.current.contains(relatedTarget)) {
+      return
+    }
+    blurTimeoutRef.current = setTimeout(() => {
+      setIsEditingUrl(false)
+    }, 180)
+  }
+
+  const handleInputFocus = () => {
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current)
+      blurTimeoutRef.current = null
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault()
+      onSend()
+    } else if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+      e.preventDefault()
+      setIsEditingUrl(false)
+    } else if (e.key === 'Escape') {
+      setIsEditingUrl(false)
+    }
+  }
+
+  // Insert constant tag into current cursor position
+  const handleInsertConstant = (name: string) => {
+    if (blurTimeoutRef.current) {
+      clearTimeout(blurTimeoutRef.current)
+      blurTimeoutRef.current = null
+    }
+    const tag = '{{' + name + '}}'
+    const currentVal = request.url || ''
+    const input = urlInputRef.current
+
+    const pos = (input && typeof input.selectionStart === 'number' && input.selectionStart >= 0)
+      ? input.selectionStart
+      : (cursorPositionRef.current ?? currentVal.length)
+
+    const newVal = currentVal.slice(0, pos) + tag + currentVal.slice(pos)
+    onChange({ url: newVal })
+    setShowVarPicker(false)
+
+    const nextCursorPos = pos + tag.length
+    cursorPositionRef.current = nextCursorPos
+    if (isEditingUrl) {
+      setTimeout(() => {
+        if (urlInputRef.current) {
+          urlInputRef.current.focus()
+          urlInputRef.current.setSelectionRange(nextCursorPos, nextCursorPos)
+        }
+      }, 40)
+    }
+  }
+
+  // Remove a specific constant occurrence from URL
+  const handleRemoveConstant = (start: number, end: number) => {
+    const currentVal = request.url || ''
+    const newVal = currentVal.slice(0, start) + currentVal.slice(end)
+    onChange({ url: newVal })
+    if (activePill) {
+      setActivePill(null)
+    }
+  }
+
+  // Look up constant item for active pill if valid
+  const activeConstantItem = activePill && activePill.isValid
+    ? constants.find((c) => c.name === activePill.name)
+    : undefined
+
   return (
-    <div className="p-3 border-b border-slate-800 flex flex-col gap-2.5 bg-slate-900/40">
+    <div className="p-3 border-b border-slate-800 flex flex-col gap-2.5 bg-slate-900/40 select-none">
       {/* Top Request Name & Control Actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -137,6 +287,17 @@ export const RequestHeader: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Manage Constants Modal Trigger */}
+          <button
+            type="button"
+            onClick={onOpenManageConstants}
+            title="Manage Constants and candidate values"
+            className="flex items-center gap-1 text-xs text-slate-400 hover:text-amber-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 px-2 py-1 rounded transition-colors"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-400" />
+            <span>Constants</span>
+          </button>
+
           {/* Quick Auto-save Toggle */}
           <button
             type="button"
@@ -152,6 +313,7 @@ export const RequestHeader: React.FC<Props> = ({
             <span>Auto Save: {autoSave ? 'ON' : 'OFF'}</span>
           </button>
 
+          {/* Export cURL */}
           <button
             type="button"
             onClick={onExportCurl}
@@ -162,6 +324,7 @@ export const RequestHeader: React.FC<Props> = ({
             <span>cURL</span>
           </button>
 
+          {/* Save Request */}
           <button
             type="button"
             onClick={onSave}
@@ -181,7 +344,7 @@ export const RequestHeader: React.FC<Props> = ({
       {/* 1. Main Address Row */}
       <div className="flex items-center gap-2">
         {/* Method Select */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <select
             value={request.method}
             onChange={(e) => onChange({ method: e.target.value as HttpMethod })}
@@ -195,64 +358,227 @@ export const RequestHeader: React.FC<Props> = ({
           </select>
         </div>
 
-        {/* URL Input Box */}
-        <div className="flex-1 relative flex items-center">
-          <input
-            ref={urlInputRef}
-            type="text"
-            value={request.url}
-            onChange={(e) => onChange({ url: e.target.value })}
-            onKeyDown={handleKeyDown}
-            onSelect={(e) => {
-              cursorPositionRef.current = e.currentTarget.selectionStart || 0
-            }}
-            onClick={(e) => {
-              cursorPositionRef.current = e.currentTarget.selectionStart || 0
-            }}
-            onKeyUp={(e) => {
-              cursorPositionRef.current = e.currentTarget.selectionStart || 0
-            }}
-            placeholder="Enter URL (e.g. {{server}}:{{port}}/api/users)"
-            className="w-full bg-slate-900 border border-slate-700/70 rounded px-3 py-1.5 pr-9 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
-          />
-          {/* Insert Variable Quick Button */}
-          <div className="absolute right-1.5" ref={varPickerRef}>
-            <button
-              type="button"
-              onClick={() => setShowVarPicker(!showVarPicker)}
-              title="Insert constant into URL"
-              className="p-1 text-slate-500 hover:text-sky-400 hover:bg-slate-800 rounded transition-colors"
+        {/* Address Bar Container (Pills Mode or Raw Input Mode) */}
+        <div ref={urlBarContainerRef} className="flex-1 relative flex items-center min-w-0">
+          {isEditingUrl ? (
+            /* Editing Mode: Standard Input */
+            <input
+              ref={urlInputRef}
+              type="text"
+              value={request.url}
+              onChange={(e) => onChange({ url: e.target.value })}
+              onKeyDown={handleKeyDown}
+              onBlur={handleInputBlur}
+              onFocus={handleInputFocus}
+              onSelect={(e) => {
+                cursorPositionRef.current = e.currentTarget.selectionStart || 0
+              }}
+              onClick={(e) => {
+                cursorPositionRef.current = e.currentTarget.selectionStart || 0
+              }}
+              onKeyUp={(e) => {
+                cursorPositionRef.current = e.currentTarget.selectionStart || 0
+              }}
+              autoFocus
+              placeholder="Enter URL (e.g. {{server}}:{{port}}/api/users)"
+              className="w-full bg-slate-900 border border-sky-500 rounded px-3 py-1.5 pr-16 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none transition-colors shadow-inner min-h-[34px]"
+            />
+          ) : (
+            /* Interactive Pills Display Mode */
+            <div
+              onClick={() => startEditingAt(request.url?.length || 0)}
+              className="w-full bg-slate-900 border border-slate-700/70 hover:border-slate-600 rounded px-3 py-1.5 pr-16 text-xs font-mono text-slate-200 transition-colors flex items-center flex-wrap gap-1 min-h-[34px] cursor-text"
+              title="Click to edit URL directly"
             >
-              <Braces className="w-3.5 h-3.5" />
-            </button>
+              {!request.url ? (
+                <span className="text-slate-500 italic select-none">
+                  Enter URL (e.g. &#123;&#123;server&#125;&#125;:&#123;&#123;port&#125;&#125;/api/users)
+                </span>
+              ) : (
+                urlSegments.map((seg, idx) => {
+                  if (seg.type === 'text') {
+                    return (
+                      <span
+                        key={idx}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          startEditingAt(seg.start)
+                        }}
+                        className="text-slate-200 select-text break-all cursor-text hover:text-white"
+                      >
+                        {seg.value}
+                      </span>
+                    )
+                  }
 
-            {showVarPicker && (
-              <div className="absolute right-0 top-full mt-1 w-64 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-1.5 z-50 flex flex-col gap-0.5 text-xs select-none">
-                <div className="flex items-center justify-between px-2 py-1 text-[10px] uppercase font-semibold text-slate-500 border-b border-slate-800 mb-1">
-                  <span>Insert Constant</span>
-                  <button onClick={onOpenManageConstants} className="text-sky-400 hover:underline capitalize text-[10px]">
-                    Edit
-                  </button>
-                </div>
-                {constants.length === 0 ? (
-                  <div className="px-2 py-2 text-slate-500 text-[11px] italic">
-                    No constants defined.<br />Click 'Edit' above to add one.
-                  </div>
-                ) : (
-                  constants.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => handleInsertConstant(c.name)}
-                      className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800 text-left transition-colors text-slate-300 hover:text-white"
+                  // Constant Segment: Check if valid in constants library
+                  const constant = constants.find((c) => c.name === seg.value)
+                  const isValid = Boolean(constant)
+                  const overrideVal = request.constantOverrides ? request.constantOverrides[seg.value] : undefined
+                  const isOverridden = overrideVal !== undefined
+
+                  if (isValid) {
+                    return (
+                      <span
+                        key={idx}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const rect = e.currentTarget.getBoundingClientRect()
+                          setActivePill({
+                            name: seg.value,
+                            raw: seg.raw,
+                            start: seg.start,
+                            end: seg.end,
+                            isValid: true,
+                            rect
+                          })
+                        }}
+                        className={"inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono cursor-pointer transition-all shadow-sm group/pill " +
+                          (isOverridden
+                            ? "bg-purple-950/70 hover:bg-purple-900/90 border border-purple-500/70 text-purple-200 ring-1 ring-purple-500/30"
+                            : "bg-sky-950/70 hover:bg-sky-900/90 border border-sky-500/70 text-sky-200 ring-1 ring-sky-500/30")
+                        }
+                        title={isOverridden ? `{{${seg.value}}} 专属覆盖值: ${overrideVal} (点击切换)` : `{{${seg.value}}} 全局值: ${constant?.currentValue || ''} (点击切换)`}
+                      >
+                        <span className="font-semibold">{seg.raw}</span>
+                        {isOverridden ? (
+                          <span className="text-[9px] px-1 py-0.1 rounded bg-purple-500/30 text-purple-300 font-sans font-medium">
+                            专属
+                          </span>
+                        ) : (
+                          <span className="text-[9px] px-1 py-0.1 rounded bg-sky-500/20 text-sky-300 font-sans font-medium">
+                            全局
+                          </span>
+                        )}
+                        <ChevronDown className="w-3 h-3 opacity-60 group-hover/pill:opacity-100 transition-opacity" />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRemoveConstant(seg.start, seg.end)
+                          }}
+                          className="p-0.5 text-slate-400 hover:text-rose-300 hover:bg-rose-500/20 rounded transition-colors ml-0.5"
+                          title={`从地址中移除 {{${seg.value}}}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )
+                  }
+
+                  // Undefined Constant: Highlight in RED with warning indicator
+                  return (
+                    <span
+                      key={idx}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        setActivePill({
+                          name: seg.value,
+                          raw: seg.raw,
+                          start: seg.start,
+                          end: seg.end,
+                          isValid: false,
+                          rect
+                        })
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono cursor-pointer bg-rose-950/70 hover:bg-rose-900/90 border border-rose-500/80 text-rose-200 ring-1 ring-rose-500/40 transition-all shadow-sm group/pill"
+                      title={`{{${seg.value}}} 未在常量库中定义 (点击查看详情)`}
                     >
-                      <span className="font-mono text-sky-400">{'{{' + c.name + '}}'}</span>
-                      <span className="text-[11px] text-slate-500 truncate max-w-[120px] font-mono">{c.currentValue}</span>
-                    </button>
-                  ))
-                )}
-              </div>
+                      <AlertTriangle className="w-3 h-3 text-rose-400 shrink-0" />
+                      <span className="font-semibold underline decoration-rose-500/60 decoration-wavy">{seg.raw}</span>
+                      <span className="text-[9px] px-1 py-0.1 rounded bg-rose-500/30 text-rose-300 border border-rose-500/40 font-sans font-medium">
+                        未定义
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleRemoveConstant(seg.start, seg.end)
+                        }}
+                        className="p-0.5 text-rose-400 hover:text-white hover:bg-rose-600/40 rounded transition-colors ml-0.5"
+                        title={`从地址中移除 {{${seg.value}}}`}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )
+                })
+              )}
+            </div>
+          )}
+
+          {/* Right Action Icons on Address Bar (Pencil + Variable Picker) */}
+          <div className="absolute right-1.5 flex items-center gap-1">
+            {/* Direct Edit Mode Toggle Button */}
+            {isEditingUrl ? (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setIsEditingUrl(false)}
+                title="完成编辑并显示标签 (Enter)"
+                className="p-1 text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 rounded transition-colors"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => startEditingAt(request.url?.length || 0)}
+                title="编辑 URL 文本"
+                className="p-1 text-slate-500 hover:text-sky-400 hover:bg-slate-800 rounded transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
             )}
+
+            {/* Insert Variable Quick Button */}
+            <div className="relative" ref={varPickerRef}>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setShowVarPicker(!showVarPicker)}
+                title="Insert constant into URL"
+                className="p-1 text-slate-500 hover:text-sky-400 hover:bg-slate-800 rounded transition-colors"
+              >
+                <Braces className="w-3.5 h-3.5" />
+              </button>
+
+              {showVarPicker && (
+                <div className="absolute right-0 top-full mt-1.5 w-64 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-1.5 z-50 flex flex-col gap-0.5 text-xs select-none">
+                  <div className="flex items-center justify-between px-2 py-1 text-[10px] uppercase font-semibold text-slate-500 border-b border-slate-800 mb-1">
+                    <span>Insert Constant</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowVarPicker(false)
+                        onOpenManageConstants()
+                      }}
+                      className="text-sky-400 hover:underline capitalize text-[10px]"
+                    >
+                      Manage
+                    </button>
+                  </div>
+                  {constants.length === 0 ? (
+                    <div className="px-2 py-2 text-slate-500 text-[11px] italic">
+                      No constants defined.<br />Click 'Manage' above to add one.
+                    </div>
+                  ) : (
+                    constants.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => handleInsertConstant(c.name)}
+                        className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800 text-left transition-colors text-slate-300 hover:text-white"
+                      >
+                        <span className="font-mono text-sky-400">{'{{' + c.name + '}}'}</span>
+                        <span className="text-[11px] text-slate-500 truncate max-w-[120px] font-mono">{c.currentValue}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -260,8 +586,8 @@ export const RequestHeader: React.FC<Props> = ({
         <button
           type="button"
           onClick={onSend}
-          disabled={isLoading || !request.url.trim()}
-          className="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-medium px-4 py-1.5 rounded transition-all shadow-sm active:scale-95"
+          disabled={isLoading || !request.url?.trim()}
+          className="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-medium px-4 py-1.5 rounded transition-all shadow-sm active:scale-95 shrink-0"
         >
           <Send className={"w-3.5 h-3.5 " + (isLoading ? "animate-pulse" : "")} />
           <span>{isLoading ? 'Sending...' : 'Send'}</span>
@@ -302,14 +628,212 @@ export const RequestHeader: React.FC<Props> = ({
         )}
       </div>
 
-      {/* 3. Constants Switcher Bar */}
-      <ConstantsBar
-        constants={constants}
-        url={request.url}
-        constantOverrides={request.constantOverrides}
-        onRequestSwitchConstant={onRequestSwitchConstant}
-        onOpenManageModal={onOpenManageConstants}
-      />
+      {/* 3. Floating Popover Menu for Active Pill */}
+      {activePill && (
+        <>
+          {/* Backdrop to close popover on outside click */}
+          <div
+            className="fixed inset-0 z-40 bg-transparent"
+            onClick={() => setActivePill(null)}
+          />
+
+          {/* Floating Dropdown Card */}
+          <div
+            style={{
+              position: 'fixed',
+              top: Math.min(activePill.rect.bottom + 6, window.innerHeight - 320),
+              left: Math.max(12, Math.min(activePill.rect.left, window.innerWidth - 320))
+            }}
+            className="z-50 w-80 bg-slate-900 border border-slate-700/90 rounded-xl shadow-2xl p-3 text-xs text-slate-200 animate-in fade-in duration-100 select-none flex flex-col gap-2.5"
+          >
+            {/* Popover Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div className="flex items-center gap-1.5 font-mono text-sm">
+                {activePill.isValid ? (
+                  <>
+                    <Braces className="w-4 h-4 text-sky-400 shrink-0" />
+                    <span className="font-bold text-sky-300">{activePill.raw}</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                    <span className="font-bold text-rose-300">{activePill.raw}</span>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {activePill.isValid ? (
+                  request.constantOverrides && request.constantOverrides[activePill.name] !== undefined ? (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                      专属覆盖
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                      跟随全局
+                    </span>
+                  )
+                ) : (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-semibold">
+                    未定义常量
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setActivePill(null)}
+                  className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors ml-1"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Valid Constant Body */}
+            {activePill.isValid && activeConstantItem ? (() => {
+              const overrideVal = request.constantOverrides ? request.constantOverrides[activePill.name] : undefined
+              const isOverridden = overrideVal !== undefined
+              const effectiveVal = isOverridden ? overrideVal : (activeConstantItem.currentValue || '')
+
+              const rawOptions = activeConstantItem.options && activeConstantItem.options.length > 0
+                ? activeConstantItem.options
+                : (activeConstantItem.currentValue ? [activeConstantItem.currentValue] : [])
+
+              const allOptions = Array.from(new Set([
+                ...rawOptions,
+                ...(activeConstantItem.currentValue ? [activeConstantItem.currentValue] : []),
+                ...(overrideVal ? [overrideVal] : [])
+              ]))
+
+              return (
+                <div className="flex flex-col gap-2">
+                  {/* Current effective value preview */}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+                      当前请求生效值
+                    </span>
+                    <div className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-emerald-400 text-xs break-all select-text font-medium">
+                      {effectiveVal || <span className="italic text-slate-500">（空值）</span>}
+                    </div>
+                  </div>
+
+                  {/* Switch Candidate Values */}
+                  <div className="flex flex-col gap-1 pt-1">
+                    <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
+                      切换此请求的值 (专属覆盖)
+                    </span>
+                    <div className="max-h-40 overflow-y-auto flex flex-col gap-1 scrollbar-thin pr-0.5">
+                      {/* Global Default Option */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onRequestSwitchConstant(activePill.name, null)
+                          setActivePill(null)
+                        }}
+                        className={"flex items-center justify-between px-2 py-1.5 rounded-lg border text-left transition-colors text-xs font-mono " +
+                          (!isOverridden
+                            ? "bg-sky-500/15 border-sky-500/50 text-sky-200 font-semibold"
+                            : "bg-slate-800/60 border-slate-750 hover:bg-slate-800 text-slate-300 hover:text-white")
+                        }
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span>🌐 跟随全局默认</span>
+                          <span className="text-[10px] text-slate-400 truncate">
+                            ({activeConstantItem.currentValue || '未设置'})
+                          </span>
+                        </div>
+                        {!isOverridden && <Check className="w-3.5 h-3.5 text-sky-400 shrink-0 ml-1" />}
+                      </button>
+
+                      {/* Candidate Options */}
+                      {allOptions.map((opt) => {
+                        const isSelected = isOverridden && overrideVal === opt
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => {
+                              onRequestSwitchConstant(activePill.name, opt)
+                              setActivePill(null)
+                            }}
+                            className={"flex items-center justify-between px-2 py-1.5 rounded-lg border text-left transition-colors text-xs font-mono " +
+                              (isSelected
+                                ? "bg-purple-500/20 border-purple-500/60 text-purple-200 font-semibold shadow-sm"
+                                : "bg-slate-800/40 border-slate-700/60 hover:bg-slate-800 text-slate-300 hover:text-white")
+                            }
+                          >
+                            <span className="truncate mr-1">{opt}</span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {opt === activeConstantItem.currentValue && (
+                                <span className="text-[9px] text-slate-500 font-sans">(全局默认)</span>
+                              )}
+                              {isSelected && <Check className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Actions Divider */}
+                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActivePill(null)
+                        onOpenManageConstants()
+                      }}
+                      className="flex items-center gap-1 text-slate-400 hover:text-sky-300 transition-colors"
+                    >
+                      <Zap className="w-3 h-3 text-amber-400" />
+                      <span>管理此常量...</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveConstant(activePill.start, activePill.end)}
+                      className="flex items-center gap-1 text-rose-400 hover:text-rose-300 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                      <span>从 URL 移除</span>
+                    </button>
+                  </div>
+                </div>
+              )
+            })() : (
+              /* Invalid Constant Body */
+              <div className="flex flex-col gap-2.5">
+                <div className="p-2 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-200 text-xs leading-relaxed">
+                  当前常量库中未找到名为 <code className="font-mono font-bold text-rose-300 bg-rose-900/50 px-1 py-0.5 rounded">{'{{' + activePill.name + '}}'}</code> 的配置。
+                  发送请求时该占位符将无法被替换，并将按原样发送。
+                </div>
+
+                <div className="flex items-center justify-between pt-1 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActivePill(null)
+                      onOpenManageConstants()
+                    }}
+                    className="flex items-center gap-1 text-sky-400 hover:text-sky-300 transition-colors font-medium"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>打开常量管理并添加</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveConstant(activePill.start, activePill.end)}
+                    className="flex items-center gap-1 text-rose-400 hover:text-rose-300 transition-colors font-medium"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>从 URL 移除</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
