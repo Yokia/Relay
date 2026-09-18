@@ -359,7 +359,7 @@ export const ResponsePopoutWindow: React.FC = () => {
         )}
 
         {activeTab === 'headers' && (
-          <div className="flex-1 overflow-y-auto bg-[#282c34] border border-slate-800 rounded-lg p-3 font-mono text-xs select-text">
+          <div className="flex-1 overflow-y-auto bg-[#0d131f] border border-slate-800 rounded-lg p-3 font-mono text-xs select-text">
             {filteredHeaders.length === 0 ? (
               <div className="text-center py-8 text-slate-500 italic">
                 {headerSearch ? 'No matching headers found.' : 'No headers received.'}

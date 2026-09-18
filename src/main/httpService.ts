@@ -26,6 +26,142 @@ export interface ResponseResult {
   error?: string
 }
 
+/**
+ * Strips single-line (//), multi-line (/* ... *\/), and hash (#) comments from JSON strings,
+ * while safely preserving string literals (e.g. URLs with https://).
+ * Also cleans trailing commas resulting from commented-out fields before closing brackets.
+ */
+export function stripJsonComments(jsonStr: string): string {
+  if (!jsonStr) return ''
+
+  let result = ''
+  let inString = false
+  let isEscaped = false
+  let stringChar = '"'
+  let i = 0
+  const len = jsonStr.length
+
+  while (i < len) {
+    const char = jsonStr[i]
+    const nextChar = i + 1 < len ? jsonStr[i + 1] : ''
+
+    if (inString) {
+      result += char
+      if (isEscaped) {
+        isEscaped = false
+      } else if (char === '\\') {
+        isEscaped = true
+      } else if (char === stringChar) {
+        inString = false
+      }
+      i++
+      continue
+    }
+
+    // Check for string start (double quote or single quote)
+    if (char === '"' || char === "'") {
+      inString = true
+      stringChar = char
+      isEscaped = false
+      result += char
+      i++
+      continue
+    }
+
+    // Check for single-line comment: //
+    if (char === '/' && nextChar === '/') {
+      i += 2
+      while (i < len && jsonStr[i] !== '\n' && jsonStr[i] !== '\r') {
+        i++
+      }
+      continue
+    }
+
+    // Check for multi-line comment: /* ... */
+    if (char === '/' && nextChar === '*') {
+      i += 2
+      while (i + 1 < len && !(jsonStr[i] === '*' && jsonStr[i + 1] === '/')) {
+        i++
+      }
+      i += 2
+      continue
+    }
+
+    // Check for hash comment: #
+    if (char === '#') {
+      i++
+      while (i < len && jsonStr[i] !== '\n' && jsonStr[i] !== '\r') {
+        i++
+      }
+      continue
+    }
+
+    result += char
+    i++
+  }
+
+  return removeTrailingCommas(result)
+}
+
+function removeTrailingCommas(jsonStr: string): string {
+  let result = ''
+  let inString = false
+  let isEscaped = false
+  let stringChar = '"'
+  let lastCommaIndex = -1
+
+  for (let i = 0; i < jsonStr.length; i++) {
+    const char = jsonStr[i]
+
+    if (inString) {
+      result += char
+      if (isEscaped) {
+        isEscaped = false
+      } else if (char === '\\') {
+        isEscaped = true
+      } else if (char === stringChar) {
+        inString = false
+      }
+      continue
+    }
+
+    if (char === '"' || char === "'") {
+      inString = true
+      stringChar = char
+      isEscaped = false
+      result += char
+      lastCommaIndex = -1
+      continue
+    }
+
+    if (char === ',') {
+      lastCommaIndex = result.length
+      result += char
+      continue
+    }
+
+    if (char === '}' || char === ']') {
+      if (lastCommaIndex !== -1) {
+        const between = result.slice(lastCommaIndex + 1)
+        if (/^\s*$/.test(between)) {
+          result = result.slice(0, lastCommaIndex) + between
+        }
+      }
+      lastCommaIndex = -1
+      result += char
+      continue
+    }
+
+    if (!/\s/.test(char)) {
+      lastCommaIndex = -1
+    }
+
+    result += char
+  }
+
+  return result
+}
+
 export async function executeRequest(req: RequestPayload): Promise<ResponseResult> {
   const startTime = Date.now()
 
@@ -52,10 +188,11 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
   // 3. Prepare Data
   let data: any = undefined
   if (req.bodyType === 'json' && req.bodyRaw) {
+    const cleanedJson = stripJsonComments(req.bodyRaw)
     try {
-      data = JSON.parse(req.bodyRaw)
+      data = JSON.parse(cleanedJson)
     } catch {
-      data = req.bodyRaw
+      data = cleanedJson.trim() ? cleanedJson : req.bodyRaw
     }
     if (!headers['Content-Type'] && !headers['content-type']) {
       headers['Content-Type'] = 'application/json'

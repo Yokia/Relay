@@ -25,3 +25,26 @@
 .no-drag {
   -webkit-app-region: no-drag;
 }
+
+/* Styling for commented-out lines and blocks in CodeMirror JSON editor */
+.cm-json-comment,
+.cm-json-comment * {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+  font-style: italic !important;
+}
+
+.cm-json-comment .cm-clickable-link,
+.cm-json-comment a {
+  color: #7dd3fc !important;
+  text-decoration: underline !important;
+  text-decoration-color: rgba(56, 189, 248, 0.4) !important;
+  font-style: normal !important;
+}
+
+.cm-json-comment .cm-clickable-link:hover,
+.cm-json-comment a:hover {
+  color: #38bdf8 !important;
+  text-decoration-color: #38bdf8 !important;
+}
+

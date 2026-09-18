@@ -50,6 +50,12 @@ interface ActivePill {
   rect: DOMRect
 }
 
+interface AutocompleteState {
+  triggerIndex: number
+  query: string
+  cursorPos: number
+}
+
 const methodColors: Record<HttpMethod, string> = {
   GET: 'text-emerald-400 font-bold',
   POST: 'text-amber-400 font-bold',
@@ -123,10 +129,14 @@ export const RequestHeader: React.FC<Props> = ({
   const [copiedPreview, setCopiedPreview] = useState(false)
   const [isEditingUrl, setIsEditingUrl] = useState(false)
   const [activePill, setActivePill] = useState<ActivePill | null>(null)
+  const [autocompleteState, setAutocompleteState] = useState<AutocompleteState | null>(null)
+  const [selectedAutoIndex, setSelectedAutoIndex] = useState<number>(0)
 
   const varPickerRef = useRef<HTMLDivElement>(null)
   const urlInputRef = useRef<HTMLInputElement>(null)
   const urlBarContainerRef = useRef<HTMLDivElement>(null)
+  const autoListRef = useRef<HTMLDivElement>(null)
+  const activePillCardRef = useRef<HTMLDivElement>(null)
   const cursorPositionRef = useRef<number>(0)
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -143,19 +153,48 @@ export const RequestHeader: React.FC<Props> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showVarPicker])
 
-  // Close active pill on window resize or scroll
+  // Close active pill on window resize (ignore scroll events originating inside the active pill popover)
   useEffect(() => {
-    const handleClosePill = () => setActivePill(null)
-    window.addEventListener('resize', handleClosePill)
-    window.addEventListener('scroll', handleClosePill, true)
+    const handleResize = () => setActivePill(null)
+    const handleScroll = (e: Event) => {
+      // If the scroll happened inside the active pill popover card, DO NOT close it!
+      if (activePillCardRef.current && activePillCardRef.current.contains(e.target as Node)) {
+        return
+      }
+      setActivePill(null)
+    }
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('scroll', handleScroll, true)
     return () => {
-      window.removeEventListener('resize', handleClosePill)
-      window.removeEventListener('scroll', handleClosePill, true)
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('scroll', handleScroll, true)
     }
   }, [])
 
+  // Auto-scroll selected autocomplete item into view
+  useEffect(() => {
+    if (autocompleteState && autoListRef.current) {
+      const activeEl = autoListRef.current.querySelector('[data-selected="true"]') as HTMLElement | null
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: 'nearest' })
+      }
+    }
+  }, [selectedAutoIndex, autocompleteState])
+
   // Parse current URL into segments (text & constants)
   const urlSegments = useMemo(() => parseUrlSegments(request.url || ''), [request.url])
+
+  // Filter constants matching the autocomplete query
+  const filteredAutoConstants = useMemo(() => {
+    if (!autocompleteState) return []
+    const q = autocompleteState.query.trim().toLowerCase()
+    if (!q) return constants
+    return constants.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.currentValue && c.currentValue.toLowerCase().includes(q))
+    )
+  }, [autocompleteState, constants])
 
   // Compute resolved preview URL respecting request-level constant overrides
   const overrides = request.constantOverrides || {}
@@ -202,6 +241,7 @@ export const RequestHeader: React.FC<Props> = ({
     }
     blurTimeoutRef.current = setTimeout(() => {
       setIsEditingUrl(false)
+      setAutocompleteState(null)
     }, 180)
   }
 
@@ -212,15 +252,101 @@ export const RequestHeader: React.FC<Props> = ({
     }
   }
 
+  // Detect if cursor is preceded by {{ without closing }} and trigger autocomplete
+  const updateAutocomplete = (text: string, cursorPos: number) => {
+    const textBeforeCursor = text.slice(0, cursorPos)
+    const lastTriggerIndex = textBeforeCursor.lastIndexOf('{{')
+
+    if (lastTriggerIndex === -1) {
+      setAutocompleteState(null)
+      return
+    }
+
+    const queryAfterTrigger = textBeforeCursor.slice(lastTriggerIndex + 2)
+    // If there's a closing }} before the cursor, or newline, close autocomplete
+    if (queryAfterTrigger.includes('}}') || queryAfterTrigger.includes('\n')) {
+      setAutocompleteState(null)
+      return
+    }
+
+    setAutocompleteState({
+      triggerIndex: lastTriggerIndex,
+      query: queryAfterTrigger,
+      cursorPos
+    })
+    setSelectedAutoIndex(0)
+  }
+
+  // Insert constant tag when user selects from autocomplete list
+  const handleSelectAutocomplete = (name: string) => {
+    const currentVal = request.url || ''
+    const triggerIndex = autocompleteState ? autocompleteState.triggerIndex : currentVal.lastIndexOf('{{')
+    const cursorPos = autocompleteState ? autocompleteState.cursorPos : (cursorPositionRef.current ?? currentVal.length)
+
+    const prefix = triggerIndex >= 0 ? currentVal.slice(0, triggerIndex) : currentVal.slice(0, cursorPos)
+    let suffix = currentVal.slice(cursorPos)
+
+    // Absorb closing }} if already present immediately after cursor
+    if (suffix.startsWith('}}')) {
+      suffix = suffix.slice(2)
+    } else if (suffix.startsWith('}')) {
+      suffix = suffix.slice(1)
+    }
+
+    const insertedTag = '{{' + name + '}}'
+    const newVal = prefix + insertedTag + suffix
+    onChange({ url: newVal })
+    setAutocompleteState(null)
+
+    const nextPos = prefix.length + insertedTag.length
+    cursorPositionRef.current = nextPos
+
+    setTimeout(() => {
+      if (urlInputRef.current) {
+        urlInputRef.current.focus()
+        urlInputRef.current.setSelectionRange(nextPos, nextPos)
+      }
+    }, 30)
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // If autocomplete dropdown is open and has items
+    if (autocompleteState && filteredAutoConstants.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedAutoIndex((prev) => (prev + 1) % filteredAutoConstants.length)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedAutoIndex((prev) => (prev - 1 + filteredAutoConstants.length) % filteredAutoConstants.length)
+        return
+      }
+      if ((e.key === 'Enter' || e.key === 'Tab') && !e.nativeEvent.isComposing) {
+        e.preventDefault()
+        const selected = filteredAutoConstants[selectedAutoIndex]
+        if (selected) {
+          handleSelectAutocomplete(selected.name)
+        }
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setAutocompleteState(null)
+        return
+      }
+    }
+
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault()
       onSend()
     } else if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
       e.preventDefault()
       setIsEditingUrl(false)
+      setAutocompleteState(null)
     } else if (e.key === 'Escape') {
       setIsEditingUrl(false)
+      setAutocompleteState(null)
     }
   }
 
@@ -362,27 +488,135 @@ export const RequestHeader: React.FC<Props> = ({
         <div ref={urlBarContainerRef} className="flex-1 relative flex items-center min-w-0">
           {isEditingUrl ? (
             /* Editing Mode: Standard Input */
-            <input
-              ref={urlInputRef}
-              type="text"
-              value={request.url}
-              onChange={(e) => onChange({ url: e.target.value })}
-              onKeyDown={handleKeyDown}
-              onBlur={handleInputBlur}
-              onFocus={handleInputFocus}
-              onSelect={(e) => {
-                cursorPositionRef.current = e.currentTarget.selectionStart || 0
-              }}
-              onClick={(e) => {
-                cursorPositionRef.current = e.currentTarget.selectionStart || 0
-              }}
-              onKeyUp={(e) => {
-                cursorPositionRef.current = e.currentTarget.selectionStart || 0
-              }}
-              autoFocus
-              placeholder="Enter URL (e.g. {{server}}:{{port}}/api/users)"
-              className="w-full bg-slate-900 border border-sky-500 rounded px-3 py-1.5 pr-16 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none transition-colors shadow-inner min-h-[34px]"
-            />
+            <>
+              <input
+                ref={urlInputRef}
+                type="text"
+                value={request.url}
+                onChange={(e) => {
+                  const val = e.target.value
+                  onChange({ url: val })
+                  const pos = e.target.selectionStart || 0
+                  cursorPositionRef.current = pos
+                  updateAutocomplete(val, pos)
+                }}
+                onKeyDown={handleKeyDown}
+                onBlur={handleInputBlur}
+                onFocus={handleInputFocus}
+                onSelect={(e) => {
+                  const pos = e.currentTarget.selectionStart || 0
+                  cursorPositionRef.current = pos
+                  updateAutocomplete(e.currentTarget.value, pos)
+                }}
+                onClick={(e) => {
+                  const pos = e.currentTarget.selectionStart || 0
+                  cursorPositionRef.current = pos
+                  updateAutocomplete(e.currentTarget.value, pos)
+                }}
+                onKeyUp={(e) => {
+                  const pos = e.currentTarget.selectionStart || 0
+                  cursorPositionRef.current = pos
+                  if (!['ArrowUp', 'ArrowDown', 'Enter', 'Escape', 'Tab'].includes(e.key)) {
+                    updateAutocomplete(e.currentTarget.value, pos)
+                  }
+                }}
+                autoFocus
+                placeholder="Enter URL (e.g. {{server}}:{{port}}/api/users)"
+                className="w-full bg-slate-900 border border-sky-500 rounded px-3 py-1.5 pr-16 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none transition-colors shadow-inner min-h-[34px]"
+              />
+
+              {/* {{ Constant Autocomplete Floating Popup */}
+              {autocompleteState && (
+                <div
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="absolute left-0 top-full mt-1.5 w-96 max-w-[calc(100vw-50px)] bg-slate-900/95 backdrop-blur-md border border-sky-500/60 rounded-xl shadow-2xl overflow-hidden z-50 flex flex-col animate-in fade-in zoom-in-95 duration-100 ring-1 ring-sky-500/20 select-none"
+                >
+                  <div className="px-3 py-1.5 flex items-center justify-between border-b border-slate-800 bg-slate-950/80 text-[11px] text-slate-400">
+                    <div className="flex items-center gap-1.5">
+                      <Braces className="w-3.5 h-3.5 text-sky-400" />
+                      <span className="font-medium text-slate-300">选择要插入的常量</span>
+                      {autocompleteState.query && (
+                        <span className="font-mono text-sky-400 bg-sky-500/10 px-1.5 py-0.2 rounded text-[10px]">
+                          "{autocompleteState.query}"
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-sans">
+                      <span>↑↓ 导航</span>
+                      <span>·</span>
+                      <span>Enter 插入</span>
+                      <span>·</span>
+                      <span>Esc 关闭</span>
+                    </div>
+                  </div>
+
+                  <div ref={autoListRef} className="max-h-56 overflow-y-auto p-1.5 flex flex-col gap-1 scrollbar-thin">
+                    {filteredAutoConstants.length === 0 ? (
+                      <div className="px-3 py-4 text-center text-xs text-slate-400 flex flex-col items-center gap-1.5 font-sans">
+                        <span>未找到匹配 "{autocompleteState.query}" 的常量</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAutocompleteState(null)
+                            onOpenManageConstants()
+                          }}
+                          className="text-sky-400 hover:underline text-[11px] flex items-center gap-1 mt-1"
+                        >
+                          <Plus className="w-3 h-3" /> 打开常量管理并添加
+                        </button>
+                      </div>
+                    ) : (
+                      filteredAutoConstants.map((c, idx) => {
+                        const isSelected = idx === selectedAutoIndex
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            data-selected={isSelected ? "true" : "false"}
+                            onMouseEnter={() => setSelectedAutoIndex(idx)}
+                            onClick={() => handleSelectAutocomplete(c.name)}
+                            className={"flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors font-mono text-xs cursor-pointer " +
+                              (isSelected
+                                ? "bg-sky-500/20 border border-sky-500/60 text-sky-200 shadow-sm"
+                                : "text-slate-300 hover:bg-slate-800/60 border border-transparent")}
+                          >
+                            <div className="flex items-center gap-2 truncate flex-1 mr-2">
+                              <span className="font-bold text-sky-400 shrink-0">{'{{' + c.name + '}}'}</span>
+                              <span className="text-[11px] text-slate-500 truncate font-mono">
+                                = {c.currentValue || <span className="italic">（未设置）</span>}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-slate-500 font-sans">
+                              {c.options && c.options.length > 1 && (
+                                <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
+                                  {c.options.length} 个候选值
+                                </span>
+                              )}
+                              {isSelected && <Check className="w-3.5 h-3.5 text-sky-400 ml-1 shrink-0" />}
+                            </div>
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+
+                  <div className="px-2.5 py-1.5 border-t border-slate-800/80 bg-slate-950/40 flex items-center justify-between text-[10px] text-slate-500">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAutocompleteState(null)
+                        onOpenManageConstants()
+                      }}
+                      className="hover:text-sky-400 transition-colors flex items-center gap-1 font-sans"
+                    >
+                      <Zap className="w-3 h-3 text-amber-400" />
+                      <span>管理常量库</span>
+                    </button>
+                    <span className="font-sans">共 {filteredAutoConstants.length} 个可用常量</span>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             /* Interactive Pills Display Mode */
             <div
@@ -639,10 +873,15 @@ export const RequestHeader: React.FC<Props> = ({
 
           {/* Floating Dropdown Card */}
           <div
+            ref={activePillCardRef}
+            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onWheel={(e) => e.stopPropagation()}
             style={{
               position: 'fixed',
-              top: Math.min(activePill.rect.bottom + 6, window.innerHeight - 320),
-              left: Math.max(12, Math.min(activePill.rect.left, window.innerWidth - 320))
+              top: Math.min(activePill.rect.bottom + 6, window.innerHeight - 340),
+              left: Math.max(12, Math.min(activePill.rect.left, window.innerWidth - 340))
             }}
             className="z-50 w-80 bg-slate-900 border border-slate-700/90 rounded-xl shadow-2xl p-3 text-xs text-slate-200 animate-in fade-in duration-100 select-none flex flex-col gap-2.5"
           >
@@ -721,7 +960,10 @@ export const RequestHeader: React.FC<Props> = ({
                     <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
                       切换此请求的值 (专属覆盖)
                     </span>
-                    <div className="max-h-40 overflow-y-auto flex flex-col gap-1 scrollbar-thin pr-0.5">
+                    <div
+                      className="max-h-48 overflow-y-auto flex flex-col gap-1 scrollbar-thin pr-1"
+                      onWheel={(e) => e.stopPropagation()}
+                    >
                       {/* Global Default Option */}
                       <button
                         type="button"

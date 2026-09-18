@@ -3,6 +3,7 @@ import { KeyValueEditor } from './KeyValueEditor'
 import { CodeEditor } from './CodeEditor'
 import { RequestItem } from '../types'
 import { Sparkles, WrapText } from 'lucide-react'
+import { stripJsonComments } from '../utils/jsonUtils'
 
 interface Props {
   request: RequestItem
@@ -16,11 +17,18 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
   const [wrapLines, setWrapLines] = useState(true)
 
   const handleFormatJson = () => {
+    if (!request.bodyRaw) return
     try {
       const parsed = JSON.parse(request.bodyRaw)
       onChange({ bodyRaw: JSON.stringify(parsed, null, 2) })
-    } catch (e) {
-      alert('Invalid JSON content. Please check syntax.')
+    } catch {
+      try {
+        const cleaned = stripJsonComments(request.bodyRaw)
+        const parsed = JSON.parse(cleaned)
+        onChange({ bodyRaw: JSON.stringify(parsed, null, 2) })
+      } catch (e) {
+        alert('Invalid JSON content. Please check syntax.')
+      }
     }
   }
 

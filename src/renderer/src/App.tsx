@@ -9,6 +9,7 @@ import { ConstantManagerModal } from './components/ConstantManagerModal'
 import { SettingsModal, AppSettings } from './components/SettingsModal'
 import { ToastContainer, ToastMessage } from './components/Toast'
 import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun } from './types'
+import { stripJsonComments } from './utils/jsonUtils'
 
 const initialConstants: ConstantItem[] = [
   {
@@ -316,18 +317,18 @@ export default function App() {
     if (!currentRequest.url.trim() || isLoading) return
     setIsLoading(true)
 
-    const processedUrl = interpolate(currentRequest.url.trim())
+    const processedUrl = interpolate(currentRequest.url.trim(), currentRequest)
     const processedHeaders = (currentRequest.headers || []).map((h) => ({
       ...h,
-      key: interpolate(h.key),
-      value: interpolate(h.value)
+      key: interpolate(h.key, currentRequest),
+      value: interpolate(h.value, currentRequest)
     }))
     const processedParams = (currentRequest.params || []).map((p) => ({
       ...p,
-      key: interpolate(p.key),
-      value: interpolate(p.value)
+      key: interpolate(p.key, currentRequest),
+      value: interpolate(p.value, currentRequest)
     }))
-    const processedBodyRaw = interpolate(currentRequest.bodyRaw || '')
+    const processedBodyRaw = interpolate(currentRequest.bodyRaw || '', currentRequest)
 
     const payload = {
       method: currentRequest.method,
@@ -626,7 +627,8 @@ export default function App() {
       })
     }
     if (req.bodyType === 'json' && req.bodyRaw) {
-      curl += ` \\\n  --header 'Content-Type: application/json' \\\n  --data-raw '${interpolate(req.bodyRaw, req).replace(/'/g, "'\\''")}'`
+      const cleanJson = stripJsonComments(interpolate(req.bodyRaw, req))
+      curl += ` \\\n  --header 'Content-Type: application/json' \\\n  --data-raw '${cleanJson.replace(/'/g, "'\\''")}'`
     }
     navigator.clipboard.writeText(curl)
     addToast('Copied cURL command to clipboard!', 'success')

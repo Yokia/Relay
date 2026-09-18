@@ -1,9 +1,12 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react'
 import CodeMirror from '@uiw/react-codemirror'
 import { json } from '@codemirror/lang-json'
-import { oneDark } from '@codemirror/theme-one-dark'
-import { MatchDecorator, ViewPlugin, Decoration, EditorView } from '@codemirror/view'
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { tags } from '@lezer/highlight'
+import { RangeSetBuilder } from '@codemirror/state'
+import { MatchDecorator, ViewPlugin, Decoration, EditorView, DecorationSet, ViewUpdate } from '@codemirror/view'
 import { ExternalLink, Plus, Copy, Check } from 'lucide-react'
+import { findCommentRanges } from '../utils/jsonUtils'
 
 interface Props {
   value: string
@@ -52,6 +55,141 @@ const clickableLinkPlugin = ViewPlugin.fromClass(
   }
 )
 
+// CodeMirror 6 plugin to style comments (//, /* ... */, and #) in JSON
+const commentDecoration = Decoration.mark({
+  class: 'cm-json-comment'
+})
+
+function buildCommentDecorations(view: EditorView): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>()
+  const text = view.state.doc.toString()
+  const ranges = findCommentRanges(text)
+
+  for (const r of ranges) {
+    if (r.from < r.to) {
+      builder.add(r.from, r.to, commentDecoration)
+    }
+  }
+
+  return builder.finish()
+}
+
+const jsonCommentPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet
+
+    constructor(view: EditorView) {
+      this.decorations = buildCommentDecorations(view)
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildCommentDecorations(update.view)
+      }
+    }
+  },
+  {
+    decorations: (v) => v.decorations
+  }
+)
+
+// High-contrast, clear styling for comments and comment links
+const commentTheme = EditorView.baseTheme({
+  '.cm-json-comment, .cm-json-comment *': {
+    color: '#94a3b8 !important',
+    opacity: '1 !important',
+    fontStyle: 'italic !important'
+  },
+  '.cm-json-comment .cm-clickable-link, .cm-json-comment a': {
+    color: '#7dd3fc !important',
+    textDecoration: 'underline !important',
+    textDecorationColor: 'rgba(56, 189, 248, 0.4) !important',
+    fontStyle: 'normal !important'
+  },
+  '.cm-json-comment .cm-clickable-link:hover, .cm-json-comment a:hover': {
+    color: '#38bdf8 !important',
+    textDecorationColor: '#38bdf8 !important'
+  }
+})
+
+// Modern syntax highlighting style for JSON and general code in Relay
+const relayHighlightStyle = HighlightStyle.define([
+  // JSON Keys / Property Names - Crisp Sky Blue (no harsh red error color)
+  { tag: tags.propertyName, color: '#7dd3fc', fontWeight: '500' },
+  // String Values - Fresh Emerald Mint
+  { tag: tags.string, color: '#86efac' },
+  // Numbers - Warm Golden Amber
+  { tag: [tags.number, tags.integer, tags.float], color: '#fbbf24' },
+  // Booleans - Soft Violet / Orchid
+  { tag: tags.bool, color: '#c084fc', fontWeight: '500' },
+  // Null & Atom - Soft Coral
+  { tag: [tags.null, tags.atom], color: '#f87171' },
+  // Keywords & Operators - Soft Indigo
+  { tag: [tags.keyword, tags.operator, tags.operatorKeyword], color: '#818cf8' },
+  // Punctuation, Separators, Brackets, Braces - Clean Slate/Silver
+  { tag: [tags.punctuation, tags.separator, tags.bracket, tags.brace, tags.squareBracket], color: '#cbd5e1' },
+  // Comments - Clean, readable Slate Gray (WCAG AAA contrast 7.5:1)
+  { tag: [tags.comment, tags.lineComment, tags.blockComment], color: '#94a3b8', fontStyle: 'italic' },
+  // URLs / Links
+  { tag: tags.link, color: '#38bdf8', textDecoration: 'underline' },
+  // Invalid
+  { tag: tags.invalid, color: '#f87171' }
+])
+
+// Deep, sleek dark theme for Relay's CodeMirror editors
+const relayTheme = EditorView.theme({
+  '&': {
+    color: '#e2e8f0',
+    backgroundColor: '#0d131f'
+  },
+  '.cm-content': {
+    caretColor: '#38bdf8',
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+  },
+  '.cm-cursor, .cm-dropCursor': {
+    borderLeftColor: '#38bdf8',
+    borderLeftWidth: '2px'
+  },
+  '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
+    backgroundColor: 'rgba(56, 189, 248, 0.22) !important'
+  },
+  '.cm-activeLine': {
+    backgroundColor: 'rgba(56, 189, 248, 0.04)'
+  },
+  '.cm-gutters': {
+    backgroundColor: '#090d16',
+    color: '#64748b',
+    borderRight: '1px solid rgba(30, 41, 59, 0.8)'
+  },
+  '.cm-activeLineGutter': {
+    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    color: '#38bdf8',
+    fontWeight: 'bold'
+  },
+  '.cm-foldPlaceholder': {
+    backgroundColor: '#1e293b',
+    border: '1px solid #334155',
+    color: '#94a3b8',
+    borderRadius: '4px',
+    padding: '0 4px',
+    margin: '0 2px'
+  },
+  '&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket': {
+    backgroundColor: 'rgba(56, 189, 248, 0.25)',
+    outline: '1px solid rgba(56, 189, 248, 0.5)'
+  },
+  '.cm-searchMatch': {
+    backgroundColor: 'rgba(234, 179, 8, 0.25)',
+    outline: '1px solid rgba(234, 179, 8, 0.6)'
+  },
+  '.cm-searchMatch.cm-searchMatch-selected': {
+    backgroundColor: 'rgba(234, 179, 8, 0.4)'
+  }
+}, { dark: true })
+
+const relayDark = [relayTheme, syntaxHighlighting(relayHighlightStyle)]
+
+
 export const CodeEditor: React.FC<Props> = ({
   value,
   onChange,
@@ -63,7 +201,7 @@ export const CodeEditor: React.FC<Props> = ({
   wrap = true
 }) => {
   const extensions = useMemo(() => {
-    const exts = [json(), clickableLinkPlugin]
+    const exts = [json(), clickableLinkPlugin, jsonCommentPlugin, commentTheme]
     if (wrap) exts.push(EditorView.lineWrapping)
     return exts
   }, [wrap])
@@ -137,7 +275,7 @@ export const CodeEditor: React.FC<Props> = ({
       ref={containerRef}
       onMouseDownCapture={handleMouseDownCapture}
       onContextMenuCapture={handleContextMenuCapture}
-      className="flex flex-col h-full overflow-hidden border border-slate-800 rounded-lg bg-[#282c34] relative"
+      className="flex flex-col h-full overflow-hidden border border-slate-800 rounded-lg bg-[#0d131f] relative"
     >
       {/* CodeMirror Area */}
       <div className="flex-1 overflow-auto text-xs font-mono select-text">
@@ -145,7 +283,7 @@ export const CodeEditor: React.FC<Props> = ({
           value={value}
           height={height}
           minHeight={minHeight}
-          theme={oneDark}
+          theme={relayDark}
           extensions={extensions}
           onChange={(val) => onChange && onChange(val)}
           readOnly={readOnly}

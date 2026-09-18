@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { X, Copy, Check } from 'lucide-react'
 import { RequestItem } from '../types'
+import { stripJsonComments } from '../utils/jsonUtils'
 
 interface Props {
   isOpen: boolean
@@ -34,10 +35,11 @@ export const CurlModal: React.FC<Props> = ({
       })
     }
     if (req.bodyType === 'json' && req.bodyRaw) {
+      const cleanBody = stripJsonComments(req.bodyRaw)
       curl += ` \
   --header 'Content-Type: application/json'`
       curl += ` \
-  --data-raw '${req.bodyRaw.replace(/'/g, "'\\''")}'`
+  --data-raw '${cleanBody.replace(/'/g, "'\\''")}'`
     }
     return curl
   }
