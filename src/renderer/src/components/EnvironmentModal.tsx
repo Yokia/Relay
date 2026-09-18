@@ -150,7 +150,7 @@ export const EnvironmentModal: React.FC<Props> = ({
 
               <div className="flex items-center justify-between text-xs text-slate-400 font-medium pb-1.5 border-b border-slate-800">
                 <span className="w-8">Active</span>
-                <span className="flex-1">Variable ({{key}})</span>
+                <span className="flex-1">Variable ({'{{key}}'})</span>
                 <span className="flex-1">Value</span>
                 <span className="w-8 text-right">Del</span>
               </div>

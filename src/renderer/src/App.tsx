@@ -10,6 +10,21 @@ import { SettingsModal, AppSettings } from './components/SettingsModal'
 import { ToastContainer, ToastMessage } from './components/Toast'
 import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun } from './types'
 import { stripJsonComments } from './utils/jsonUtils'
+import {
+  findCollectionInTree,
+  findRequestInTree,
+  updateRequestInTree,
+  addRequestToCollection,
+  deleteRequestFromTree,
+  renameRequestInTree,
+  duplicateRequestInTree,
+  addSubCollection,
+  renameCollectionInTree,
+  deleteCollectionFromTree,
+  duplicateCollectionInTree,
+  moveCollectionInTree,
+  moveRequestInTree
+} from './utils/collectionTree'
 
 const initialConstants: ConstantItem[] = [
   {
@@ -154,20 +169,10 @@ export default function App() {
   // Helper to sync request to collection
   const syncToCollections = (req: RequestItem) => {
     setCollections((prevCols) => {
-      let found = false
-      const nextCols = prevCols.map((col) => {
-        const idx = col.requests.findIndex((r) => r.id === req.id)
-        if (idx !== -1) {
-          found = true
-          const nextReqs = [...col.requests]
-          nextReqs[idx] = JSON.parse(JSON.stringify(req))
-          return { ...col, requests: nextReqs }
-        }
-        return col
-      })
+      const { updated, found } = updateRequestInTree(prevCols, req)
       if (found) {
-        persist({ collections: nextCols })
-        return nextCols
+        persist({ collections: updated })
+        return updated
       }
       return prevCols
     })
@@ -413,21 +418,10 @@ export default function App() {
 
   // Save Request explicitly (Non-blocking, clears dirty state)
   const handleSave = () => {
-    let found = false
-    const nextCols = collections.map((col) => {
-      const reqIndex = col.requests.findIndex((r) => r.id === currentRequest.id)
-      if (reqIndex !== -1) {
-        found = true
-        const nextReqs = [...col.requests]
-        nextReqs[reqIndex] = JSON.parse(JSON.stringify(currentRequest))
-        return { ...col, requests: nextReqs }
-      }
-      return col
-    })
-
+    const { updated, found } = updateRequestInTree(collections, currentRequest)
     if (found) {
-      setCollections(nextCols)
-      persist({ collections: nextCols })
+      setCollections(updated)
+      persist({ collections: updated })
       // Clear dirty flag
       setDirtyIds((prev) => {
         const next = new Set(prev)
@@ -440,11 +434,12 @@ export default function App() {
         const newCol: CollectionItem = {
           id: 'col-' + Date.now(),
           name: 'My Collection',
-          requests: [JSON.parse(JSON.stringify(currentRequest))]
+          requests: [JSON.parse(JSON.stringify(currentRequest))],
+          children: []
         }
-        const updated = [newCol]
-        setCollections(updated)
-        persist({ collections: updated })
+        const updatedCols = [newCol]
+        setCollections(updatedCols)
+        persist({ collections: updatedCols })
         setDirtyIds((prev) => {
           const next = new Set(prev)
           next.delete(currentRequest.id)
@@ -453,13 +448,13 @@ export default function App() {
         addToast('Saved to new collection "My Collection"!', 'success')
       } else {
         const target = collections[0]
-        const updated = collections.map((c) =>
-          c.id === target.id
-            ? { ...c, requests: [...c.requests, JSON.parse(JSON.stringify(currentRequest))] }
-            : c
+        const updatedCols = addRequestToCollection(
+          collections,
+          target.id,
+          JSON.parse(JSON.stringify(currentRequest))
         )
-        setCollections(updated)
-        persist({ collections: updated })
+        setCollections(updatedCols)
+        persist({ collections: updatedCols })
         setDirtyIds((prev) => {
           const next = new Set(prev)
           next.delete(currentRequest.id)
@@ -470,44 +465,42 @@ export default function App() {
     }
   }
 
-  // Rename Collection
+  // Rename Collection or Sub-collection
   const handleRenameCollection = (colId: string, newName: string) => {
     const trimmed = newName.trim()
     if (!trimmed) return
-    const next = collections.map((c) => (c.id === colId ? { ...c, name: trimmed } : c))
+    const next = renameCollectionInTree(collections, colId, trimmed)
     setCollections(next)
     persist({ collections: next })
     addToast(`Renamed collection to "${trimmed}"`, 'success')
   }
 
-  // Duplicate Collection
+  // Duplicate Collection or Sub-collection
   const handleDuplicateCollection = (colId: string) => {
-    const col = collections.find((c) => c.id === colId)
-    if (!col) return
-    const newCol: CollectionItem = {
-      id: 'col-' + Date.now(),
-      name: col.name + ' (Copy)',
-      requests: col.requests.map((r) => ({
-        ...JSON.parse(JSON.stringify(r)),
-        id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)
-      }))
-    }
-    const next = [...collections, newCol]
+    const target = findCollectionInTree(collections, colId)
+    if (!target) return
+    const next = duplicateCollectionInTree(collections, colId)
     setCollections(next)
     persist({ collections: next })
-    addToast(`Duplicated collection "${col.name}"`, 'success')
+    addToast(`Duplicated collection "${target.name}"`, 'success')
   }
 
-  // Add new request into specific collection
+  // Delete Collection or Sub-collection
+  const handleDeleteCollection = (colId: string) => {
+    const next = deleteCollectionFromTree(collections, colId)
+    setCollections(next)
+    persist({ collections: next })
+    addToast('Collection deleted', 'info')
+  }
+
+  // Add new request into specific collection or sub-collection
   const handleNewRequestInCollection = (colId: string, name = 'New Request') => {
     const newReq: RequestItem = {
       ...defaultNewRequest,
       id: 'req-' + Date.now(),
       name
     }
-    const next = collections.map((c) =>
-      c.id === colId ? { ...c, requests: [...c.requests, newReq] } : c
-    )
+    const next = addRequestToCollection(collections, colId, newReq)
     setCollections(next)
     persist({ collections: next })
     setCurrentRequest(newReq)
@@ -515,17 +508,25 @@ export default function App() {
     addToast(`Added request to collection`, 'success')
   }
 
-  // Rename Request
+  // Add new sub-collection into a parent collection
+  const handleCreateSubCollection = (parentColId: string, name = 'New Sub-collection') => {
+    const newSubCol: CollectionItem = {
+      id: 'col-' + Date.now(),
+      name,
+      requests: [],
+      children: []
+    }
+    const next = addSubCollection(collections, parentColId, newSubCol)
+    setCollections(next)
+    persist({ collections: next })
+    addToast(`Created sub-collection "${name}"`, 'success')
+  }
+
+  // Rename Request in any collection/sub-collection
   const handleRenameRequest = (colId: string, reqId: string, newName: string) => {
     const trimmed = newName.trim()
     if (!trimmed) return
-    const next = collections.map((c) => {
-      if (c.id !== colId) return c
-      return {
-        ...c,
-        requests: c.requests.map((r) => (r.id === reqId ? { ...r, name: trimmed } : r))
-      }
-    })
+    const next = renameRequestInTree(collections, colId, reqId, trimmed)
     setCollections(next)
     persist({ collections: next })
     if (currentRequest.id === reqId) {
@@ -534,87 +535,60 @@ export default function App() {
     addToast(`Renamed request to "${trimmed}"`, 'success')
   }
 
-  // Duplicate Request
+  // Duplicate Request in any collection/sub-collection
   const handleDuplicateRequest = (colId: string, reqId: string) => {
-    let duplicatedReq: RequestItem | null = null
-    const next = collections.map((c) => {
-      if (c.id !== colId) return c
-      const idx = c.requests.findIndex((r) => r.id === reqId)
-      if (idx === -1) return c
-      const original = c.requests[idx]
-      duplicatedReq = {
-        ...JSON.parse(JSON.stringify(original)),
-        id: 'req-' + Date.now(),
-        name: original.name + ' (Copy)'
-      }
-      const newReqs = [...c.requests]
-      newReqs.splice(idx + 1, 0, duplicatedReq)
-      return { ...c, requests: newReqs }
-    })
+    const { updated, duplicatedReq } = duplicateRequestInTree(collections, colId, reqId)
     if (duplicatedReq) {
-      setCollections(next)
-      persist({ collections: next })
+      setCollections(updated)
+      persist({ collections: updated })
       setCurrentRequest(duplicatedReq)
       addToast(`Duplicated request`, 'success')
     }
   }
 
-  // Move Request (supports moving to another collection or reordering within the same collection)
+  // Delete Request from any collection/sub-collection
+  const handleDeleteRequest = (colId: string, reqId: string) => {
+    const next = deleteRequestFromTree(collections, colId, reqId)
+    setCollections(next)
+    persist({ collections: next })
+    addToast('Request deleted', 'info')
+  }
+
+  // Move Request (supports moving across any collections/sub-collections or reordering within the same collection)
   const handleMoveRequest = (
     sourceColId: string,
     targetColId: string,
     reqId: string,
     targetIndex?: number
   ) => {
-    let itemToMove: RequestItem | null = null
-    for (const c of collections) {
-      const found = c.requests.find((r) => r.id === reqId)
-      if (found) {
-        itemToMove = found
-        break
-      }
-    }
-    if (!itemToMove) return
-
-    // Reordering within the same collection
-    if (sourceColId === targetColId) {
-      const col = collections.find((c) => c.id === sourceColId)
-      if (!col) return
-      const currentIdx = col.requests.findIndex((r) => r.id === reqId)
-      if (currentIdx === -1 || targetIndex === undefined || currentIdx === targetIndex) return
-
-      const nextReqs = [...col.requests]
-      const [removed] = nextReqs.splice(currentIdx, 1)
-      nextReqs.splice(targetIndex, 0, removed)
-
-      const next = collections.map((c) => (c.id === sourceColId ? { ...c, requests: nextReqs } : c))
-      setCollections(next)
-      persist({ collections: next })
-      return
-    }
-
-    // Moving across different collections
-    const next = collections.map((c) => {
-      if (c.id === sourceColId) {
-        return { ...c, requests: c.requests.filter((r) => r.id !== reqId) }
-      }
-      if (c.id === targetColId) {
-        const nextReqs = [...c.requests]
-        if (targetIndex !== undefined && targetIndex >= 0) {
-          nextReqs.splice(targetIndex, 0, itemToMove!)
-        } else {
-          nextReqs.push(itemToMove!)
-        }
-        return { ...c, requests: nextReqs }
-      }
-      return c
-    })
-
+    const next = moveRequestInTree(collections, sourceColId, targetColId, reqId, targetIndex)
     setCollections(next)
     persist({ collections: next })
-    const targetCol = collections.find((c) => c.id === targetColId)
-    addToast(`Moved request to "${targetCol?.name || 'Collection'}"`, 'success')
+    const targetCol = findCollectionInTree(collections, targetColId)
+    if (sourceColId !== targetColId && targetCol) {
+      addToast(`Moved request to "${targetCol.name}"`, 'success')
+    }
   }
+
+  // Move Collection (supports reordering before/after, or nesting inside another collection as sub-collection)
+  const handleMoveCollection = (
+    sourceColId: string,
+    targetColId: string | null,
+    position: 'before' | 'after' | 'inside'
+  ) => {
+    const sourceCol = findCollectionInTree(collections, sourceColId)
+    if (!sourceCol) return
+    const next = moveCollectionInTree(collections, sourceColId, targetColId, position)
+    setCollections(next)
+    persist({ collections: next })
+    if (targetColId && position === 'inside') {
+      const targetCol = findCollectionInTree(collections, targetColId)
+      addToast(`Moved "${sourceCol.name}" into "${targetCol?.name || 'Collection'}"`, 'success')
+    } else {
+      addToast(`Reordered "${sourceCol.name}"`, 'success')
+    }
+  }
+
 
   // Quick copy request as cURL
   const handleCopyRequestCurl = (req: RequestItem) => {
@@ -717,23 +691,13 @@ export default function App() {
         }}
         onRenameCollection={handleRenameCollection}
         onDuplicateCollection={handleDuplicateCollection}
-        onDeleteCollection={(id) => {
-          const next = collections.filter((c) => c.id !== id)
-          setCollections(next)
-          persist({ collections: next })
-          addToast('Collection deleted', 'info')
-        }}
+        onDeleteCollection={handleDeleteCollection}
+        onCreateSubCollection={handleCreateSubCollection}
+        onMoveCollection={handleMoveCollection}
         onNewRequestInCollection={handleNewRequestInCollection}
         onRenameRequest={handleRenameRequest}
         onDuplicateRequest={handleDuplicateRequest}
-        onDeleteRequest={(colId, reqId) => {
-          const next = collections.map((c) =>
-            c.id === colId ? { ...c, requests: c.requests.filter((r) => r.id !== reqId) } : c
-          )
-          setCollections(next)
-          persist({ collections: next })
-          addToast('Request deleted', 'info')
-        }}
+        onDeleteRequest={handleDeleteRequest}
         onMoveRequest={handleMoveRequest}
         onCopyRequestCurl={handleCopyRequestCurl}
         onCopyUrl={handleCopyUrl}

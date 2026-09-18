@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import {
   Folder,
   FileCode2,
@@ -24,9 +24,18 @@ import {
   ChevronsUpDown,
   MoreHorizontal,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  FolderTree
 } from 'lucide-react'
 import { CollectionItem, HistoryItem, Environment, RequestItem, HttpMethod, ConstantItem } from '../types'
+import {
+  findCollectionInTree,
+  countAllRequests,
+  countAllSubCollections,
+  filterCollectionTree,
+  collectAllCollectionIds,
+  isDescendant
+} from '../utils/collectionTree'
 
 interface Props {
   collections: CollectionItem[]
@@ -38,9 +47,11 @@ interface Props {
   onSelectRequest: (req: RequestItem) => void
   onNewRequest: () => void
   onCreateCollection: (name: string, id?: string) => void
+  onCreateSubCollection: (parentColId: string, name?: string) => void
   onRenameCollection: (colId: string, newName: string) => void
   onDuplicateCollection: (colId: string) => void
   onDeleteCollection: (id: string) => void
+  onMoveCollection: (sourceColId: string, targetColId: string | null, position: 'before' | 'after' | 'inside') => void
   onNewRequestInCollection: (colId: string) => void
   onRenameRequest: (colId: string, reqId: string, newName: string) => void
   onDuplicateRequest: (colId: string, reqId: string) => void
@@ -84,6 +95,18 @@ interface EditingTarget {
   colId?: string
 }
 
+function flattenAllCollections(cols: CollectionItem[], prefix = ''): { id: string; name: string }[] {
+  let list: { id: string; name: string }[] = []
+  for (const c of cols) {
+    const fullName = prefix ? `${prefix} / ${c.name}` : c.name
+    list.push({ id: c.id, name: fullName })
+    if (c.children && c.children.length > 0) {
+      list = list.concat(flattenAllCollections(c.children, fullName))
+    }
+  }
+  return list
+}
+
 export const Sidebar: React.FC<Props> = ({
   collections,
   history,
@@ -94,9 +117,11 @@ export const Sidebar: React.FC<Props> = ({
   onSelectRequest,
   onNewRequest,
   onCreateCollection,
+  onCreateSubCollection,
   onRenameCollection,
   onDuplicateCollection,
   onDeleteCollection,
+  onMoveCollection,
   onNewRequestInCollection,
   onRenameRequest,
   onDuplicateRequest,
@@ -125,7 +150,12 @@ export const Sidebar: React.FC<Props> = ({
   const [editingTarget, setEditingTarget] = useState<EditingTarget | null>(null)
   const editInputRef = useRef<HTMLInputElement | null>(null)
 
-  // Drag and Drop State
+  // Drag and Drop State for Collections & Requests
+  const [draggedColId, setDraggedColId] = useState<string | null>(null)
+  const [dragOverColTarget, setDragOverColTarget] = useState<{
+    id: string
+    position: 'before' | 'after' | 'inside'
+  } | null>(null)
   const [draggedItem, setDraggedItem] = useState<{ colId: string; reqId: string } | null>(null)
   const [dragOverColId, setDragOverColId] = useState<string | null>(null)
   const [dragOverReqId, setDragOverReqId] = useState<string | null>(null)
@@ -178,13 +208,14 @@ export const Sidebar: React.FC<Props> = ({
     setCollapsedCols((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  const isAllCollapsed = collections.length > 0 && collections.every((c) => collapsedCols[c.id])
+  const allColIds = useMemo<string[]>(() => collectAllCollectionIds(collections), [collections])
+  const isAllCollapsed = allColIds.length > 0 && allColIds.every((id: string) => collapsedCols[id])
   const toggleCollapseAll = () => {
     if (isAllCollapsed) {
       setCollapsedCols({})
     } else {
       const all: Record<string, boolean> = {}
-      collections.forEach((c) => (all[c.id] = true))
+      allColIds.forEach((id: string) => (all[id] = true))
       setCollapsedCols(all)
     }
   }
@@ -200,6 +231,18 @@ export const Sidebar: React.FC<Props> = ({
     }, 60)
   }
 
+  const handleCreateSubCol = (parentColId: string) => {
+    const newId = 'col-' + Date.now()
+    const defaultName = 'New Sub-collection'
+    onCreateSubCollection(parentColId, defaultName)
+    setActiveTab('collections')
+    setCollapsedCols((prev) => ({ ...prev, [parentColId]: false }))
+    setTimeout(() => {
+      setEditingTarget({ type: 'collection', id: newId, name: defaultName })
+    }, 60)
+  }
+
+
   const handleCommitRename = () => {
     if (!editingTarget) return
     const trimmed = editingTarget.name.trim()
@@ -211,6 +254,353 @@ export const Sidebar: React.FC<Props> = ({
       }
     }
     setEditingTarget(null)
+  }
+
+  const renderRequestItem = (
+    col: CollectionItem,
+    req: RequestItem,
+    reqIndex: number,
+    depth: number
+  ) => {
+    const isBeingDragged = draggedItem?.reqId === req.id
+    const isDragTarget = dragOverReqId === req.id
+
+    return (
+      <div
+        key={req.id}
+        draggable={editingTarget?.id !== req.id}
+        onDragStart={(e) => {
+          e.stopPropagation()
+          setDraggedItem({ colId: col.id, reqId: req.id })
+          e.dataTransfer.setData('text/plain', JSON.stringify({ colId: col.id, reqId: req.id }))
+          e.dataTransfer.effectAllowed = 'move'
+        }}
+        onDragEnd={() => {
+          setDraggedItem(null)
+          setDragOverColId(null)
+          setDragOverReqId(null)
+        }}
+        onDragOver={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (draggedItem && draggedItem.reqId !== req.id) {
+            setDragOverReqId(req.id)
+          }
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setDragOverReqId(null)
+          }
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (draggedItem) {
+            onMoveRequest(draggedItem.colId, col.id, draggedItem.reqId, reqIndex)
+          }
+          setDraggedItem(null)
+          setDragOverColId(null)
+          setDragOverReqId(null)
+        }}
+        onClick={() => onSelectRequest(req)}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setShowMoveSubmenu(false)
+          setContextMenu({
+            type: 'request',
+            x: Math.min(e.clientX, window.innerWidth - 220),
+            y: Math.min(e.clientY, window.innerHeight - 300),
+            colId: col.id,
+            reqId: req.id,
+            request: req
+          })
+        }}
+        style={{ paddingLeft: `${22 + depth * 14}px`, paddingRight: '8px' }}
+        className={"flex items-center justify-between py-1.5 rounded cursor-pointer text-xs group transition-all " +
+          (selectedRequestId === req.id
+            ? "bg-sky-500/20 text-sky-300 font-medium"
+            : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200") +
+          (isBeingDragged ? " opacity-40 border border-dashed border-sky-400" : "") +
+          (isDragTarget ? " border-t-2 border-sky-400" : "")}
+      >
+        <div className="flex items-center gap-1.5 truncate flex-1 min-w-0 mr-1">
+          <span className={"font-mono text-[10px] font-bold w-9 shrink-0 " + (methodBadgeColor[req.method] || 'text-slate-400')}>
+            {req.method}
+          </span>
+
+          {editingTarget?.type === 'request' && editingTarget.id === req.id ? (
+            <input
+              ref={editInputRef}
+              type="text"
+              value={editingTarget.name}
+              onClick={(e) => e.stopPropagation()}
+              onChange={(e) => setEditingTarget({ ...editingTarget, name: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCommitRename()
+                if (e.key === 'Escape') setEditingTarget(null)
+              }}
+              onBlur={handleCommitRename}
+              className="bg-slate-950 border border-sky-500 rounded px-1.5 py-0.5 text-xs text-white font-medium focus:outline-none w-full"
+            />
+          ) : (
+            <span
+              onDoubleClick={(e) => {
+                e.stopPropagation()
+                setEditingTarget({ type: 'request', id: req.id, name: req.name, colId: col.id })
+              }}
+              className="truncate text-xs"
+              title={req.name || req.url || 'Untitled (Double click or right-click to rename)'}
+            >
+              {req.name || req.url || 'Untitled'}
+            </span>
+          )}
+
+          {dirtyIds?.has(req.id) && (
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Unsaved changes" />
+          )}
+        </div>
+
+        {/* Request Actions (Hover) */}
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              const rect = e.currentTarget.getBoundingClientRect()
+              setShowMoveSubmenu(false)
+              setContextMenu({
+                type: 'request',
+                x: Math.min(rect.right + 4, window.innerWidth - 220),
+                y: Math.min(rect.top, window.innerHeight - 300),
+                colId: col.id,
+                reqId: req.id,
+                request: req
+              })
+            }}
+            className="p-1 hover:text-slate-200 text-slate-500 rounded hover:bg-slate-800"
+            title="更多选项 (More options)"
+          >
+            <MoreHorizontal className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const renderCollectionTreeItem = (col: CollectionItem, depth: number) => {
+    const isCollapsed = searchQuery ? false : (collapsedCols[col.id] || false)
+    const isBeingDragged = draggedColId === col.id
+    const isTargetBefore = dragOverColTarget?.id === col.id && dragOverColTarget.position === 'before'
+    const isTargetAfter = dragOverColTarget?.id === col.id && dragOverColTarget.position === 'after'
+    const isTargetInside = dragOverColTarget?.id === col.id && dragOverColTarget.position === 'inside'
+    const isReqDragOver = dragOverColId === col.id
+
+    const requestsToDisplay = searchQuery
+      ? col.requests.filter(
+          (r) =>
+            r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            r.url.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : col.requests
+
+    let headerClasses = "flex items-center justify-between py-1.5 rounded-md hover:bg-slate-800/60 cursor-pointer text-xs group text-slate-300 transition-colors "
+    if (isBeingDragged) headerClasses += "opacity-40 border border-dashed border-sky-400 "
+    if (isTargetBefore) headerClasses += "border-t-2 border-sky-400 bg-sky-500/10 "
+    if (isTargetAfter) headerClasses += "border-b-2 border-sky-400 bg-sky-500/10 "
+    if (isTargetInside) headerClasses += "ring-2 ring-sky-500 bg-sky-500/20 text-sky-200 "
+    if (isReqDragOver) headerClasses += "ring-2 ring-sky-500/80 bg-sky-500/10 "
+
+    const totalReqs = countAllRequests(col)
+    const subColCount = col.children?.length || 0
+
+    return (
+      <div key={col.id} className="flex flex-col">
+        {/* Collection Header */}
+        <div
+          draggable={editingTarget?.id !== col.id}
+          onDragStart={(e) => {
+            e.stopPropagation()
+            setDraggedColId(col.id)
+            e.dataTransfer.setData('text/plain', 'col:' + col.id)
+            e.dataTransfer.effectAllowed = 'move'
+          }}
+          onDragEnd={() => {
+            setDraggedColId(null)
+            setDragOverColTarget(null)
+            setDraggedItem(null)
+            setDragOverColId(null)
+            setDragOverReqId(null)
+          }}
+          onDragOver={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (draggedColId && draggedColId !== col.id && !isDescendant(collections, draggedColId, col.id)) {
+              const rect = e.currentTarget.getBoundingClientRect()
+              const relY = (e.clientY - rect.top) / rect.height
+              const position: 'before' | 'after' | 'inside' = relY < 0.25 ? 'before' : relY > 0.75 ? 'after' : 'inside'
+              setDragOverColTarget({ id: col.id, position })
+            } else if (draggedItem && draggedItem.colId !== col.id) {
+              setDragOverColId(col.id)
+            }
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              if (dragOverColTarget?.id === col.id) setDragOverColTarget(null)
+              if (dragOverColId === col.id) setDragOverColId(null)
+            }
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (draggedColId && dragOverColTarget && draggedColId !== dragOverColTarget.id) {
+              onMoveCollection(draggedColId, dragOverColTarget.id, dragOverColTarget.position)
+            } else if (draggedItem) {
+              onMoveRequest(draggedItem.colId, col.id, draggedItem.reqId)
+            }
+            setDraggedColId(null)
+            setDragOverColTarget(null)
+            setDraggedItem(null)
+            setDragOverColId(null)
+            setDragOverReqId(null)
+          }}
+          onClick={() => toggleCol(col.id)}
+          onContextMenu={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            setShowMoveSubmenu(false)
+            setContextMenu({
+              type: 'collection',
+              x: Math.min(e.clientX, window.innerWidth - 220),
+              y: Math.min(e.clientY, window.innerHeight - 280),
+              colId: col.id
+            })
+          }}
+          style={{ paddingLeft: `${6 + depth * 14}px`, paddingRight: '8px' }}
+          className={headerClasses}
+        >
+          <div className="flex items-center gap-1.5 truncate flex-1 min-w-0 mr-1">
+            {isCollapsed ? (
+              <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            )}
+            {depth === 0 ? (
+              <Folder className="w-3.5 h-3.5 text-amber-400/90 shrink-0" />
+            ) : (
+              <FolderTree className="w-3.5 h-3.5 text-amber-300/80 shrink-0" />
+            )}
+
+            {editingTarget?.type === 'collection' && editingTarget.id === col.id ? (
+              <input
+                ref={editInputRef}
+                type="text"
+                value={editingTarget.name}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setEditingTarget({ ...editingTarget, name: e.target.value })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCommitRename()
+                  if (e.key === 'Escape') setEditingTarget(null)
+                }}
+                onBlur={handleCommitRename}
+                className="bg-slate-950 border border-sky-500 rounded px-1.5 py-0.5 text-xs text-white font-medium focus:outline-none w-full"
+              />
+            ) : (
+              <span
+                onDoubleClick={(e) => {
+                  e.stopPropagation()
+                  setEditingTarget({ type: 'collection', id: col.id, name: col.name })
+                }}
+                className="font-medium truncate"
+                title={col.name + ' (双击重命名，右键更多操作)'}
+              >
+                {col.name}
+              </span>
+            )}
+
+            <span className="text-[10px] text-slate-500 font-mono shrink-0">
+              ({totalReqs}{subColCount > 0 ? ` · ${subColCount}集` : ''})
+            </span>
+          </div>
+
+          {/* Collection Actions (Hover) */}
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onNewRequestInCollection(col.id)
+              }}
+              className="p-1 hover:text-sky-400 text-slate-500 rounded hover:bg-slate-800"
+              title="新建请求 (New Request)"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleCreateSubCol(col.id)
+              }}
+              className="p-1 hover:text-amber-400 text-slate-500 rounded hover:bg-slate-800"
+              title="新建子集合 (New Sub-collection)"
+            >
+              <FolderPlus className="w-3 h-3" />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                const rect = e.currentTarget.getBoundingClientRect()
+                setShowMoveSubmenu(false)
+                setContextMenu({
+                  type: 'collection',
+                  x: Math.min(rect.right + 4, window.innerWidth - 220),
+                  y: Math.min(rect.top, window.innerHeight - 280),
+                  colId: col.id
+                })
+              }}
+              className="p-1 hover:text-slate-200 text-slate-500 rounded hover:bg-slate-800"
+              title="更多选项 (More options)"
+            >
+              <MoreHorizontal className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+
+        {/* Children & Requests */}
+        {!isCollapsed && (
+          <div className="flex flex-col gap-0.5 relative">
+            {/* Subtle tree guideline */}
+            <div
+              className="absolute bottom-1 top-0 border-l border-slate-800/80 pointer-events-none"
+              style={{ left: `${12 + depth * 14}px` }}
+            />
+
+            {/* Sub-collections first */}
+            {col.children && col.children.length > 0 && (
+              <div className="flex flex-col gap-0.5">
+                {col.children.map((subCol) => renderCollectionTreeItem(subCol, depth + 1))}
+              </div>
+            )}
+
+            {/* Requests in this collection */}
+            <div className="flex flex-col gap-0.5">
+              {requestsToDisplay.map((req, reqIndex) => renderRequestItem(col, req, reqIndex, depth))}
+            </div>
+
+            {requestsToDisplay.length === 0 && (!col.children || col.children.length === 0) && (
+              <div
+                style={{ paddingLeft: `${24 + depth * 14}px` }}
+                className="py-1 text-[11px] text-slate-500 italic"
+              >
+                {searchQuery ? '无匹配项' : '空集合 (可拖放请求或子集合)'}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -314,7 +704,7 @@ export const Sidebar: React.FC<Props> = ({
             <div className="flex items-center justify-between px-1 py-0.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
               <div className="flex items-center gap-1.5">
                 <span>Collections</span>
-                <span className="text-[10px] text-slate-500 font-normal font-mono">({collections.length})</span>
+                <span className="text-[10px] text-slate-500 font-normal font-mono">({flattenAllCollections(collections).length})</span>
               </div>
               <div className="flex items-center gap-1">
                 <button
@@ -348,283 +738,43 @@ export const Sidebar: React.FC<Props> = ({
                 </button>
               </div>
             ) : (
-              collections
-                .filter((col) => {
-                  if (!searchQuery.trim()) return true
-                  const q = searchQuery.toLowerCase()
-                  if (col.name.toLowerCase().includes(q)) return true
-                  return col.requests.some(
-                    (r) => r.name.toLowerCase().includes(q) || r.url.toLowerCase().includes(q)
-                  )
-                })
-                .map((col) => {
-                  const isCollapsed = !searchQuery && collapsedCols[col.id]
-                  const isDragOver = dragOverColId === col.id
-                  const requestsToDisplay = searchQuery
-                    ? col.requests.filter(
-                        (r) =>
-                          r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          r.url.toLowerCase().includes(searchQuery.toLowerCase())
-                      )
-                    : col.requests
+              <>
+                {filterCollectionTree(collections, searchQuery).map((col) =>
+                  renderCollectionTreeItem(col, 0)
+                )}
 
-                  return (
-                    <div
-                      key={col.id}
-                      className={"flex flex-col rounded-lg transition-all " +
-                        (isDragOver ? "ring-2 ring-sky-500/80 bg-sky-500/10 p-0.5" : "")}
-                      onDragOver={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        if (draggedItem && draggedItem.colId !== col.id) {
-                          setDragOverColId(col.id)
-                        }
-                      }}
-                      onDragLeave={(e) => {
-                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                          setDragOverColId(null)
-                        }
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        if (draggedItem) {
-                          onMoveRequest(draggedItem.colId, col.id, draggedItem.reqId)
-                        }
-                        setDraggedItem(null)
-                        setDragOverColId(null)
-                        setDragOverReqId(null)
-                      }}
-                    >
-                      {/* Collection Header */}
-                      <div
-                        onClick={() => toggleCol(col.id)}
-                        onContextMenu={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                          setShowMoveSubmenu(false)
-                          setContextMenu({
-                            type: 'collection',
-                            x: Math.min(e.clientX, window.innerWidth - 220),
-                            y: Math.min(e.clientY, window.innerHeight - 240),
-                            colId: col.id
-                          })
-                        }}
-                        className={"flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-slate-800/60 cursor-pointer text-xs group text-slate-300 transition-colors " +
-                          (isDragOver ? "bg-sky-500/20 text-sky-200" : "")}
-                      >
-                        <div className="flex items-center gap-1.5 truncate flex-1 min-w-0 mr-1">
-                          {isCollapsed ? (
-                            <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                          ) : (
-                            <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                          )}
-                          <Folder className="w-3.5 h-3.5 text-amber-400/90 shrink-0" />
-
-                          {editingTarget?.type === 'collection' && editingTarget.id === col.id ? (
-                            <input
-                              ref={editInputRef}
-                              type="text"
-                              value={editingTarget.name}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => setEditingTarget({ ...editingTarget, name: e.target.value })}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleCommitRename()
-                                if (e.key === 'Escape') setEditingTarget(null)
-                              }}
-                              onBlur={handleCommitRename}
-                              className="bg-slate-950 border border-sky-500 rounded px-1.5 py-0.5 text-xs text-white font-medium focus:outline-none w-full"
-                            />
-                          ) : (
-                            <span
-                              onDoubleClick={(e) => {
-                                e.stopPropagation()
-                                setEditingTarget({ type: 'collection', id: col.id, name: col.name })
-                              }}
-                              className="font-medium truncate"
-                              title={col.name + ' (Double click or right-click to rename)'}
-                            >
-                              {col.name}
-                            </span>
-                          )}
-
-                          <span className="text-[10px] text-slate-500 font-mono shrink-0">
-                            ({col.requests.length})
-                          </span>
-                        </div>
-
-                        {/* Collection Actions (Hover) */}
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onNewRequestInCollection(col.id)
-                            }}
-                            className="p-1 hover:text-sky-400 text-slate-500 rounded hover:bg-slate-800"
-                            title="Add Request to this collection"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              const rect = e.currentTarget.getBoundingClientRect()
-                              setShowMoveSubmenu(false)
-                              setContextMenu({
-                                type: 'collection',
-                                x: Math.min(rect.right + 4, window.innerWidth - 220),
-                                y: Math.min(rect.top, window.innerHeight - 240),
-                                colId: col.id
-                              })
-                            }}
-                            className="p-1 hover:text-slate-200 text-slate-500 rounded hover:bg-slate-800"
-                            title="More options"
-                          >
-                            <MoreHorizontal className="w-3 h-3" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Requests List */}
-                      {!isCollapsed && (
-                        <div className="pl-3 pr-1 py-0.5 flex flex-col gap-0.5">
-                          {requestsToDisplay.length === 0 ? (
-                            <div className="px-2 py-1 text-[11px] text-slate-500 italic">
-                              {searchQuery ? 'No matching requests' : 'Empty folder (Drag requests here)'}
-                            </div>
-                          ) : (
-                            requestsToDisplay.map((req, reqIndex) => {
-                              const isBeingDragged = draggedItem?.reqId === req.id
-                              const isDragTarget = dragOverReqId === req.id
-
-                              return (
-                                <div
-                                  key={req.id}
-                                  draggable={editingTarget?.id !== req.id}
-                                  onDragStart={(e) => {
-                                    setDraggedItem({ colId: col.id, reqId: req.id })
-                                    e.dataTransfer.setData('text/plain', JSON.stringify({ colId: col.id, reqId: req.id }))
-                                    e.dataTransfer.effectAllowed = 'move'
-                                  }}
-                                  onDragEnd={() => {
-                                    setDraggedItem(null)
-                                    setDragOverColId(null)
-                                    setDragOverReqId(null)
-                                  }}
-                                  onDragOver={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    if (draggedItem && draggedItem.reqId !== req.id) {
-                                      setDragOverReqId(req.id)
-                                    }
-                                  }}
-                                  onDragLeave={(e) => {
-                                    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                                      setDragOverReqId(null)
-                                    }
-                                  }}
-                                  onDrop={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    if (draggedItem) {
-                                      onMoveRequest(draggedItem.colId, col.id, draggedItem.reqId, reqIndex)
-                                    }
-                                    setDraggedItem(null)
-                                    setDragOverColId(null)
-                                    setDragOverReqId(null)
-                                  }}
-                                  onClick={() => onSelectRequest(req)}
-                                  onContextMenu={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    setShowMoveSubmenu(false)
-                                    setContextMenu({
-                                      type: 'request',
-                                      x: Math.min(e.clientX, window.innerWidth - 220),
-                                      y: Math.min(e.clientY, window.innerHeight - 300),
-                                      colId: col.id,
-                                      reqId: req.id,
-                                      request: req
-                                    })
-                                  }}
-                                  className={"flex items-center justify-between px-2 py-1.5 rounded cursor-pointer text-xs group transition-all " +
-                                    (selectedRequestId === req.id
-                                      ? "bg-sky-500/20 text-sky-300 font-medium"
-                                      : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200") +
-                                    (isBeingDragged ? " opacity-40 border border-dashed border-sky-400" : "") +
-                                    (isDragTarget ? " border-t-2 border-sky-400" : "")}
-                                >
-                                  <div className="flex items-center gap-1.5 truncate flex-1 min-w-0 mr-1">
-                                    <span className={"font-mono text-[10px] font-bold w-9 shrink-0 " + (methodBadgeColor[req.method] || 'text-slate-400')}>
-                                      {req.method}
-                                    </span>
-
-                                    {editingTarget?.type === 'request' && editingTarget.id === req.id ? (
-                                      <input
-                                        ref={editInputRef}
-                                        type="text"
-                                        value={editingTarget.name}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onChange={(e) => setEditingTarget({ ...editingTarget, name: e.target.value })}
-                                        onKeyDown={(e) => {
-                                          if (e.key === 'Enter') handleCommitRename()
-                                          if (e.key === 'Escape') setEditingTarget(null)
-                                        }}
-                                        onBlur={handleCommitRename}
-                                        className="bg-slate-950 border border-sky-500 rounded px-1.5 py-0.5 text-xs text-white font-medium focus:outline-none w-full"
-                                      />
-                                    ) : (
-                                      <span
-                                        onDoubleClick={(e) => {
-                                          e.stopPropagation()
-                                          setEditingTarget({ type: 'request', id: req.id, name: req.name, colId: col.id })
-                                        }}
-                                        className="truncate text-xs"
-                                        title={req.name || req.url || 'Untitled (Double click or right-click to rename)'}
-                                      >
-                                        {req.name || req.url || 'Untitled'}
-                                      </span>
-                                    )}
-
-                                    {dirtyIds?.has(req.id) && (
-                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" title="Unsaved changes" />
-                                    )}
-                                  </div>
-
-                                  {/* Request Actions (Hover) */}
-                                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        const rect = e.currentTarget.getBoundingClientRect()
-                                        setShowMoveSubmenu(false)
-                                        setContextMenu({
-                                          type: 'request',
-                                          x: Math.min(rect.right + 4, window.innerWidth - 220),
-                                          y: Math.min(rect.top, window.innerHeight - 300),
-                                          colId: col.id,
-                                          reqId: req.id,
-                                          request: req
-                                        })
-                                      }}
-                                      className="p-1 hover:text-slate-200 text-slate-500 rounded hover:bg-slate-800"
-                                      title="More options"
-                                    >
-                                      <MoreHorizontal className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                </div>
-                              )
-                            })
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })
+                {/* Drop target at bottom to convert dragged collection back to root level */}
+                {draggedColId && (
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setDragOverColTarget({ id: '__ROOT__', position: 'after' })
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverColTarget?.id === '__ROOT__') {
+                        setDragOverColTarget(null)
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      if (draggedColId) {
+                        onMoveCollection(draggedColId, null, 'after')
+                      }
+                      setDraggedColId(null)
+                      setDragOverColTarget(null)
+                    }}
+                    className={`py-2 px-3 border-2 border-dashed rounded-lg text-center text-xs transition-all ${
+                      dragOverColTarget?.id === '__ROOT__'
+                        ? 'border-sky-400 bg-sky-500/10 text-sky-300 font-medium'
+                        : 'border-slate-800 text-slate-500 hover:border-slate-700'
+                    }`}
+                  >
+                    <span>拖到此处转为顶级集合 (Drop here as root)</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -773,7 +923,7 @@ export const Sidebar: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => {
-                  const col = collections.find((c) => c.id === contextMenu.colId)
+                  const col = findCollectionInTree(collections, contextMenu.colId)
                   if (col) {
                     setEditingTarget({ type: 'collection', id: col.id, name: col.name })
                   }
@@ -782,7 +932,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
               >
                 <Edit3 className="w-3.5 h-3.5 text-sky-400" />
-                <span>Rename Collection</span>
+                <span>Rename Collection (重命名)</span>
               </button>
 
               <button
@@ -794,7 +944,19 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Add Request</span>
+                <span>Add Request (新建请求)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleCreateSubCol(contextMenu.colId)
+                  setContextMenu(null)
+                }}
+                className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
+              >
+                <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+                <span>Add Sub-collection (新建子集合)</span>
               </button>
 
               <button
@@ -806,7 +968,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
               >
                 <Copy className="w-3.5 h-3.5 text-amber-400" />
-                <span>Duplicate Collection</span>
+                <span>Duplicate Collection (复制集合)</span>
               </button>
 
               <div className="h-px bg-slate-800 my-0.5" />
@@ -814,7 +976,7 @@ export const Sidebar: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => {
-                  const target = collections.find((c) => c.id === contextMenu.colId)
+                  const target = findCollectionInTree(collections, contextMenu.colId)
                   if (target) {
                     setDeleteConfirmCol(target)
                   }
@@ -823,7 +985,7 @@ export const Sidebar: React.FC<Props> = ({
                 className="px-2.5 py-1.5 text-left hover:bg-rose-500/20 hover:text-rose-400 rounded flex items-center gap-2 transition-colors text-rose-400"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete Collection</span>
+                <span>Delete Collection (删除集合)</span>
               </button>
             </>
           )}
@@ -902,13 +1064,13 @@ export const Sidebar: React.FC<Props> = ({
                 </button>
 
                 {showMoveSubmenu && (
-                  <div className="absolute left-full top-0 ml-1 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-lg shadow-2xl p-1 w-48 text-xs text-slate-200 flex flex-col gap-0.5">
-                    {collections.filter((c) => c.id !== contextMenu.colId).length === 0 ? (
+                  <div className="absolute left-full top-0 ml-1 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-lg shadow-2xl p-1 w-52 max-h-64 overflow-y-auto text-xs text-slate-200 flex flex-col gap-0.5">
+                    {flattenAllCollections(collections).filter((c) => c.id !== contextMenu.colId).length === 0 ? (
                       <div className="px-2.5 py-1.5 text-slate-500 italic text-[11px]">
                         No other collections
                       </div>
                     ) : (
-                      collections
+                      flattenAllCollections(collections)
                         .filter((c) => c.id !== contextMenu.colId)
                         .map((targetCol) => (
                           <button
@@ -920,6 +1082,7 @@ export const Sidebar: React.FC<Props> = ({
                               setShowMoveSubmenu(false)
                             }}
                             className="px-2 py-1 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors truncate"
+                            title={targetCol.name}
                           >
                             <Folder className="w-3 h-3 text-amber-400 shrink-0" />
                             <span className="truncate">{targetCol.name}</span>
@@ -971,11 +1134,19 @@ export const Sidebar: React.FC<Props> = ({
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   Are you sure you want to delete <span className="font-semibold text-white">"{deleteConfirmCol.name}"</span>?
-                  {deleteConfirmCol.requests.length > 0 ? (
-                    <> This collection contains <span className="text-amber-400 font-semibold">{deleteConfirmCol.requests.length}</span> request{deleteConfirmCol.requests.length > 1 ? 's' : ''} which will also be permanently deleted.</>
-                  ) : (
-                    <> This action cannot be undone.</>
-                  )}
+                  {(() => {
+                    const reqCount = countAllRequests(deleteConfirmCol)
+                    const subColCount = countAllSubCollections(deleteConfirmCol)
+                    if (reqCount > 0 || subColCount > 0) {
+                      const parts: string[] = []
+                      if (subColCount > 0) parts.push(`${subColCount} 个子集合`)
+                      if (reqCount > 0) parts.push(`${reqCount} 个请求`)
+                      return (
+                        <> 此集合包含 <span className="text-amber-400 font-semibold">{parts.join('、')}</span>，将被一并永久删除。</>
+                      )
+                    }
+                    return <> 此操作无法撤销。</>
+                  })()}
                 </p>
               </div>
             </div>

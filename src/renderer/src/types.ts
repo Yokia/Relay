@@ -25,6 +25,7 @@ export interface CollectionItem {
   id: string
   name: string
   requests: RequestItem[]
+  children?: CollectionItem[]
 }
 
 export interface HistoryItem {
