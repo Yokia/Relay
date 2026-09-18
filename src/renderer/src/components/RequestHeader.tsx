@@ -11,11 +11,13 @@ interface Props {
   onExportCurl: () => void
   isLoading: boolean
   constants: ConstantItem[]
-  onSwitchConstant: (name: string, value: string) => void
+  onSwitchConstant?: (name: string, value: string) => void
+  onRequestSwitchConstant: (name: string, value: string | null) => void
   onOpenManageConstants: () => void
   isDirty?: boolean
   autoSave: boolean
   onToggleAutoSave: () => void
+  resolvedUrl?: string
 }
 
 const methodColors: Record<HttpMethod, string> = {
@@ -37,10 +39,12 @@ export const RequestHeader: React.FC<Props> = ({
   isLoading,
   constants,
   onSwitchConstant,
+  onRequestSwitchConstant,
   onOpenManageConstants,
   isDirty = false,
   autoSave,
-  onToggleAutoSave
+  onToggleAutoSave,
+  resolvedUrl: passedResolvedUrl
 }) => {
   const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
   const [showVarPicker, setShowVarPicker] = useState(false)
@@ -94,11 +98,17 @@ export const RequestHeader: React.FC<Props> = ({
     }, 40)
   }
 
-  // Compute resolved preview URL
-  let resolvedUrl = request.url || ''
-  for (const c of constants) {
-    if (c.currentValue) {
-      resolvedUrl = resolvedUrl.replaceAll('{{' + c.name + '}}', c.currentValue)
+  // Compute resolved preview URL respecting request-level constant overrides
+  const overrides = request.constantOverrides || {}
+  let resolvedUrl = passedResolvedUrl || request.url || ''
+  if (!passedResolvedUrl) {
+    for (const c of constants) {
+      if (c.name) {
+        const effectiveVal = overrides[c.name] !== undefined ? overrides[c.name] : c.currentValue
+        if (effectiveVal) {
+          resolvedUrl = resolvedUrl.replaceAll('{{' + c.name + '}}', effectiveVal)
+        }
+      }
     }
   }
 
@@ -296,7 +306,8 @@ export const RequestHeader: React.FC<Props> = ({
       <ConstantsBar
         constants={constants}
         url={request.url}
-        onSwitchConstant={onSwitchConstant}
+        constantOverrides={request.constantOverrides}
+        onRequestSwitchConstant={onRequestSwitchConstant}
         onOpenManageModal={onOpenManageConstants}
       />
     </div>

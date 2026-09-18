@@ -1,0 +1,394 @@
+import React, { useState, useEffect } from 'react'
+import {
+  Copy,
+  Check,
+  Clock,
+  Database,
+  AlertCircle,
+  Download,
+  WrapText,
+  FileCode,
+  ListFilter,
+  Search
+} from 'lucide-react'
+import { ResponseData } from '../types'
+import { CodeEditor } from './CodeEditor'
+
+const methodBadgeColor: Record<string, string> = {
+  GET: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+  POST: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+  PUT: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+  DELETE: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
+  PATCH: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
+  HEAD: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
+  OPTIONS: 'text-slate-400 bg-slate-500/10 border-slate-500/30'
+}
+
+export const ResponsePopoutWindow: React.FC = () => {
+  const [data, setData] = useState<{
+    response: ResponseData
+    url?: string
+    method?: string
+    name?: string
+  } | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [copied, setCopied] = useState(false)
+  const [headersCopied, setHeadersCopied] = useState(false)
+  const [activeTab, setActiveTab] = useState<'body' | 'headers'>('body')
+  const [bodyFormat, setBodyFormat] = useState<'pretty' | 'raw'>('pretty')
+  const [wrapLines, setWrapLines] = useState(true)
+  const [headerSearch, setHeaderSearch] = useState('')
+  const [savedNotice, setSavedNotice] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchPopoutData = async () => {
+      try {
+        if (window.electronAPI?.getPopoutData) {
+          const res = await window.electronAPI.getPopoutData()
+          setData(res)
+        }
+      } catch (err) {
+        console.error('Failed to get popout data', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchPopoutData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-950 text-slate-400 select-none">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-medium tracking-wider">Loading response data...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (!data || !data.response) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-slate-500 gap-3 select-none p-6">
+        <AlertCircle className="w-8 h-8 text-amber-400" />
+        <span className="text-sm font-medium text-slate-300">No response data found for this window</span>
+        <p className="text-xs text-slate-500 text-center max-w-sm">
+          The window might have been reloaded or closed without active response payload.
+        </p>
+      </div>
+    )
+  }
+
+  const { response, url, method = 'GET', name } = data
+
+  const isSuccess = response.status >= 200 && response.status < 300
+  const isRedirect = response.status >= 300 && response.status < 400
+  const isError = response.status >= 400 || response.status === 0
+
+  let statusBadgeClass = 'bg-slate-800 text-slate-300 border-slate-700'
+  if (isSuccess) statusBadgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+  else if (isRedirect) statusBadgeClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30'
+  else if (isError) statusBadgeClass = 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+
+  const formatSize = (bytes: number) => {
+    if (!bytes) return '0 B'
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+  }
+
+  const formatTime = (ms: number) => {
+    if (!ms) return '0 ms'
+    if (ms < 1000) return ms + ' ms'
+    return (ms / 1000).toFixed(2) + ' s'
+  }
+
+  const getFormattedBody = () => {
+    if (response.data === null || response.data === undefined) return ''
+    if (typeof response.data === 'object') {
+      return JSON.stringify(response.data, null, 2)
+    }
+    return String(response.data)
+  }
+
+  const bodyString = getFormattedBody()
+  const rawString = typeof response.data === 'object' ? JSON.stringify(response.data) : String(response.data || '')
+  const currentBody = bodyFormat === 'pretty' ? bodyString : rawString
+
+  const handleCopyBody = () => {
+    navigator.clipboard.writeText(currentBody)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleSaveFile = async () => {
+    if (!window.electronAPI?.saveFileDialog) return
+    const defaultFilename = (name ? name.replace(/[^a-zA-Z0-9_-]/g, '_') : 'response') + (typeof response.data === 'object' ? '.json' : '.txt')
+    const result = await window.electronAPI.saveFileDialog({
+      defaultPath: defaultFilename,
+      content: currentBody
+    })
+    if (result && result.success) {
+      setSavedNotice('Saved to ' + result.filePath.split(/[\\/]/).pop())
+      setTimeout(() => setSavedNotice(null), 3000)
+    }
+  }
+
+  const handleCopyAllHeaders = () => {
+    const headerLines = Object.entries(response.headers || {}).map(([k, v]) => `${k}: ${v}`).join('\n')
+    navigator.clipboard.writeText(headerLines)
+    setHeadersCopied(true)
+    setTimeout(() => setHeadersCopied(false), 2000)
+  }
+
+  const filteredHeaders = Object.entries(response.headers || {}).filter(([k, v]) => {
+    if (!headerSearch.trim()) return true
+    const q = headerSearch.toLowerCase()
+    return k.toLowerCase().includes(q) || String(v).toLowerCase().includes(q)
+  })
+
+  return (
+    <div className="flex flex-col h-screen w-screen bg-slate-950 text-slate-200 overflow-hidden select-none font-sans">
+      {/* Top Header Bar */}
+      <div className="px-4 py-2.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0">
+        {/* Left: Method, Title / URL, Status, Stats */}
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded border ${methodBadgeColor[method] || 'text-slate-400 border-slate-700 bg-slate-800'}`}>
+            {method}
+          </span>
+
+          <div className="flex flex-col min-w-0 flex-1">
+            {name && (
+              <span className="text-xs font-semibold text-slate-100 truncate" title={name}>
+                {name}
+              </span>
+            )}
+            {url && (
+              <span className="text-[11px] font-mono text-slate-400 truncate select-text" title={url}>
+                {url}
+              </span>
+            )}
+          </div>
+
+          {/* Status Badge */}
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded border font-mono text-xs font-semibold ${statusBadgeClass}`}>
+            {response.status === 0 ? (
+              <>
+                <AlertCircle className="w-3.5 h-3.5" /> Error
+              </>
+            ) : (
+              <>
+                <span>{response.status}</span>
+                <span className="opacity-85 font-normal">{response.statusText}</span>
+              </>
+            )}
+          </div>
+
+          {/* Metrics */}
+          <div className="flex items-center gap-3 text-xs text-slate-400 font-mono bg-slate-950/60 px-2.5 py-1 rounded border border-slate-800/80">
+            <div className="flex items-center gap-1" title="Response Time">
+              <Clock className="w-3.5 h-3.5 text-sky-400" />
+              <span>{formatTime(response.time)}</span>
+            </div>
+            <div className="h-3 w-px bg-slate-800" />
+            <div className="flex items-center gap-1" title="Response Size">
+              <Database className="w-3.5 h-3.5 text-indigo-400" />
+              <span>{formatSize(response.size)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Quick Action Buttons */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {savedNotice && (
+            <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded animate-in fade-in font-medium">
+              ✓ {savedNotice}
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={handleSaveFile}
+            className="flex items-center gap-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2.5 py-1 rounded transition-colors"
+            title="Save response to local file"
+          >
+            <Download className="w-3.5 h-3.5 text-sky-400" />
+            <span>Save File</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCopyBody}
+            className="flex items-center gap-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2.5 py-1 rounded transition-colors"
+            title="Copy full response body"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-emerald-400">Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5 text-slate-400" />
+                <span>Copy Body</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Sub-header / Tabs & Controls */}
+      <div className="px-4 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between text-xs font-medium text-slate-400 shrink-0">
+        <div className="flex items-center gap-5">
+          <button
+            type="button"
+            onClick={() => setActiveTab('body')}
+            className={`py-2.5 relative transition-colors flex items-center gap-1.5 ${activeTab === 'body' ? 'text-sky-400 font-semibold' : 'hover:text-slate-200'}`}
+          >
+            <FileCode className="w-3.5 h-3.5" />
+            <span>Body</span>
+            {activeTab === 'body' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('headers')}
+            className={`py-2.5 relative transition-colors flex items-center gap-1.5 ${activeTab === 'headers' ? 'text-sky-400 font-semibold' : 'hover:text-slate-200'}`}
+          >
+            <ListFilter className="w-3.5 h-3.5" />
+            <span>Headers</span>
+            <span className="text-[10px] text-slate-500 font-mono">
+              ({Object.keys(response.headers || {}).length})
+            </span>
+            {activeTab === 'headers' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />
+            )}
+          </button>
+        </div>
+
+        {/* Tab-specific controls */}
+        {activeTab === 'body' && (
+          <div className="flex items-center gap-2 text-xs py-1.5">
+            {/* Word wrap toggle */}
+            <button
+              type="button"
+              onClick={() => setWrapLines((prev) => !prev)}
+              className={`flex items-center gap-1 px-2 py-1 rounded border text-[11px] transition-colors ${wrapLines ? 'bg-sky-500/20 text-sky-300 border-sky-500/40' : 'bg-slate-800/80 text-slate-400 border-slate-700/60 hover:text-slate-200'}`}
+              title="Toggle Line Wrap"
+            >
+              <WrapText className="w-3.5 h-3.5" />
+              <span>Wrap</span>
+            </button>
+
+            {/* Pretty / Raw toggle */}
+            {typeof response.data === 'object' && (
+              <div className="flex items-center bg-slate-800 rounded border border-slate-700/60 p-0.5 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => setBodyFormat('pretty')}
+                  className={`px-2 py-0.5 rounded ${bodyFormat === 'pretty' ? 'bg-sky-500 text-white font-medium' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Pretty
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBodyFormat('raw')}
+                  className={`px-2 py-0.5 rounded ${bodyFormat === 'raw' ? 'bg-sky-500 text-white font-medium' : 'text-slate-400 hover:text-slate-200'}`}
+                >
+                  Raw
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'headers' && (
+          <div className="flex items-center gap-2 text-xs py-1.5">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Filter headers..."
+                value={headerSearch}
+                onChange={(e) => setHeaderSearch(e.target.value)}
+                className="bg-slate-950 border border-slate-700/80 rounded pl-7 pr-3 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-sans w-48"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyAllHeaders}
+              className="flex items-center gap-1 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2 py-1 rounded transition-colors"
+              title="Copy all headers"
+            >
+              {headersCopied ? (
+                <>
+                  <Check className="w-3 h-3 text-emerald-400" />
+                  <span className="text-emerald-400 text-[11px]">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3 h-3 text-slate-400" />
+                  <span className="text-[11px]">Copy All</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Content Area */}
+      <div className="flex-1 min-h-0 overflow-hidden p-3 bg-slate-950/80 flex flex-col">
+        {response.error && (
+          <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded text-xs mb-3 font-mono select-text flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{response.error}</span>
+          </div>
+        )}
+
+        {activeTab === 'body' && (
+          <div className="flex-1 h-full min-h-0">
+            <CodeEditor
+              value={currentBody}
+              readOnly={true}
+              wrap={wrapLines}
+              height="100%"
+            />
+          </div>
+        )}
+
+        {activeTab === 'headers' && (
+          <div className="flex-1 overflow-y-auto bg-[#282c34] border border-slate-800 rounded-lg p-3 font-mono text-xs select-text">
+            {filteredHeaders.length === 0 ? (
+              <div className="text-center py-8 text-slate-500 italic">
+                {headerSearch ? 'No matching headers found.' : 'No headers received.'}
+              </div>
+            ) : (
+              <div className="flex flex-col divide-y divide-slate-800">
+                {filteredHeaders.map(([k, v]) => (
+                  <div key={k} className="flex items-start gap-3 py-1.5 hover:bg-slate-800/30 px-2 rounded group transition-colors">
+                    <span className="text-sky-400 font-semibold w-56 truncate select-all shrink-0">
+                      {k}:
+                    </span>
+                    <span className="text-slate-200 flex-1 break-all select-all font-mono">
+                      {v}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(v)}
+                      className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-slate-300 p-0.5 rounded transition-opacity"
+                      title="Copy header value"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

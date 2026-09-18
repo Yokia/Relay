@@ -185,12 +185,43 @@ export default function App() {
     setResponse(activeRun ? activeRun.response : null)
   }
 
-  // Switch constant current value directly
+  // Switch constant current value directly (Global)
   const handleSwitchConstant = (name: string, value: string) => {
     const next = constants.map((c) => (c.name === name ? { ...c, currentValue: value } : c))
     setConstants(next)
     persist({ constants: next })
-    addToast(`Switched {{${name}}} to ${value}`, 'info')
+    addToast(`Switched global {{${name}}} to ${value}`, 'info')
+  }
+
+  // Switch constant for current request (request-level override or reset to global)
+  const handleRequestSwitchConstant = (name: string, value: string | null) => {
+    const prevOverrides = currentRequest.constantOverrides || {}
+    const nextOverrides: Record<string, string> = { ...prevOverrides }
+
+    if (value === null) {
+      delete nextOverrides[name]
+    } else {
+      nextOverrides[name] = value
+    }
+
+    const updatedReq: RequestItem = {
+      ...currentRequest,
+      constantOverrides: nextOverrides
+    }
+
+    setCurrentRequest(updatedReq)
+
+    if (settings.autoSave) {
+      syncToCollections(updatedReq)
+    } else {
+      setDirtyIds((prev) => new Set(prev).add(updatedReq.id))
+    }
+
+    if (value === null) {
+      addToast(`{{${name}}} 恢复跟随全局默认值`, 'info')
+    } else {
+      addToast(`已为当前请求锁定 {{${name}}} = ${value}`, 'success')
+    }
   }
 
   // Save updated constants from modal
@@ -249,14 +280,20 @@ export default function App() {
   }
 
   // Replace variables like {{server}} or {{port}} with constants and environment variables
-  const interpolate = (text: string): string => {
+  const interpolate = (text: string, req?: RequestItem): string => {
     if (!text) return text
     let result = text
 
-    // 1. Replace from custom constants
+    const targetReq = req || currentRequest
+    const overrides = targetReq?.constantOverrides || {}
+
+    // 1. Replace from custom constants (request-level overrides take precedence over global currentValue)
     for (const c of constants) {
-      if (c.name && c.currentValue) {
-        result = result.replaceAll('{{' + c.name + '}}', c.currentValue)
+      if (c.name) {
+        const effectiveVal = overrides[c.name] !== undefined ? overrides[c.name] : c.currentValue
+        if (effectiveVal) {
+          result = result.replaceAll('{{' + c.name + '}}', effectiveVal)
+        }
       }
     }
 
@@ -580,16 +617,16 @@ export default function App() {
 
   // Quick copy request as cURL
   const handleCopyRequestCurl = (req: RequestItem) => {
-    let curl = `curl --location --request ${req.method} '${interpolate(req.url)}'`
+    let curl = `curl --location --request ${req.method} '${interpolate(req.url, req)}'`
     if (req.headers && req.headers.length > 0) {
       req.headers.forEach((h) => {
         if (h.enabled && h.key) {
-          curl += ` \\\n  --header '${interpolate(h.key)}: ${interpolate(h.value)}'`
+          curl += ` \\\n  --header '${interpolate(h.key, req)}: ${interpolate(h.value, req)}'`
         }
       })
     }
     if (req.bodyType === 'json' && req.bodyRaw) {
-      curl += ` \\\n  --header 'Content-Type: application/json' \\\n  --data-raw '${interpolate(req.bodyRaw).replace(/'/g, "'\\''")}'`
+      curl += ` \\\n  --header 'Content-Type: application/json' \\\n  --data-raw '${interpolate(req.bodyRaw, req).replace(/'/g, "'\\''")}'`
     }
     navigator.clipboard.writeText(curl)
     addToast('Copied cURL command to clipboard!', 'success')
@@ -744,10 +781,12 @@ export default function App() {
           isLoading={isLoading}
           constants={constants}
           onSwitchConstant={handleSwitchConstant}
+          onRequestSwitchConstant={handleRequestSwitchConstant}
           onOpenManageConstants={() => setIsConstantModalOpen(true)}
           isDirty={isCurrentDirty}
           autoSave={settings.autoSave}
           onToggleAutoSave={() => handleUpdateSettings({ autoSave: !settings.autoSave })}
+          resolvedUrl={interpolate(currentRequest.url, currentRequest)}
         />
 
         {/* Split Container for Request & Response */}
@@ -777,6 +816,9 @@ export default function App() {
               selectedRunId={selectedRunIdMap[currentRequest.id]}
               onSelectRun={(runId) => setSelectedRunIdMap((prev) => ({ ...prev, [currentRequest.id]: runId }))}
               onOpenUrlInRelay={handleOpenUrlInRelay}
+              requestUrl={interpolate(currentRequest.url)}
+              requestMethod={currentRequest.method}
+              requestName={currentRequest.name}
             />
           </div>
         </div>
@@ -820,7 +862,10 @@ export default function App() {
         <CurlModal
           isOpen={curlModalState.isOpen}
           mode={curlModalState.mode}
-          currentRequest={currentRequest}
+          currentRequest={{
+            ...currentRequest,
+            url: interpolate(currentRequest.url, currentRequest)
+          }}
           onClose={() => setCurlModalState({ isOpen: false, mode: 'import' })}
           onImport={(parsed) => {
             const next = {

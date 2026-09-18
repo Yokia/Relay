@@ -23,7 +23,8 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   MoreHorizontal,
-  Check
+  Check,
+  AlertTriangle
 } from 'lucide-react'
 import { CollectionItem, HistoryItem, Environment, RequestItem, HttpMethod, ConstantItem } from '../types'
 
@@ -128,6 +129,9 @@ export const Sidebar: React.FC<Props> = ({
   const [draggedItem, setDraggedItem] = useState<{ colId: string; reqId: string } | null>(null)
   const [dragOverColId, setDragOverColId] = useState<string | null>(null)
   const [dragOverReqId, setDragOverReqId] = useState<string | null>(null)
+
+  // Secondary confirmation for collection deletion
+  const [deleteConfirmCol, setDeleteConfirmCol] = useState<CollectionItem | null>(null)
 
   // Focus inline edit input when active (Only select all text once when entering rename mode)
   const prevEditingIdRef = useRef<string | null>(null)
@@ -810,7 +814,10 @@ export const Sidebar: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={() => {
-                  onDeleteCollection(contextMenu.colId)
+                  const target = collections.find((c) => c.id === contextMenu.colId)
+                  if (target) {
+                    setDeleteConfirmCol(target)
+                  }
                   setContextMenu(null)
                 }}
                 className="px-2.5 py-1.5 text-left hover:bg-rose-500/20 hover:text-rose-400 rounded flex items-center gap-2 transition-colors text-rose-400"
@@ -938,6 +945,63 @@ export const Sidebar: React.FC<Props> = ({
               </button>
             </>
           )}
+        </div>
+      )}
+
+      {/* Delete Collection Confirmation Modal */}
+      {deleteConfirmCol && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 select-none animate-in fade-in duration-100"
+          onClick={() => setDeleteConfirmCol(null)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setDeleteConfirmCol(null)
+          }}
+        >
+          <div
+            className="bg-slate-900 border border-slate-700/90 rounded-xl shadow-2xl p-5 max-w-md w-full flex flex-col gap-4 text-slate-200 animate-in zoom-in-95 duration-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <h3 className="text-sm font-semibold text-slate-100">
+                  Delete Collection / 删除集合
+                </h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Are you sure you want to delete <span className="font-semibold text-white">"{deleteConfirmCol.name}"</span>?
+                  {deleteConfirmCol.requests.length > 0 ? (
+                    <> This collection contains <span className="text-amber-400 font-semibold">{deleteConfirmCol.requests.length}</span> request{deleteConfirmCol.requests.length > 1 ? 's' : ''} which will also be permanently deleted.</>
+                  ) : (
+                    <> This action cannot be undone.</>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmCol(null)}
+                className="px-3.5 py-1.5 text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700/80 rounded-md transition-colors font-medium"
+              >
+                Cancel / 取消
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => {
+                  onDeleteCollection(deleteConfirmCol.id)
+                  setDeleteConfirmCol(null)
+                }}
+                className="px-3.5 py-1.5 text-xs text-white bg-rose-600 hover:bg-rose-500 rounded-md transition-colors font-medium flex items-center gap-1.5 shadow-lg shadow-rose-900/30"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete / 确认删除</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </aside>

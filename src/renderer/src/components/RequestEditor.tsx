@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { KeyValueEditor } from './KeyValueEditor'
 import { CodeEditor } from './CodeEditor'
 import { RequestItem } from '../types'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, WrapText } from 'lucide-react'
 
 interface Props {
   request: RequestItem
@@ -13,6 +13,7 @@ type TabType = 'params' | 'headers' | 'body'
 
 export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
   const [activeTab, setActiveTab] = useState<TabType>('params')
+  const [wrapLines, setWrapLines] = useState(true)
 
   const handleFormatJson = () => {
     try {
@@ -113,16 +114,30 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
                 ))}
               </div>
 
-              {request.bodyType === 'json' && (
-                <button
-                  type="button"
-                  onClick={handleFormatJson}
-                  title="Format JSON"
-                  className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 font-medium px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 transition-colors"
-                >
-                  <Sparkles className="w-3 h-3" /> Format
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {(request.bodyType === 'json' || request.bodyType === 'raw') && (
+                  <button
+                    type="button"
+                    onClick={() => setWrapLines((prev) => !prev)}
+                    className={"px-1.5 py-0.5 rounded flex items-center gap-1 text-[11px] transition-colors " + (wrapLines ? "bg-sky-500/20 text-sky-300 border border-sky-500/30" : "text-slate-400 hover:text-slate-200 border border-transparent")}
+                    title="Toggle Line Wrap (自动换行)"
+                  >
+                    <WrapText className="w-3 h-3" />
+                    <span>Wrap</span>
+                  </button>
+                )}
+
+                {request.bodyType === 'json' && (
+                  <button
+                    type="button"
+                    onClick={handleFormatJson}
+                    title="Format JSON"
+                    className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 font-medium px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 transition-colors"
+                  >
+                    <Sparkles className="w-3 h-3" /> Format
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Body Form or Editor */}
@@ -137,6 +152,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
                 <CodeEditor
                   value={request.bodyRaw || ''}
                   onChange={(val) => onChange({ bodyRaw: val })}
+                  wrap={wrapLines}
                   placeholder={request.bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Raw text content...'}
                 />
               </div>

@@ -59,7 +59,8 @@ export const ConstantManagerModal: React.FC<Props> = ({
 
   const handleUpdateName = (name: string) => {
     if (!current) return
-    const cleanName = name.replace(/[^a-zA-Z0-9_-]/g, '')
+    // Allow Chinese characters, letters, numbers, underscores, etc. Only strip whitespace and braces
+    const cleanName = name.replace(/[\s{}]/g, '')
     setList((prev) =>
       prev.map((c) => (c.id === current.id ? { ...c, name: cleanName } : c))
     )
@@ -177,13 +178,15 @@ export const ConstantManagerModal: React.FC<Props> = ({
           {current ? (
             <div className="flex-1 flex flex-col p-4 overflow-y-auto gap-3">
               <div>
-                <label className="text-xs text-slate-400 font-medium block mb-1">Constant Name (Used in URL as {'{{' + current.name + '}}'})</label>
+                <label className="text-xs text-slate-400 font-medium block mb-1">
+                  Constant Name (常量名称，如 server、port、服务器、端口)
+                </label>
                 <input
                   type="text"
                   value={current.name}
                   onChange={(e) => handleUpdateName(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-200 font-mono focus:outline-none focus:border-sky-500"
-                  placeholder="e.g. server, port, host"
+                  placeholder="例如: server, port, 服务器, 端口"
                 />
               </div>
 
@@ -191,7 +194,7 @@ export const ConstantManagerModal: React.FC<Props> = ({
               <div className="flex-1 flex flex-col gap-2 min-h-0">
                 <div className="flex items-center justify-between">
                   <label className="text-xs text-slate-400 font-medium">
-                    Values to switch between (Click to select current value):
+                    候选值列表（点击圆圈可设为当前全局生效值）：
                   </label>
                 </div>
 
@@ -202,12 +205,13 @@ export const ConstantManagerModal: React.FC<Props> = ({
                     value={newOptionInput}
                     onChange={(e) => setNewOptionInput(e.target.value)}
                     onKeyDown={(e) => {
+                      if (e.nativeEvent.isComposing) return
                       if (e.key === 'Enter') {
                         e.preventDefault()
                         handleAddOption()
                       }
                     }}
-                    placeholder="Add a server IP, domain, or port..."
+                    placeholder="添加候选值（如 http://localhost:8080 或 8081）..."
                     className="flex-1 bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-sky-500"
                   />
                   <button

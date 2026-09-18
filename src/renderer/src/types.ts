@@ -18,6 +18,7 @@ export interface RequestItem {
   bodyRaw: string
   bodyFormData?: KeyValueItem[]
   bodyUrlEncoded?: KeyValueItem[]
+  constantOverrides?: Record<string, string>
 }
 
 export interface CollectionItem {

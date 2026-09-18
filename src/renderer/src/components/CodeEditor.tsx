@@ -13,6 +13,7 @@ interface Props {
   minHeight?: string
   placeholder?: string
   onOpenUrlInRelay?: (url: string) => void
+  wrap?: boolean
 }
 
 interface ContextMenuState {
@@ -58,9 +59,14 @@ export const CodeEditor: React.FC<Props> = ({
   height = '100%',
   minHeight = '180px',
   placeholder = '{\n  "key": "value"\n}',
-  onOpenUrlInRelay
+  onOpenUrlInRelay,
+  wrap = true
 }) => {
-  const extensions = useMemo(() => [json(), clickableLinkPlugin], [])
+  const extensions = useMemo(() => {
+    const exts = [json(), clickableLinkPlugin]
+    if (wrap) exts.push(EditorView.lineWrapping)
+    return exts
+  }, [wrap])
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [copied, setCopied] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)

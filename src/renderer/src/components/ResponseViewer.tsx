@@ -1,5 +1,15 @@
 import React, { useState } from 'react'
-import { Copy, Check, Clock, Database, AlertCircle, History } from 'lucide-react'
+import {
+  Copy,
+  Check,
+  Clock,
+  Database,
+  AlertCircle,
+  History,
+  ExternalLink,
+  Download,
+  WrapText
+} from 'lucide-react'
 import { ResponseData, ResponseRun } from '../types'
 import { CodeEditor } from './CodeEditor'
 
@@ -10,6 +20,9 @@ interface Props {
   selectedRunId?: string
   onSelectRun?: (runId: string) => void
   onOpenUrlInRelay?: (url: string) => void
+  requestUrl?: string
+  requestMethod?: string
+  requestName?: string
 }
 
 export const ResponseViewer: React.FC<Props> = ({
@@ -18,11 +31,16 @@ export const ResponseViewer: React.FC<Props> = ({
   runs = [],
   selectedRunId,
   onSelectRun,
-  onOpenUrlInRelay
+  onOpenUrlInRelay,
+  requestUrl,
+  requestMethod = 'GET',
+  requestName
 }) => {
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<'body' | 'headers'>('body')
   const [bodyFormat, setBodyFormat] = useState<'pretty' | 'raw'>('pretty')
+  const [wrapLines, setWrapLines] = useState(true)
+  const [savedNotice, setSavedNotice] = useState<string | null>(null)
 
   // Determine active response: either from selected run or direct response prop
   const activeRun = runs.find((r) => r.id === selectedRunId) || runs[0]
@@ -86,6 +104,36 @@ export const ResponseViewer: React.FC<Props> = ({
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const handleOpenPopout = () => {
+    if (window.electronAPI?.openResponseWindow && displayResponse) {
+      const resolvedUrl = (requestUrl && !requestUrl.includes('{{'))
+        ? requestUrl
+        : (activeRun?.url && !activeRun.url.includes('{{'))
+          ? activeRun.url
+          : (requestUrl || activeRun?.url || '')
+
+      window.electronAPI.openResponseWindow({
+        response: displayResponse,
+        url: resolvedUrl,
+        method: activeRun?.method || requestMethod,
+        name: requestName
+      })
+    }
+  }
+
+  const handleSaveFile = async () => {
+    if (!window.electronAPI?.saveFileDialog || !displayResponse) return
+    const defaultFilename = (requestName ? requestName.replace(/[^a-zA-Z0-9_-]/g, '_') : 'response') + (typeof displayResponse.data === 'object' ? '.json' : '.txt')
+    const result = await window.electronAPI.saveFileDialog({
+      defaultPath: defaultFilename,
+      content: bodyFormat === 'pretty' ? bodyString : rawString
+    })
+    if (result && result.success) {
+      setSavedNotice('Saved!')
+      setTimeout(() => setSavedNotice(null), 2500)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden bg-slate-950/60">
       {/* Response Status Bar */}
@@ -137,22 +185,50 @@ export const ResponseViewer: React.FC<Props> = ({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="flex items-center gap-1 text-slate-400 hover:text-slate-200 px-2 py-1 rounded hover:bg-slate-800/60 transition-colors ml-auto"
-          title="Copy Response Body"
-        >
-          {copied ? (
-            <>
-              <Check className="w-3.5 h-3.5 text-emerald-400" /> Copied
-            </>
-          ) : (
-            <>
-              <Copy className="w-3.5 h-3.5" /> Copy
-            </>
+        <div className="flex items-center gap-1 ml-auto">
+          {savedNotice && (
+            <span className="text-[11px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 mr-1 animate-in fade-in">
+              ✓ {savedNotice}
+            </span>
           )}
-        </button>
+
+          <button
+            type="button"
+            onClick={handleSaveFile}
+            className="flex items-center gap-1 text-slate-400 hover:text-sky-300 px-2 py-1 rounded hover:bg-slate-800/60 transition-colors"
+            title="Save Response to File (另存为文件)"
+          >
+            <Download className="w-3.5 h-3.5 text-sky-400" />
+            <span className="hidden sm:inline">Save</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenPopout}
+            className="flex items-center gap-1 text-slate-400 hover:text-indigo-300 px-2 py-1 rounded hover:bg-slate-800/60 transition-colors"
+            title="Open in New Window (独立新窗口查看)"
+          >
+            <ExternalLink className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden sm:inline">Pop-out</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="flex items-center gap-1 text-slate-400 hover:text-slate-200 px-2 py-1 rounded hover:bg-slate-800/60 transition-colors"
+            title="Copy Response Body"
+          >
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-400" /> Copied
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" /> Copy
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -184,22 +260,36 @@ export const ResponseViewer: React.FC<Props> = ({
           </button>
         </div>
 
-        {activeTab === 'body' && typeof displayResponse.data === 'object' && (
+        {activeTab === 'body' && (
           <div className="flex items-center gap-2 text-[11px]">
             <button
               type="button"
-              onClick={() => setBodyFormat('pretty')}
-              className={"px-1.5 py-0.5 rounded " + (bodyFormat === 'pretty' ? "bg-slate-800 text-sky-400" : "text-slate-400 hover:text-slate-200")}
+              onClick={() => setWrapLines((prev) => !prev)}
+              className={"px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors " + (wrapLines ? "bg-sky-500/20 text-sky-300 border border-sky-500/30" : "text-slate-400 hover:text-slate-200")}
+              title="Toggle Line Wrap (自动换行)"
             >
-              Pretty
+              <WrapText className="w-3 h-3" />
+              <span>Wrap</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setBodyFormat('raw')}
-              className={"px-1.5 py-0.5 rounded " + (bodyFormat === 'raw' ? "bg-slate-800 text-sky-400" : "text-slate-400 hover:text-slate-200")}
-            >
-              Raw
-            </button>
+
+            {typeof displayResponse.data === 'object' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setBodyFormat('pretty')}
+                  className={"px-1.5 py-0.5 rounded " + (bodyFormat === 'pretty' ? "bg-slate-800 text-sky-400" : "text-slate-400 hover:text-slate-200")}
+                >
+                  Pretty
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBodyFormat('raw')}
+                  className={"px-1.5 py-0.5 rounded " + (bodyFormat === 'raw' ? "bg-slate-800 text-sky-400" : "text-slate-400 hover:text-slate-200")}
+                >
+                  Raw
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -217,6 +307,7 @@ export const ResponseViewer: React.FC<Props> = ({
             <CodeEditor
               value={bodyFormat === 'pretty' ? bodyString : rawString}
               readOnly={true}
+              wrap={wrapLines}
               onOpenUrlInRelay={onOpenUrlInRelay}
             />
           </div>
