@@ -164,6 +164,7 @@ export const enUS: TranslationSchema = {
     requestTimestamp: 'Request Time',
     noTestsRun: 'No test script configured for this request',
     previewUnavailable: 'This response type cannot be previewed, or the response is empty.',
+    largeMediaBodyNotice: 'This media response is too large to render in Body. Switch to Preview to view or save it.',
     noTestsRunTip: 'Switch to the "Tests" tab in the request editor to write JavaScript assertions',
     testSummary: 'Test Results',
     totalTests: 'tests'

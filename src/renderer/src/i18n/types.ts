@@ -164,6 +164,7 @@ export interface TranslationSchema {
     requestTimestamp: string
     noTestsRun: string
     previewUnavailable: string
+    largeMediaBodyNotice: string
     noTestsRunTip: string
     testSummary: string
     totalTests: string

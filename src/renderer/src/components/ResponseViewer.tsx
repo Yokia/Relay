@@ -207,9 +207,13 @@ export const ResponseViewer: React.FC<Props> = ({
   }
 
   const activeTimestamp = activeRun?.timestamp || displayResponse.timestamp
+  const contentType = (displayResponse.contentType || '').toLowerCase().split(';')[0]
+  const isMediaResponse = contentType.startsWith('image/') || contentType.startsWith('video/') || contentType.startsWith('audio/') || contentType === 'application/pdf'
+  const isLargeMediaResponse = isMediaResponse && typeof displayResponse.data === 'string' && displayResponse.data.length > 1024 * 1024
 
   const getFormattedBody = () => {
     if (displayResponse.data === null || displayResponse.data === undefined) return ''
+    if (isLargeMediaResponse) return t('response.largeMediaBodyNotice')
     if (typeof displayResponse.data === 'object') {
       return JSON.stringify(displayResponse.data, null, 2)
     }
@@ -221,7 +225,7 @@ export const ResponseViewer: React.FC<Props> = ({
   }
 
   const bodyString = getFormattedBody()
-  const rawString = typeof displayResponse.data === 'object' ? JSON.stringify(displayResponse.data) : String(displayResponse.data || '')
+  const rawString = isLargeMediaResponse ? bodyString : typeof displayResponse.data === 'object' ? JSON.stringify(displayResponse.data) : String(displayResponse.data || '')
   const searchedBody = bodyFormat === 'pretty' ? bodyString : rawString
   const getJsonPathResult = () => {
     if (!jsonPath.trim()) return ''

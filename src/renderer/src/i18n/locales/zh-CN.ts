@@ -164,6 +164,7 @@ export const zhCN: TranslationSchema = {
     requestTimestamp: '请求时间点',
     noTestsRun: '此接口尚未配置测试脚本 (Tests)',
     previewUnavailable: '当前响应类型暂不支持预览，或响应内容为空。',
+    largeMediaBodyNotice: '媒体内容较大，已停止在 Body 中渲染。请切换到 Preview 查看或保存。',
     noTestsRunTip: '前往中部编辑区的“后置脚本与测试”选项卡，编写 JavaScript 断言脚本',
     testSummary: '测试结果概览',
     totalTests: '个测试项'
