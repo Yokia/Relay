@@ -1,4 +1,5 @@
 import { CollectionItem, RequestItem, ConstantItem, Environment, AppSettings, HttpMethod, KeyValueItem } from '../types'
+import yaml from 'js-yaml'
 
 export interface RelayBackupData {
   type: 'relay-backup'
@@ -227,8 +228,12 @@ export function parseImportData(raw: string): { success: true; data: ParsedImpor
   let parsed: any
   try {
     parsed = JSON.parse(raw)
-  } catch (e: any) {
-    return { success: false, error: 'Invalid JSON: ' + e.message }
+  } catch {
+    try {
+      parsed = yaml.load(raw)
+    } catch (e: any) {
+      return { success: false, error: 'Invalid JSON/YAML: ' + e.message }
+    }
   }
 
   const openApiCollections = parseOpenApiDocument(parsed)

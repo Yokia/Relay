@@ -33,6 +33,7 @@ import {
   ResponseData
 } from '../types'
 import { executePreRequestScript, executeTestScript } from '../utils/scriptEngine'
+import { queryJsonPath } from '../utils/jsonPath'
 import { useI18n } from '../i18n'
 
 interface Props {
@@ -231,7 +232,12 @@ export const CollectionRunnerModal: React.FC<Props> = ({
             username: interpolate(currentReq.auth.username || '', currentReq),
             password: interpolate(currentReq.auth.password || '', currentReq),
             key: interpolate(currentReq.auth.key || '', currentReq),
-            value: interpolate(currentReq.auth.value || '', currentReq)
+            value: interpolate(currentReq.auth.value || '', currentReq),
+            tokenUrl: interpolate(currentReq.auth.tokenUrl || '', currentReq),
+            clientId: interpolate(currentReq.auth.clientId || '', currentReq),
+            clientSecret: interpolate(currentReq.auth.clientSecret || '', currentReq),
+            scope: interpolate(currentReq.auth.scope || '', currentReq),
+            accessToken: interpolate(currentReq.auth.accessToken || '', currentReq)
           }
         : undefined
 
@@ -269,7 +275,7 @@ export const CollectionRunnerModal: React.FC<Props> = ({
           for (const rule of currentReq.responseExtractions) {
             const value = rule.source === 'header'
               ? res.headers?.[rule.path] ?? res.headers?.[rule.path.toLowerCase()]
-              : String(rule.path || '').split('.').filter(Boolean).reduce((current: any, key: string) => current == null ? undefined : current[key], res.data)
+              : queryJsonPath(res.data, rule.path)
             if (value !== undefined && value !== null && rule.variable) {
               const text = typeof value === 'string' ? value : JSON.stringify(value)
               const existing = activeEnv.variables.find((v) => v.key === rule.variable)

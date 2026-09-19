@@ -1,6 +1,6 @@
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS'
 
-export type AuthType = 'none' | 'bearer' | 'basic' | 'api-key'
+export type AuthType = 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2'
 
 export interface AuthConfig {
   type: AuthType
@@ -10,6 +10,12 @@ export interface AuthConfig {
   key?: string
   value?: string
   in?: 'header' | 'query'
+  grantType?: 'client_credentials' | 'password'
+  tokenUrl?: string
+  clientId?: string
+  clientSecret?: string
+  scope?: string
+  accessToken?: string
 }
 
 export interface ResponseExtraction {

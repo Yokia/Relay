@@ -16,6 +16,7 @@ import { ResponseData, ResponseRun } from '../types'
 import { CodeEditor } from './CodeEditor'
 import { ResponseDiffModal } from './ResponseDiffModal'
 import { useI18n } from '../i18n'
+import { queryJsonPath } from '../utils/jsonPath'
 
 interface Props {
   response: ResponseData | null
@@ -139,7 +140,7 @@ export const ResponseViewer: React.FC<Props> = ({
     : (bodyFormat === 'pretty' ? bodyString : rawString)
   const queryJsonPath = () => {
     if (!jsonPath.trim()) return ''
-    const value = jsonPath.replace(/^\$\.?/, '').split('.').filter(Boolean).reduce((current: any, key) => current == null ? undefined : current[key], displayResponse.data)
+    const value = queryJsonPath(displayResponse.data, jsonPath)
     return value === undefined ? 'Not found' : typeof value === 'string' ? value : JSON.stringify(value, null, 2)
   }
 

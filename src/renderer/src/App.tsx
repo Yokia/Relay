@@ -19,6 +19,7 @@ import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, Co
 import { stripJsonComments } from './utils/jsonUtils'
 import { mergeCollections, mergeConstants, mergeEnvironments, ParsedImportData } from './utils/dataTransferUtils'
 import { executePreRequestScript, executeTestScript } from './utils/scriptEngine'
+import { queryJsonPath } from './utils/jsonPath'
 import { I18nProvider, useI18n } from './i18n'
 import { ThemeProvider } from './theme'
 import { Sun, Moon, Search, History, Zap, HelpCircle, Sparkles } from 'lucide-react'
@@ -835,7 +836,12 @@ function MainApp({
           username: interpolate(effectiveRequest.auth.username || '', effectiveRequest),
           password: interpolate(effectiveRequest.auth.password || '', effectiveRequest),
           key: interpolate(effectiveRequest.auth.key || '', effectiveRequest),
-          value: interpolate(effectiveRequest.auth.value || '', effectiveRequest)
+          value: interpolate(effectiveRequest.auth.value || '', effectiveRequest),
+          tokenUrl: interpolate(effectiveRequest.auth.tokenUrl || '', effectiveRequest),
+          clientId: interpolate(effectiveRequest.auth.clientId || '', effectiveRequest),
+          clientSecret: interpolate(effectiveRequest.auth.clientSecret || '', effectiveRequest),
+          scope: interpolate(effectiveRequest.auth.scope || '', effectiveRequest),
+          accessToken: interpolate(effectiveRequest.auth.accessToken || '', effectiveRequest)
         }
       : undefined
 
@@ -872,10 +878,7 @@ function MainApp({
           if (rule.source === 'header') {
             value = fullRes.headers?.[rule.path] ?? fullRes.headers?.[rule.path.toLowerCase()]
           } else {
-            value = String(rule.path || '')
-              .split('.')
-              .filter(Boolean)
-              .reduce((current: any, key: string) => current == null ? undefined : current[key], fullRes.data)
+            value = queryJsonPath(fullRes.data, rule.path)
           }
           if (value !== undefined && value !== null) extracted.push({ key: rule.variable, value: typeof value === 'string' ? value : JSON.stringify(value) })
         }

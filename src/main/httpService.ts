@@ -15,13 +15,19 @@ export interface RequestPayload {
   timeout?: number
   rejectUnauthorized?: boolean
   auth?: {
-    type: 'none' | 'bearer' | 'basic' | 'api-key'
+    type: 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2'
     token?: string
     username?: string
     password?: string
     key?: string
     value?: string
     in?: 'header' | 'query'
+    grantType?: 'client_credentials' | 'password'
+    tokenUrl?: string
+    clientId?: string
+    clientSecret?: string
+    scope?: string
+    accessToken?: string
   }
 }
 
@@ -186,7 +192,34 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
   }
 
   const auth = req.auth
-  if (auth?.type === 'bearer' && auth.token) {
+  if (auth?.type === 'oauth2' && !auth.accessToken && auth.tokenUrl && auth.clientId) {
+    try {
+      const tokenParams = new URLSearchParams({
+        grant_type: auth.grantType || 'client_credentials',
+        client_id: auth.clientId,
+        client_secret: auth.clientSecret || ''
+      })
+      if (auth.grantType === 'password') {
+        tokenParams.set('username', auth.username || '')
+        tokenParams.set('password', auth.password || '')
+      }
+      if (auth.scope) tokenParams.set('scope', auth.scope)
+      const tokenResponse = await axios.post(auth.tokenUrl, tokenParams.toString(), {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: req.timeout || 30000,
+        validateStatus: () => true
+      })
+      if (tokenResponse.status >= 200 && tokenResponse.status < 300 && tokenResponse.data?.access_token) {
+        auth.accessToken = tokenResponse.data.access_token
+      }
+    } catch {
+      // The main request below will return the original network/auth error.
+    }
+  }
+  if (auth?.type === 'oauth2' && auth.accessToken) {
+    headers.Authorization = `Bearer ${auth.accessToken}`
+  }
+  else if (auth?.type === 'bearer' && auth.token) {
     headers.Authorization = `Bearer ${auth.token}`
   } else if (auth?.type === 'basic' && (auth.username || auth.password)) {
     headers.Authorization = `Basic ${Buffer.from(`${auth.username || ''}:${auth.password || ''}`).toString('base64')}`
