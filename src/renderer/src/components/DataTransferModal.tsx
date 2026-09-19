@@ -591,7 +591,7 @@ export const DataTransferModal: React.FC<Props> = ({
                       {t('dataTransfer.dragDropOrBrowse')}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      支持 Relay 备份文件 (.json) 及 Postman Collection (v2/v2.1)
+                      {t('dataTransfer.supportFilesTip')}
                     </p>
                   </div>
                   <button
@@ -646,8 +646,8 @@ export const DataTransferModal: React.FC<Props> = ({
                         {parsedData.kind === 'postman'
                           ? 'Postman Collection'
                           : parsedData.kind === 'backup'
-                          ? 'Relay 完整备份'
-                          : 'Relay 集合/配置'}
+                          ? t('dataTransfer.fullBackup')
+                          : t('dataTransfer.collectionsConfig')}
                         )
                       </span>
                     </div>

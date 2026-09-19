@@ -7,6 +7,7 @@ export const api = {
   openExternal: (url: string) => ipcRenderer.invoke('relay:open-external', url),
   openResponseWindow: (payload: any) => ipcRenderer.invoke('relay:open-response-window', payload),
   openHistoryWindow: () => ipcRenderer.invoke('relay:open-history-window'),
+  openHelpWindow: () => ipcRenderer.invoke('relay:open-help-window'),
   openRequestInMain: (req: any) => ipcRenderer.invoke('relay:open-request-in-main', req),
   onLoadRequestFromHistory: (callback: (req: any) => void) => {
     const listener = (_: any, req: any) => callback(req)

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import { ResponsePopoutWindow } from './components/ResponsePopoutWindow'
 import { HistoryPopoutWindow } from './components/HistoryPopoutWindow'
+import { HelpPopoutWindow } from './components/HelpPopoutWindow'
 import './index.css'
 
 const urlParams = new URLSearchParams(window.location.search)
@@ -14,6 +15,8 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <ResponsePopoutWindow />
     ) : view === 'history-popout' ? (
       <HistoryPopoutWindow />
+    ) : view === 'help-window' ? (
+      <HelpPopoutWindow />
     ) : (
       <App />
     )}

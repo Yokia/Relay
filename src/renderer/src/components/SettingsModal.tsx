@@ -12,7 +12,8 @@ import {
   Keyboard,
   Sliders,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  BookOpen
 } from 'lucide-react'
 import { Language, Theme, AppSettings } from '../types'
 import { useI18n } from '../i18n'
@@ -161,6 +162,29 @@ export const SettingsModal: React.FC<Props> = ({
                       <option value="en-US">English</option>
                     </select>
                   </div>
+                </div>
+
+                {/* User Guide Card */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-1.5 font-semibold text-slate-200">
+                      <BookOpen className="w-3.5 h-3.5 text-sky-400" />
+                      <span>{t('help.title')}</span>
+                    </div>
+                    <span className="text-slate-400 text-[11px]">{t('help.guideDesc')}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.electronAPI?.openHelpWindow) {
+                        window.electronAPI.openHelpWindow()
+                      }
+                    }}
+                    className="px-2.5 py-1 text-xs rounded bg-sky-500 hover:bg-sky-600 text-white font-medium transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
+                  >
+                    <span>{t('help.openInNewWindow')}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </button>
                 </div>
               </div>
             )}

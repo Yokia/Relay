@@ -18,7 +18,7 @@ import { stripJsonComments } from './utils/jsonUtils'
 import { mergeCollections, mergeConstants, mergeEnvironments, ParsedImportData } from './utils/dataTransferUtils'
 import { I18nProvider, useI18n } from './i18n'
 import { ThemeProvider } from './theme'
-import { Sun, Moon, Search, History, Zap } from 'lucide-react'
+import { Sun, Moon, Search, History, Zap, HelpCircle } from 'lucide-react'
 import {
   findCollectionInTree,
   findRequestInTree,
@@ -1315,6 +1315,21 @@ function MainApp({
 
   const renderTopRightToolbar = () => (
     <div className="flex items-center gap-2 text-xs">
+      {/* Help / User Guide */}
+      <button
+        type="button"
+        onClick={() => {
+          if (window.electronAPI?.openHelpWindow) {
+            window.electronAPI.openHelpWindow()
+          }
+        }}
+        className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-300 border border-slate-800/80 transition-colors cursor-pointer"
+        title={t('help.title')}
+      >
+        <HelpCircle className="w-3.5 h-3.5 text-sky-400" />
+        <span className="text-[11px] font-medium">{t('help.btnText')}</span>
+      </button>
+
       {/* Theme Toggle */}
       <button
         type="button"
@@ -1424,7 +1439,7 @@ function MainApp({
       <div
         onMouseDown={handleSidebarMouseDown}
         className="w-1 hover:w-1.5 bg-slate-800 hover:bg-sky-500 cursor-col-resize flex items-center justify-center transition-colors group select-none shrink-0 z-20"
-        title="拖动调整侧边栏宽度"
+        title={t('common.resizeSidebar')}
       >
         <div className="w-0.5 h-6 bg-slate-600 group-hover:bg-white rounded-full transition-colors opacity-0 group-hover:opacity-100" />
       </div>

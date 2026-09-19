@@ -23,7 +23,10 @@ export const enUS: TranslationSchema = {
     theme: 'Theme',
     themeDark: 'Dark Theme',
     themeLight: 'Light Theme',
-    toggleTheme: 'Toggle Light/Dark Theme'
+    toggleTheme: 'Toggle Light/Dark Theme',
+    refresh: 'Refresh',
+    resizeSidebar: 'Drag to resize sidebar width',
+    all: 'All'
   },
   sidebar: {
     collections: 'Collections',
@@ -103,7 +106,9 @@ export const enUS: TranslationSchema = {
     noMatchingConstants: 'No matching constants',
     manageConstantsBtn: 'Constants',
     constantsBtn: 'Constants',
-    constantsTip: 'Manage constants and candidate values'
+    constantsTip: 'Manage constants and candidate values',
+    requestNamePlaceholder: 'Request Name',
+    unsavedChanges: 'Unsaved changes'
   },
   editor: {
     params: 'Params',
@@ -208,6 +213,19 @@ export const enUS: TranslationSchema = {
     closeTip: 'Close',
     inCollection: 'Folder'
   },
+  help: {
+    title: 'User Guide & Help Center',
+    btnText: 'Help',
+    searchPlaceholder: 'Search features, tips, or keywords...',
+    quickJump: 'Table of Contents',
+    docsTitle: 'Relay Comprehensive User Guide & Docs',
+    docsSubtitle: 'Lightweight API Client · Documentation',
+    allTopics: 'All Topics',
+    noResults: 'No relevant help content found',
+    openInNewWindow: 'Open in New Window',
+    guideDesc: 'Comprehensive visual user guide, tips & troubleshooting',
+    filtered: 'Filtered'
+  },
   shortcuts: {
     title: 'Global & Common Shortcuts',
     desc: 'Master these keyboard shortcuts to supercharge your daily API development and testing workflow:',
@@ -264,7 +282,10 @@ export const enUS: TranslationSchema = {
     overwriteConfirmTitle: 'Confirm Overwrite All Data?',
     overwriteConfirmMsg: 'Warning: Overwriting will clear all current collections, requests, constants, and environments in this app and replace them with the imported file. This action cannot be undone. Continue?',
     noDataToImport: 'Please choose a file or paste JSON data first',
-    invalidFormat: 'Unrecognized file format. Please ensure it is a Relay backup or Postman Collection.'
+    invalidFormat: 'Unrecognized file format. Please ensure it is a Relay backup or Postman Collection.',
+    supportFilesTip: 'Supports Relay backup files (.json) and Postman Collections (v2/v2.1)',
+    fullBackup: 'Relay Full Backup',
+    collectionsConfig: 'Relay Collections/Config'
   },
   constantsModal: {
     title: 'Custom Constants Management',
@@ -354,7 +375,12 @@ export const enUS: TranslationSchema = {
     iteration: 'Run',
     smokeReportTitle: 'API Smoke Regression Test Report',
     openInNewWindow: 'Open in new window',
-    runnerSubtitle: '{total} request(s) total · {selected} in queue'
+    runnerSubtitle: '{total} request(s) total · {selected} in queue',
+    queueDesc: 'Select requests to include in this batch execution. Exclude requests if needed:',
+    notStartedTip: 'Test not started yet. Click "Start Run" above to begin.',
+    markdownAbnormalTitle: 'Failed Requests List',
+    markdownAllPassed: '🎉 All requests passed successfully without errors.',
+    duration: 'Duration'
   },
   historyWindow: {
     title: 'Request History',

@@ -203,6 +203,32 @@ app.whenReady().then(() => {
     return true
   })
 
+  ipcMain.handle('relay:open-help-window', async () => {
+    const helpWindow = new BrowserWindow({
+      width: 1150,
+      height: 780,
+      minWidth: 800,
+      minHeight: 550,
+      title: 'Relay - 用户使用指南与帮助中心',
+      autoHideMenuBar: true,
+      backgroundColor: '#0f172a',
+      webPreferences: {
+        preload: join(__dirname, '../preload/index.js'),
+        sandbox: false
+      }
+    })
+
+    const isDev = !app.isPackaged
+    if (isDev && process.env['ELECTRON_RENDERER_URL']) {
+      helpWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?view=help-window`)
+    } else {
+      helpWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+        query: { view: 'help-window' }
+      })
+    }
+    return true
+  })
+
   ipcMain.handle('relay:open-request-in-main', (_, req: any) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('relay:load-request-from-history', req)

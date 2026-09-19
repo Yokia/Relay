@@ -416,11 +416,11 @@ export const RequestHeader: React.FC<Props> = ({
             type="text"
             value={request.name}
             onChange={(e) => onChange({ name: e.target.value })}
-            placeholder="Request Name"
+            placeholder={t('header.requestNamePlaceholder')}
             className="bg-transparent text-sm font-semibold text-slate-200 focus:outline-none focus:border-b border-sky-500 px-1 py-0.5 w-64 truncate"
           />
           {isDirty && !autoSave && (
-            <span className="w-2 h-2 rounded-full bg-amber-400" title="Unsaved changes" />
+            <span className="w-2 h-2 rounded-full bg-amber-400" title={t('header.unsavedChanges')} />
           )}
         </div>
 

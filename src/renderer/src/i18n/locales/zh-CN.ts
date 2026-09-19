@@ -23,7 +23,10 @@ export const zhCN: TranslationSchema = {
     theme: '主题',
     themeDark: '深色主题',
     themeLight: '浅色主题',
-    toggleTheme: '切换浅色/深色主题'
+    toggleTheme: '切换浅色/深色主题',
+    refresh: '刷新',
+    resizeSidebar: '拖动调整侧边栏宽度',
+    all: '全部'
   },
   sidebar: {
     collections: '集合',
@@ -103,7 +106,9 @@ export const zhCN: TranslationSchema = {
     noMatchingConstants: '无匹配常量',
     manageConstantsBtn: '常量管理',
     constantsBtn: '常量',
-    constantsTip: '管理自定义常量与候选值'
+    constantsTip: '管理自定义常量与候选值',
+    requestNamePlaceholder: '接口请求名称',
+    unsavedChanges: '存在未保存的修改'
   },
   editor: {
     params: 'Params 参数',
@@ -208,6 +213,19 @@ export const zhCN: TranslationSchema = {
     closeTip: '关闭面板',
     inCollection: '所属目录'
   },
+  help: {
+    title: '用户使用手册与帮助中心',
+    btnText: '帮助',
+    searchPlaceholder: '搜索功能说明、操作技巧或关键词...',
+    quickJump: '目录导航',
+    docsTitle: 'Relay 完整使用指南与功能手册',
+    docsSubtitle: '轻量高性能 API 调试客户端 · 使用手册',
+    allTopics: '全部主题',
+    noResults: '未找到相关帮助内容，请更换关键词',
+    openInNewWindow: '在新窗口打开',
+    guideDesc: '查看全功能图文操作手册、效率技巧与排错指南',
+    filtered: '已筛选'
+  },
   shortcuts: {
     title: '全局与常用快捷键',
     desc: '熟练使用快捷键可显著提升日常 API 调试与联调测试效率：',
@@ -264,7 +282,10 @@ export const zhCN: TranslationSchema = {
     overwriteConfirmTitle: '确认完全覆盖数据？',
     overwriteConfirmMsg: '警告：覆盖导入将会清空当前客户端的所有集合、接口、常量和环境变量，并替换为导入文件中的内容！此操作不可撤销，是否继续？',
     noDataToImport: '请先选择文件或粘贴 JSON 数据',
-    invalidFormat: '无法识别该文件格式，请确保为 Relay 备份文件或 Postman Collection。'
+    invalidFormat: '无法识别该文件格式，请确保为 Relay 备份文件或 Postman Collection。',
+    supportFilesTip: '支持 Relay 备份文件 (.json) 及 Postman Collection (v2/v2.1)',
+    fullBackup: 'Relay 完整备份',
+    collectionsConfig: 'Relay 集合/配置'
   },
   constantsModal: {
     title: '自定义常量管理',
@@ -354,7 +375,12 @@ export const zhCN: TranslationSchema = {
     iteration: '运行',
     smokeReportTitle: '接口冒烟回归测试报告',
     openInNewWindow: '在新窗口打开查看',
-    runnerSubtitle: '共 {total} 个请求 · 待运行 {selected} 个'
+    runnerSubtitle: '共 {total} 个请求 · 待运行 {selected} 个',
+    queueDesc: '勾选需要参与本次批量运行的接口。在运行前可根据需要临时排除部分无需测试的接口：',
+    notStartedTip: '尚未开始测试，点击上方“开始运行”启动批量测试',
+    markdownAbnormalTitle: '异常接口清单',
+    markdownAllPassed: '🎉 全部接口测试通过，未发现异常接口。',
+    duration: '耗时'
   },
   historyWindow: {
     title: '历史请求记录',

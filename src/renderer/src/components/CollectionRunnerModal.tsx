@@ -434,12 +434,12 @@ export const CollectionRunnerModal: React.FC<Props> = ({
     md += `- **${t('runner.statusCodeDistribution')}**: ${statusCodesText || '-'}\n\n`
 
     if (failedItems.length > 0) {
-      md += `#### ⚠️ 异常接口清单 (${failedItems.length}):\n`
+      md += `#### ⚠️ ${t('runner.markdownAbnormalTitle')} (${failedItems.length}):\n`
       failedItems.forEach((f) => {
-        md += `- ❌ **${f.method}** ${f.requestName} (${f.url}) -> [${f.status} ${f.statusText || ''}] 耗时:${f.time}ms ${f.error ? `Error: ${f.error}` : ''}\n`
+        md += `- ❌ **${f.method}** ${f.requestName} (${f.url}) -> [${f.status} ${f.statusText || ''}] ${t('runner.duration')}:${f.time}ms ${f.error ? `Error: ${f.error}` : ''}\n`
       })
     } else {
-      md += `🎉 全部接口测试通过，未发现异常接口。\n`
+      md += `${t('runner.markdownAllPassed')}\n`
     }
 
     navigator.clipboard.writeText(md)
@@ -684,7 +684,7 @@ export const CollectionRunnerModal: React.FC<Props> = ({
           {viewTab === 'queue' && (
             <div className="flex flex-col gap-2">
               <div className="text-xs text-slate-400 mb-1">
-                勾选需要参与本次批量运行的接口。在运行前可根据需要临时排除部分无需测试的接口：
+                {t('runner.queueDesc')}
               </div>
               <div className="divide-y divide-slate-800/80 border border-slate-800 rounded-lg overflow-hidden bg-slate-950/40">
                 {requests.length === 0 ? (
@@ -857,7 +857,7 @@ export const CollectionRunnerModal: React.FC<Props> = ({
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      全部 ({results.length})
+                      {t('common.all')} ({results.length})
                     </button>
                     <button
                       type="button"
@@ -868,7 +868,7 @@ export const CollectionRunnerModal: React.FC<Props> = ({
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      成功 ({summary.passed})
+                      {t('runner.passed')} ({summary.passed})
                     </button>
                     <button
                       type="button"
@@ -879,7 +879,7 @@ export const CollectionRunnerModal: React.FC<Props> = ({
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      失败 ({summary.failed})
+                      {t('runner.failed')} ({summary.failed})
                     </button>
                   </div>
                 </div>
@@ -889,7 +889,7 @@ export const CollectionRunnerModal: React.FC<Props> = ({
                   {results.length === 0 && !isRunning && (
                     <div className="py-12 text-center text-xs text-slate-500 flex flex-col items-center gap-3">
                       <Play className="w-8 h-8 text-slate-600 stroke-[1.5]" />
-                      <span>尚未开始测试，点击上方“开始运行”启动批量测试</span>
+                      <span>{t('runner.notStartedTip')}</span>
                     </div>
                   )}
 

@@ -24,6 +24,9 @@ export interface TranslationSchema {
     themeDark: string
     themeLight: string
     toggleTheme: string
+    refresh: string
+    resizeSidebar: string
+    all: string
   }
   sidebar: {
     collections: string
@@ -104,6 +107,8 @@ export interface TranslationSchema {
     manageConstantsBtn: string
     constantsBtn: string
     constantsTip: string
+    requestNamePlaceholder: string
+    unsavedChanges: string
   }
   editor: {
     params: string
@@ -208,6 +213,19 @@ export interface TranslationSchema {
     closeTip: string
     inCollection: string
   }
+  help: {
+    title: string
+    btnText: string
+    searchPlaceholder: string
+    quickJump: string
+    docsTitle: string
+    docsSubtitle: string
+    allTopics: string
+    noResults: string
+    openInNewWindow: string
+    guideDesc: string
+    filtered: string
+  }
   shortcuts: {
     title: string
     desc: string
@@ -265,6 +283,9 @@ export interface TranslationSchema {
     overwriteConfirmMsg: string
     noDataToImport: string
     invalidFormat: string
+    supportFilesTip: string
+    fullBackup: string
+    collectionsConfig: string
   }
   constantsModal: {
     title: string
@@ -355,6 +376,11 @@ export interface TranslationSchema {
     smokeReportTitle: string
     openInNewWindow: string
     runnerSubtitle: string
+    queueDesc: string
+    notStartedTip: string
+    markdownAbnormalTitle: string
+    markdownAllPassed: string
+    duration: string
   }
   historyWindow: {
     title: string

@@ -297,7 +297,7 @@ function HistoryPopoutContent() {
             type="button"
             onClick={loadHistory}
             className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition-colors cursor-pointer"
-            title="刷新"
+            title={t('common.refresh')}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
