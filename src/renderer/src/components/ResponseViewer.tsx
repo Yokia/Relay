@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   Copy,
   Check,
@@ -30,6 +30,30 @@ interface Props {
   requestName?: string
 }
 
+function buildJsonPathSuggestions(value: any, maxDepth = 4): string[] {
+  const paths: string[] = []
+  const visit = (current: any, path: string, depth: number) => {
+    if (depth > maxDepth || current === null || current === undefined || paths.length >= 200) return
+    if (Array.isArray(current)) {
+      current.slice(0, 10).forEach((item, index) => {
+        const childPath = `${path}[${index}]`
+        paths.push(childPath)
+        visit(item, childPath, depth + 1)
+      })
+      return
+    }
+    if (typeof current !== 'object') return
+    Object.keys(current).forEach((key) => {
+      if (paths.length >= 200) return
+      const childPath = /^[A-Za-z_$][\w$]*$/.test(key) ? `${path}.${key}` : `${path}['${key.replace(/'/g, "\\'")}']`
+      paths.push(childPath)
+      visit(current[key], childPath, depth + 1)
+    })
+  }
+  visit(value, '$', 0)
+  return paths
+}
+
 export const ResponseViewer: React.FC<Props> = ({
   response,
   isLoading,
@@ -50,10 +74,16 @@ export const ResponseViewer: React.FC<Props> = ({
   const [isDiffOpen, setIsDiffOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [jsonPath, setJsonPath] = useState('')
+  const [isJsonPathFocused, setIsJsonPathFocused] = useState(false)
 
   // Determine active response: either from selected run or direct response prop
   const activeRun = runs.find((r) => r.id === selectedRunId) || runs[0]
   const displayResponse = activeRun ? activeRun.response : response
+  const jsonPathSuggestions = useMemo(() => {
+    if (!isJsonPathFocused || !displayResponse || typeof displayResponse.data !== 'object' || displayResponse.data === null) return []
+    const query = jsonPath.trim().toLowerCase()
+    return buildJsonPathSuggestions(displayResponse.data).filter((path) => !query || path.toLowerCase().includes(query)).slice(0, 12)
+  }, [displayResponse, isJsonPathFocused, jsonPath])
 
   if (isLoading) {
     return (
@@ -143,7 +173,6 @@ export const ResponseViewer: React.FC<Props> = ({
     const value = queryJsonPath(displayResponse.data, jsonPath)
     return value === undefined ? 'Not found' : typeof value === 'string' ? value : JSON.stringify(value, null, 2)
   }
-
   const handleCopy = () => {
     navigator.clipboard.writeText(bodyFormat === 'pretty' ? bodyString : rawString)
     setCopied(true)
@@ -398,9 +427,35 @@ export const ResponseViewer: React.FC<Props> = ({
 
         {activeTab === 'body' && (
           <div className="flex-1 h-full min-h-0">
-            <div className="flex items-center gap-2 mb-2">
-              <input value={jsonPath} onChange={(e) => setJsonPath(e.target.value)} placeholder="JSONPath: data.token or $.data.token" className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-sky-500" />
-              {jsonPath && <div className="max-w-[45%] max-h-14 overflow-auto whitespace-pre-wrap rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 text-[11px] text-emerald-300 font-mono">{getJsonPathResult()}</div>}
+            <div className="relative flex items-center gap-2 mb-2 z-20">
+              <input
+                value={jsonPath}
+                onChange={(e) => setJsonPath(e.target.value)}
+                onFocus={() => setIsJsonPathFocused(true)}
+                onBlur={() => window.setTimeout(() => setIsJsonPathFocused(false), 150)}
+                placeholder="JSONPath: data.token or $.data.token"
+                className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-sky-500"
+              />
+              {(isJsonPathFocused && jsonPathSuggestions.length > 0) || jsonPath ? (
+                <div className="absolute top-full left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 shadow-2xl text-[11px] font-mono">
+                  {isJsonPathFocused && jsonPathSuggestions.length > 0 && (
+                    <div className="p-1 border-b border-slate-800">
+                      <div className="px-2 py-1 text-[10px] text-slate-500 font-sans">可选字段</div>
+                      {jsonPathSuggestions.map((path) => (
+                        <button key={path} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setJsonPath(path); setIsJsonPathFocused(false) }} className="block w-full text-left px-2 py-1.5 rounded text-slate-300 hover:bg-sky-500/15 hover:text-sky-300 truncate">
+                          {path}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {jsonPath && (
+                    <div className="p-2 whitespace-pre-wrap break-all select-text cursor-text text-emerald-700 dark:text-emerald-300">
+                      <div className="mb-1 text-[10px] text-slate-500 font-sans">查询结果</div>
+                      {getJsonPathResult()}
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
             <CodeEditor
               value={searchedBody}
