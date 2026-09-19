@@ -5,10 +5,11 @@ import { executeRequest, RequestPayload } from './httpService'
 import { StorageService } from './storage'
 
 let storage: StorageService
+let mainWindow: BrowserWindow | null = null
 const popoutDataMap = new Map<number, any>()
 
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 900,
@@ -23,8 +24,14 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
-    mainWindow.focus()
+    if (mainWindow) {
+      mainWindow.show()
+      mainWindow.focus()
+    }
+  })
+
+  mainWindow.on('closed', () => {
+    mainWindow = null
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -95,6 +102,48 @@ app.whenReady().then(() => {
       popWindow.loadFile(join(__dirname, '../renderer/index.html'), {
         query: { view: 'response-popout', winId: String(winId) }
       })
+    }
+    return true
+  })
+
+  ipcMain.handle('relay:open-history-window', async () => {
+    const histWindow = new BrowserWindow({
+      width: 1100,
+      height: 720,
+      minWidth: 700,
+      minHeight: 500,
+      title: 'Relay - Request History',
+      autoHideMenuBar: true,
+      backgroundColor: '#0f172a',
+      webPreferences: {
+        preload: join(__dirname, '../preload/index.js'),
+        sandbox: false
+      }
+    })
+
+    const isDev = !app.isPackaged
+    if (isDev && process.env['ELECTRON_RENDERER_URL']) {
+      histWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?view=history-popout`)
+    } else {
+      histWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+        query: { view: 'history-popout' }
+      })
+    }
+    return true
+  })
+
+  ipcMain.handle('relay:open-request-in-main', (_, req: any) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('relay:load-request-from-history', req)
+      mainWindow.focus()
+      return true
+    }
+    return false
+  })
+
+  ipcMain.handle('relay:notify-history-updated', (_, hist: any[]) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('relay:history-updated', hist)
     }
     return true
   })

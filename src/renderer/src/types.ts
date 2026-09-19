@@ -34,6 +34,7 @@ export interface HistoryItem {
   status: number
   time: number
   timestamp: number
+  response?: ResponseData
 }
 
 export interface EnvVariable {

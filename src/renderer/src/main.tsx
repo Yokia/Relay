@@ -2,13 +2,20 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import { ResponsePopoutWindow } from './components/ResponsePopoutWindow'
+import { HistoryPopoutWindow } from './components/HistoryPopoutWindow'
 import './index.css'
 
 const urlParams = new URLSearchParams(window.location.search)
-const isPopoutView = urlParams.get('view') === 'response-popout'
+const view = urlParams.get('view')
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    {isPopoutView ? <ResponsePopoutWindow /> : <App />}
+    {view === 'response-popout' ? (
+      <ResponsePopoutWindow />
+    ) : view === 'history-popout' ? (
+      <HistoryPopoutWindow />
+    ) : (
+      <App />
+    )}
   </React.StrictMode>
 )

@@ -18,7 +18,7 @@ import { stripJsonComments } from './utils/jsonUtils'
 import { mergeCollections, mergeConstants, mergeEnvironments, ParsedImportData } from './utils/dataTransferUtils'
 import { I18nProvider, useI18n } from './i18n'
 import { ThemeProvider } from './theme'
-import { Sun, Moon } from 'lucide-react'
+import { Sun, Moon, Search, History, Zap } from 'lucide-react'
 import {
   findCollectionInTree,
   findRequestInTree,
@@ -416,6 +416,36 @@ function MainApp({
     }
   }
 
+  // Listen for requests and history sync from History Window
+  useEffect(() => {
+    if (window.electronAPI) {
+      let unsub1: (() => void) | undefined
+      let unsub2: (() => void) | undefined
+
+      if (window.electronAPI.onLoadRequestFromHistory) {
+        unsub1 = window.electronAPI.onLoadRequestFromHistory((req: RequestItem) => {
+          if (req) {
+            handleSelectRequest(req)
+            addToast(t('historyWindow.loadedIntoWorkspace'), 'success')
+          }
+        })
+      }
+
+      if (window.electronAPI.onHistoryUpdated) {
+        unsub2 = window.electronAPI.onHistoryUpdated((newHist: HistoryItem[]) => {
+          if (Array.isArray(newHist)) {
+            setHistory(newHist)
+          }
+        })
+      }
+
+      return () => {
+        if (unsub1) unsub1()
+        if (unsub2) unsub2()
+      }
+    }
+  }, [handleSelectRequest, t])
+
   // Multi-Tab Handlers
   const handleSelectTab = (tabId: string) => {
     const targetTab = tabs.find((t) => t.id === tabId)
@@ -760,17 +790,63 @@ function MainApp({
       })
       setSelectedRunIdMap((prev) => ({ ...prev, [reqId]: newRun.id }))
 
-      // Append to global history
+      // Append to global history (saves previewed URL, resolved parameters and safe response snapshot)
+      const historyRequest: RequestItem = {
+        ...JSON.parse(JSON.stringify(currentRequest)),
+        url: processedUrl,
+        headers: processedHeaders,
+        params: processedParams,
+        bodyRaw: processedBodyRaw
+      }
+
+      // Safe response snapshot with truncation guard to avoid bloating storage
+      const safeResponseSnapshot: ResponseData = {
+        status: res.status,
+        statusText: res.statusText,
+        headers: res.headers || {},
+        time: res.time,
+        size: res.size,
+        contentType: res.contentType,
+        error: res.error,
+        data: (() => {
+          if (typeof res.data === 'string') {
+            if (res.data.length > 256 * 1024) {
+              return res.data.slice(0, 256 * 1024) + '\n\n...[Response truncated to save storage space]'
+            }
+            return res.data
+          }
+          if (res.data && typeof res.data === 'object') {
+            try {
+              const str = JSON.stringify(res.data)
+              if (str.length > 256 * 1024) {
+                return {
+                  _truncated: true,
+                  _message: 'Response payload exceeded 256KB, preview truncated for storage optimization',
+                  _preview: str.slice(0, 32 * 1024)
+                }
+              }
+            } catch {
+              // ignore
+            }
+          }
+          return res.data
+        })()
+      }
+
       const newHistoryItem: HistoryItem = {
         id: 'hist-' + Date.now(),
-        request: JSON.parse(JSON.stringify(currentRequest)),
+        request: historyRequest,
         status: res.status,
         time: res.time,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        response: safeResponseSnapshot
       }
       const nextHistory = [newHistoryItem, ...history.slice(0, 49)]
       setHistory(nextHistory)
       persist({ history: nextHistory })
+      if (window.electronAPI?.notifyHistoryUpdated) {
+        window.electronAPI.notifyHistoryUpdated(nextHistory)
+      }
     } catch (err: any) {
       const errRes: ResponseData = {
         status: 0,
@@ -799,6 +875,27 @@ function MainApp({
         return updatedMap
       })
       setSelectedRunIdMap((prev) => ({ ...prev, [reqId]: errRun.id }))
+
+      const errHistoryItem: HistoryItem = {
+        id: 'hist-' + Date.now(),
+        request: {
+          ...JSON.parse(JSON.stringify(currentRequest)),
+          url: processedUrl,
+          headers: processedHeaders,
+          params: processedParams,
+          bodyRaw: processedBodyRaw
+        },
+        status: 0,
+        time: 0,
+        timestamp: Date.now(),
+        response: errRes
+      }
+      const nextHistory = [errHistoryItem, ...history.slice(0, 49)]
+      setHistory(nextHistory)
+      persist({ history: nextHistory })
+      if (window.electronAPI?.notifyHistoryUpdated) {
+        window.electronAPI.notifyHistoryUpdated(nextHistory)
+      }
     } finally {
       setIsLoading(false)
     }
@@ -1163,6 +1260,30 @@ function MainApp({
 
   const isCurrentDirty = dirtyIds.has(currentRequest.id)
 
+  const renderTopRightToolbar = () => (
+    <div className="flex items-center gap-2 text-xs">
+      {/* Theme Toggle */}
+      <button
+        type="button"
+        onClick={() => handleUpdateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
+        className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 transition-colors cursor-pointer"
+        title={t('common.toggleTheme')}
+      >
+        {settings.theme === 'light' ? (
+          <>
+            <Sun className="w-3.5 h-3.5 text-amber-500" />
+            <span className="text-[11px] font-medium">{t('settings.themeLight')}</span>
+          </>
+        ) : (
+          <>
+            <Moon className="w-3.5 h-3.5 text-sky-400" />
+            <span className="text-[11px] font-medium">{t('settings.themeDark')}</span>
+          </>
+        )}
+      </button>
+    </div>
+  )
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans text-slate-100">
       {/* Toast Notifications */}
@@ -1258,41 +1379,10 @@ function MainApp({
             onCloseTabsToRight={handleCloseTabsToRight}
             onCloseAllTabs={handleCloseAllTabs}
             onNewTab={handleNewTab}
-            extraRight={
-              <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                <button
-                  type="button"
-                  onClick={() => handleUpdateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
-                  className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 transition-colors"
-                  title={t('common.toggleTheme')}
-                >
-                  {settings.theme === 'light' ? (
-                    <>
-                      <Sun className="w-3.5 h-3.5 text-amber-500" />
-                      <span className="text-[10px] font-medium">{t('settings.themeLight')}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Moon className="w-3.5 h-3.5 text-sky-400" />
-                      <span className="text-[10px] font-medium">{t('settings.themeDark')}</span>
-                    </>
-                  )}
-                </button>
-                <span className="text-slate-700">|</span>
-                <kbd
-                  onClick={() => setIsCommandPaletteOpen(true)}
-                  className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 hover:text-sky-300 cursor-pointer rounded border border-slate-700 font-mono text-slate-400 transition-colors"
-                  title={t('shortcuts.quickOpen')}
-                >
-                  Ctrl+P
-                </kbd>
-                <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400">Ctrl+Enter</kbd>
-                <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400">Ctrl+S</kbd>
-              </div>
-            }
+            extraRight={renderTopRightToolbar()}
           />
         ) : (
-          <div className="h-8 border-b border-slate-800/80 flex items-center justify-between px-3 text-xs text-slate-500 bg-slate-950/30">
+          <div className="h-9 border-b border-slate-800/80 flex items-center justify-between px-3 text-xs text-slate-500 bg-slate-950/30">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sky-400">Relay</span>
               <span className="text-slate-600">/</span>
@@ -1303,36 +1393,7 @@ function MainApp({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-slate-500">
-              <button
-                type="button"
-                onClick={() => handleUpdateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
-                className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 transition-colors"
-                title={t('common.toggleTheme')}
-              >
-                {settings.theme === 'light' ? (
-                  <>
-                    <Sun className="w-3.5 h-3.5 text-amber-500" />
-                    <span className="text-[10px] font-medium">{t('settings.themeLight')}</span>
-                  </>
-                ) : (
-                  <>
-                    <Moon className="w-3.5 h-3.5 text-sky-400" />
-                    <span className="text-[10px] font-medium">{t('settings.themeDark')}</span>
-                  </>
-                )}
-              </button>
-              <span className="text-slate-700">|</span>
-              <kbd
-                onClick={() => setIsCommandPaletteOpen(true)}
-                className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 hover:text-sky-300 cursor-pointer rounded border border-slate-700 font-mono text-slate-400 transition-colors"
-                title={t('shortcuts.quickOpen')}
-              >
-                Ctrl+P
-              </kbd>
-              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400">Ctrl+Enter</kbd>
-              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400 ml-1">Ctrl+S</kbd>
-            </div>
+            {renderTopRightToolbar()}
           </div>
         )}
 
@@ -1353,6 +1414,13 @@ function MainApp({
           autoSave={settings.autoSave}
           onToggleAutoSave={() => handleUpdateSettings({ autoSave: !settings.autoSave })}
           resolvedUrl={interpolate(currentRequest.url, currentRequest)}
+          onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+          onOpenHistoryWindow={() => {
+            if (window.electronAPI?.openHistoryWindow) {
+              window.electronAPI.openHistoryWindow()
+            }
+          }}
+          historyCount={history.length}
         />
 
         {/* Split Container for Request & Response */}

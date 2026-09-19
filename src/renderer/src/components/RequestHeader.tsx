@@ -12,7 +12,9 @@ import {
   ChevronDown,
   X,
   Pencil,
-  Plus
+  Plus,
+  Search,
+  History
 } from 'lucide-react'
 import { HttpMethod, RequestItem, ConstantItem } from '../types'
 import { useI18n } from '../i18n'
@@ -31,8 +33,11 @@ interface Props {
   onOpenManageConstants: () => void
   isDirty?: boolean
   autoSave: boolean
-  onToggleAutoSave: () => void
+  onToggleAutoSave?: () => void
   resolvedUrl?: string
+  onOpenCommandPalette?: () => void
+  onOpenHistoryWindow?: () => void
+  historyCount?: number
 }
 
 interface UrlSegment {
@@ -125,7 +130,10 @@ export const RequestHeader: React.FC<Props> = ({
   isDirty = false,
   autoSave,
   onToggleAutoSave,
-  resolvedUrl: passedResolvedUrl
+  resolvedUrl: passedResolvedUrl,
+  onOpenCommandPalette,
+  onOpenHistoryWindow,
+  historyCount
 }) => {
   const { t } = useI18n()
   const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
@@ -417,31 +425,57 @@ export const RequestHeader: React.FC<Props> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Manage Constants Modal Trigger */}
+          {/* Global Search (Ctrl+P) */}
+          {onOpenCommandPalette && (
+            <button
+              type="button"
+              onClick={onOpenCommandPalette}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 hover:text-sky-300 border border-slate-700/80 text-slate-200 transition-colors shadow-sm cursor-pointer group text-xs"
+              title={t('shortcuts.quickOpen')}
+            >
+              <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-400 transition-colors" />
+              <span className="text-[11px] font-medium">{t('commandPalette.globalSearch')}</span>
+              <kbd className="px-1.5 py-0.2 text-[10px] bg-slate-900/90 text-slate-400 rounded border border-slate-700/80 font-mono">
+                Ctrl+P
+              </kbd>
+            </button>
+          )}
+
+          {/* History Request (Opens in dedicated new window) */}
+          {onOpenHistoryWindow && (
+            <button
+              type="button"
+              onClick={onOpenHistoryWindow}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 hover:text-sky-300 border border-slate-700/80 text-slate-200 transition-colors shadow-sm cursor-pointer group text-xs"
+              title={t('historyWindow.openInNewWindow')}
+            >
+              <History className="w-3.5 h-3.5 text-sky-400" />
+              <span className="text-[11px] font-medium">{t('sidebar.history')}</span>
+              {typeof historyCount === 'number' && historyCount > 0 && (
+                <span className="px-1.5 py-0.2 text-[10px] bg-sky-500/20 text-sky-300 rounded-full font-mono font-medium">
+                  {historyCount}
+                </span>
+              )}
+            </button>
+          )}
+
+          {/* Constants (Opens Constant Manager Modal) */}
           <button
             type="button"
             onClick={onOpenManageConstants}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 hover:text-amber-300 border border-slate-700/80 text-slate-200 transition-colors shadow-sm cursor-pointer group text-xs"
             title={t('header.constantsTip')}
-            className="flex items-center gap-1 text-xs text-slate-200 hover:text-slate-100 bg-slate-800 hover:bg-slate-700 border border-slate-700/80 px-2.5 py-1 rounded transition-colors shadow-sm"
           >
             <Zap className="w-3.5 h-3.5 text-amber-400" />
-            <span>{t('header.constantsBtn')}</span>
+            <span className="text-[11px] font-medium">{t('sidebar.constants')}</span>
+            {constants.length > 0 && (
+              <span className="px-1.5 py-0.2 text-[10px] bg-amber-500/20 text-amber-300 rounded-full font-mono font-medium">
+                {constants.length}
+              </span>
+            )}
           </button>
 
-          {/* Auto Save Status Badge & Toggle */}
-          <button
-            type="button"
-            onClick={onToggleAutoSave}
-            className={"flex items-center gap-1 text-[11px] px-2.5 py-1 rounded border transition-colors shadow-sm " +
-              (autoSave
-                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-semibold hover:bg-emerald-500/25"
-                : "bg-slate-800 hover:bg-slate-700 border-slate-700/80 text-slate-300 hover:text-slate-100")
-            }
-            title={autoSave ? t('header.autoSaveOnTip') : t('header.autoSaveOffTip')}
-          >
-            <Zap className={"w-3 h-3 " + (autoSave ? "text-emerald-400" : "text-slate-400")} />
-            <span>{t('header.autoSave')}: {autoSave ? 'ON' : 'OFF'}</span>
-          </button>
+          <span className="text-slate-700">|</span>
 
           {/* Export cURL */}
           <button

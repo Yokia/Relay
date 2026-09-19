@@ -200,6 +200,7 @@ export interface TranslationSchema {
     openBtn: string
   }
   commandPalette: {
+    globalSearch: string
     placeholder: string
     noResults: string
     navigateTip: string
@@ -354,6 +355,39 @@ export interface TranslationSchema {
     smokeReportTitle: string
     openInNewWindow: string
     runnerSubtitle: string
+  }
+  historyWindow: {
+    title: string
+    searchPlaceholder: string
+    allMethods: string
+    allStatuses: string
+    statusSuccess: string
+    statusError: string
+    clearAll: string
+    clearConfirmTitle: string
+    clearConfirmMsg: string
+    noHistory: string
+    noMatching: string
+    openInMain: string
+    openedInMain: string
+    requestParams: string
+    requestHeaders: string
+    requestBody: string
+    noParams: string
+    noHeaders: string
+    noBody: string
+    deleteItem: string
+    recordsCount: string
+    openInNewWindow: string
+    loadedIntoWorkspace: string
+    tabResponse: string
+    tabParams: string
+    tabHeaders: string
+    tabBody: string
+    tabResponseHeaders: string
+    responseSnapshotMissing: string
+    copyResponse: string
+    responseCopied: string
   }
   toast: {
     collectionCreated: string

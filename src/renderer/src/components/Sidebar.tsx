@@ -150,7 +150,6 @@ export const Sidebar: React.FC<Props> = ({
   onRunRequests
 }) => {
   const { t } = useI18n()
-  const [activeTab, setActiveTab] = useState<'collections' | 'history' | 'constants'>('collections')
   const [collapsedCols, setCollapsedCols] = useState<Record<string, boolean>>({})
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -284,7 +283,6 @@ export const Sidebar: React.FC<Props> = ({
     const newId = 'col-' + Date.now()
     const defaultName = t('sidebar.newCollection')
     onCreateCollection(defaultName, newId)
-    setActiveTab('collections')
     setCollapsedCols((prev) => ({ ...prev, [newId]: false }))
     setTimeout(() => {
       setEditingTarget({ type: 'collection', id: newId, name: defaultName })
@@ -295,7 +293,6 @@ export const Sidebar: React.FC<Props> = ({
     const newId = 'col-' + Date.now()
     const defaultName = t('sidebar.newSubCollection')
     onCreateSubCollection(parentColId, defaultName)
-    setActiveTab('collections')
     setCollapsedCols((prev) => ({ ...prev, [parentColId]: false }))
     setTimeout(() => {
       setEditingTarget({ type: 'collection', id: newId, name: defaultName })
@@ -729,240 +726,107 @@ export const Sidebar: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Switcher Tab: 3 tabs */}
-      <div className="flex border-b border-slate-800 text-[11px] font-medium text-slate-400">
-        <button
-          type="button"
-          onClick={() => setActiveTab('collections')}
-          className={"flex-1 py-2 flex items-center justify-center gap-1 border-b-2 transition-colors " +
-            (activeTab === 'collections'
-              ? "border-sky-500 text-sky-400 font-bold bg-sky-500/10"
-              : "border-transparent text-slate-300 hover:text-slate-100 hover:bg-slate-800/40")}
-        >
-          <Layers className="w-3 h-3" /> {t('sidebar.collections')}
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('constants')}
-          className={"flex-1 py-2 flex items-center justify-center gap-1 border-b-2 transition-colors " +
-            (activeTab === 'constants'
-              ? "border-sky-500 text-sky-400 font-bold bg-sky-500/10"
-              : "border-transparent text-slate-300 hover:text-slate-100 hover:bg-slate-800/40")}
-        >
-          <Zap className="w-3 h-3 text-amber-500 dark:text-amber-400" /> {t('sidebar.constants')}
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('history')}
-          className={"flex-1 py-2 flex items-center justify-center gap-1 border-b-2 transition-colors " +
-            (activeTab === 'history'
-              ? "border-sky-500 text-sky-400 font-bold bg-sky-500/10"
-              : "border-transparent text-slate-300 hover:text-slate-100 hover:bg-slate-800/40")}
-        >
-          <History className="w-3 h-3" /> {t('sidebar.history')}
-        </button>
-      </div>
-
       {/* Main List */}
       <div className="flex-1 overflow-y-auto p-2 min-h-0">
-        {activeTab === 'collections' && (
-          <div className="flex flex-col gap-1.5">
-            {/* Search Input */}
-            <div className="relative mb-1">
-              <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-slate-400" />
-              <input
-                type="text"
-                placeholder={t('sidebar.searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700/80 rounded pl-7 pr-7 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-sans"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-2 text-slate-400 hover:text-slate-200"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Collections Header with Expand/Collapse and New Collection */}
-            <div className="flex items-center justify-between px-1 py-0.5 text-[11px] font-semibold text-slate-300 uppercase tracking-wider">
-              <div className="flex items-center gap-1.5">
-                <span>{t('sidebar.collections')}</span>
-                <span className="text-[10px] text-slate-400 font-normal font-mono">({flattenAllCollections(collections).length})</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={toggleCollapseAll}
-                  title={isAllCollapsed ? t('sidebar.expandAll') : t('sidebar.collapseAll')}
-                  className="p-1 text-slate-300 hover:text-slate-100 hover:bg-slate-800/60 rounded transition-colors"
-                >
-                  {isAllCollapsed ? <ChevronsUpDown className="w-3.5 h-3.5" /> : <ChevronsDownUp className="w-3.5 h-3.5" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCreateCol}
-                  title={t('sidebar.newCollection')}
-                  className="p-1 text-sky-400 hover:text-sky-300 hover:bg-slate-800/60 rounded transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {collections.length === 0 ? (
-              <div className="text-center py-8 text-xs text-slate-500 flex flex-col items-center gap-2">
-                <span>{t('sidebar.noCollections')}</span>
-                <button
-                  type="button"
-                  onClick={handleCreateCol}
-                  className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded text-xs transition-colors flex items-center gap-1 font-medium"
-                >
-                  <Plus className="w-3.5 h-3.5" /> {t('sidebar.createCollection')}
-                </button>
-              </div>
-            ) : (
-              <>
-                {filterCollectionTree(collections, searchQuery).map((col) =>
-                  renderCollectionTreeItem(col, 0)
-                )}
-
-                {/* Drop target at bottom to convert dragged collection back to root level */}
-                {draggedColId && (
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setDragOverColTarget({ id: '__ROOT__', position: 'after' })
-                    }}
-                    onDragLeave={() => {
-                      if (dragOverColTarget?.id === '__ROOT__') {
-                        setDragOverColTarget(null)
-                      }
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      if (draggedColId) {
-                        onMoveCollection(draggedColId, null, 'after')
-                      }
-                      setDraggedColId(null)
-                      setDragOverColTarget(null)
-                    }}
-                    className={`py-2 px-3 border-2 border-dashed rounded-lg text-center text-xs transition-all ${
-                      dragOverColTarget?.id === '__ROOT__'
-                        ? 'border-sky-400 bg-sky-500/10 text-sky-300 font-medium'
-                        : 'border-slate-800 text-slate-500 hover:border-slate-700'
-                    }`}
-                  >
-                    <span>{t('sidebar.dropAsRoot')}</span>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Constants Tab Content */}
-        {activeTab === 'constants' && (
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              <span>{t('sidebar.constants')}</span>
+        <div className="flex flex-col gap-1.5">
+          {/* Search Input */}
+          <div className="relative mb-1">
+            <Search className="w-3.5 h-3.5 absolute left-2 top-2 text-slate-400" />
+            <input
+              type="text"
+              placeholder={t('sidebar.searchPlaceholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-700/80 rounded pl-7 pr-7 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-sans"
+            />
+            {searchQuery && (
               <button
                 type="button"
-                onClick={onOpenConstantModal}
-                className="flex items-center gap-1 text-sky-400 hover:text-sky-300 font-medium capitalize text-xs"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-2 text-slate-400 hover:text-slate-200"
               >
-                <Plus className="w-3.5 h-3.5" /> {t('common.add')}
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Collections Header with Expand/Collapse and New Collection */}
+          <div className="flex items-center justify-between px-1 py-0.5 text-[11px] font-semibold text-slate-300 uppercase tracking-wider">
+            <div className="flex items-center gap-1.5">
+              <span>{t('sidebar.collections')}</span>
+              <span className="text-[10px] text-slate-400 font-normal font-mono">({flattenAllCollections(collections).length})</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={toggleCollapseAll}
+                title={isAllCollapsed ? t('sidebar.expandAll') : t('sidebar.collapseAll')}
+                className="p-1 text-slate-300 hover:text-slate-100 hover:bg-slate-800/60 rounded transition-colors"
+              >
+                {isAllCollapsed ? <ChevronsUpDown className="w-3.5 h-3.5" /> : <ChevronsDownUp className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateCol}
+                title={t('sidebar.newCollection')}
+                className="p-1 text-sky-400 hover:text-sky-300 hover:bg-slate-800/60 rounded transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
               </button>
             </div>
-
-            {constants.length === 0 ? (
-              <div className="text-center py-8 text-xs text-slate-500">
-                {t('sidebar.noConstants')}
-              </div>
-            ) : (
-              constants.map((c) => {
-                const options = c.options && c.options.length > 0 ? c.options : (c.currentValue ? [c.currentValue] : [])
-                return (
-                  <div key={c.id} className="p-2.5 bg-slate-950/40 border border-slate-800 rounded-lg flex flex-col gap-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono font-bold text-sky-400">
-                        {'{' + '{' + c.name + '}' + '}'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={onOpenConstantModal}
-                        className="text-slate-500 hover:text-slate-300 p-0.5 rounded"
-                        title={t('sidebar.editOptions')}
-                      >
-                        <Sliders className="w-3 h-3" />
-                      </button>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] text-slate-500">{t('sidebar.switchActiveValue')}</span>
-                      <select
-                        value={c.currentValue}
-                        onChange={(e) => onSwitchConstant(c.name, e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-700/80 rounded px-2 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer"
-                      >
-                        {options.map((opt) => {
-                          const note = c.optionNotes?.[opt]
-                          return (
-                            <option key={opt} value={opt} className="bg-slate-900 text-slate-200">
-                              {opt}{note ? ` (${note})` : ''}
-                            </option>
-                          )
-                        })}
-                      </select>
-                    </div>
-                  </div>
-                )
-              })
-            )}
           </div>
-        )}
 
-        {/* History Tab Content */}
-        {activeTab === 'history' && (
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              <span>{t('sidebar.recentHistory')}</span>
-              {history.length > 0 && (
-                <button type="button" onClick={onClearHistory} className="text-[10px] text-slate-500 hover:text-rose-400">
-                  {t('sidebar.clearHistory')}
-                </button>
-              )}
+          {collections.length === 0 ? (
+            <div className="text-center py-8 text-xs text-slate-500 flex flex-col items-center gap-2">
+              <span>{t('sidebar.noCollections')}</span>
+              <button
+                type="button"
+                onClick={handleCreateCol}
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded text-xs transition-colors flex items-center gap-1 font-medium"
+              >
+                <Plus className="w-3.5 h-3.5" /> {t('sidebar.createCollection')}
+              </button>
             </div>
+          ) : (
+            <>
+              {filterCollectionTree(collections, searchQuery).map((col) =>
+                renderCollectionTreeItem(col, 0)
+              )}
 
-            {history.length === 0 ? (
-              <div className="text-center py-8 text-xs text-slate-500">{t('sidebar.noHistory')}</div>
-            ) : (
-              history.map((item) => (
+              {/* Drop target at bottom to convert dragged collection back to root level */}
+              {draggedColId && (
                 <div
-                  key={item.id}
-                  onClick={() => onSelectRequest(item.request)}
-                  className="flex items-center justify-between px-2 py-1.5 rounded cursor-pointer text-xs group hover:bg-slate-800/50 text-slate-400 hover:text-slate-200 transition-colors"
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setDragOverColTarget({ id: '__ROOT__', position: 'after' })
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverColTarget?.id === '__ROOT__') {
+                      setDragOverColTarget(null)
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (draggedColId) {
+                      onMoveCollection(draggedColId, null, 'after')
+                    }
+                    setDraggedColId(null)
+                    setDragOverColTarget(null)
+                  }}
+                  className={`py-2 px-3 border-2 border-dashed rounded-lg text-center text-xs transition-all ${
+                    dragOverColTarget?.id === '__ROOT__'
+                      ? 'border-sky-400 bg-sky-500/10 text-sky-300 font-medium'
+                      : 'border-slate-800 text-slate-500 hover:border-slate-700'
+                  }`}
                 >
-                  <div className="flex items-center gap-1.5 truncate">
-                    <span className={"font-mono text-[10px] font-bold w-9 shrink-0 " + (methodBadgeColor[item.request.method] || 'text-slate-400')}>
-                      {item.request.method}
-                    </span>
-                    <span className="truncate text-xs font-mono">{item.request.url || 'No URL'}</span>
-                  </div>
-                  <span className={"text-[10px] font-mono shrink-0 " + (item.status >= 200 && item.status < 300 ? "text-emerald-400" : item.status === 0 ? "text-rose-400" : "text-amber-400")}>
-                    {item.status || 'Err'}
-                  </span>
+                  <span>{t('sidebar.dropAsRoot')}</span>
                 </div>
-              ))
-            )}
-          </div>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Bottom Environment Selector */}
