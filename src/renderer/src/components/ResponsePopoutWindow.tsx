@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Copy,
   Check,
@@ -10,6 +10,9 @@ import {
   FileCode,
   ListFilter,
   Search,
+  ChevronUp,
+  ChevronDown,
+  X,
   Sun,
   Moon
 } from 'lucide-react'
@@ -17,6 +20,7 @@ import { ResponseData, Language, Theme } from '../types'
 import { CodeEditor } from './CodeEditor'
 import { I18nProvider, useI18n } from '../i18n'
 import { ThemeProvider, useTheme } from '../theme'
+import { queryJsonPath } from '../utils/jsonPath'
 
 const methodBadgeColor: Record<string, string> = {
   GET: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
@@ -46,6 +50,16 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
   const [wrapLines, setWrapLines] = useState(true)
   const [headerSearch, setHeaderSearch] = useState('')
   const [savedNotice, setSavedNotice] = useState<string | null>(null)
+  const [jsonPath, setJsonPath] = useState('')
+  const [isJsonPathFocused, setIsJsonPathFocused] = useState(false)
+  const [jsonPathSuggestionIndex, setJsonPathSuggestionIndex] = useState(0)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchActiveIndex, setSearchActiveIndex] = useState(0)
+  const [searchCaseSensitive, setSearchCaseSensitive] = useState(false)
+  const [searchWholeWord, setSearchWholeWord] = useState(false)
+  const [searchRegex, setSearchRegex] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const { response, url, method = 'GET', name, timestamp: propTimestamp } = data
   const reqTimestamp = propTimestamp || response?.timestamp
@@ -106,6 +120,42 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
   const bodyString = getFormattedBody()
   const rawString = typeof response.data === 'object' ? JSON.stringify(response.data) : String(response.data || '')
   const currentBody = bodyFormat === 'pretty' ? bodyString : rawString
+  const jsonPathSuggestions = useMemo(() => {
+    if (!isJsonPathFocused || typeof response.data !== 'object' || response.data === null) return []
+    const paths: string[] = []
+    const visit = (value: any, path: string, depth: number) => {
+      if (depth > 4 || value === null || value === undefined || paths.length >= 200) return
+      if (Array.isArray(value)) {
+        value.slice(0, 10).forEach((item, index) => { const next = `${path}[${index}]`; paths.push(next); visit(item, next, depth + 1) })
+      } else if (typeof value === 'object') {
+        Object.keys(value).forEach((key) => { if (paths.length >= 200) return; const next = /^[A-Za-z_$][\w$]*$/.test(key) ? `${path}.${key}` : `${path}['${key.replace(/'/g, "\\'")}']`; paths.push(next); visit(value[key], next, depth + 1) })
+      }
+    }
+    visit(response.data, '$', 0)
+    const query = jsonPath.trim().toLowerCase()
+    return paths.filter((path) => !query || path.toLowerCase().includes(query)).slice(0, 12)
+  }, [response.data, isJsonPathFocused, jsonPath])
+  const searchMatchCount = useMemo(() => {
+    if (!searchTerm.trim()) return 0
+    const pathValue = jsonPath.trim() ? queryJsonPath(response.data, jsonPath) : undefined
+    const source = jsonPath.trim()
+      ? (pathValue === undefined ? 'Not found' : typeof pathValue === 'string' ? pathValue : JSON.stringify(pathValue, null, 2))
+      : currentBody
+    const sourcePattern = searchRegex ? searchTerm : searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = searchWholeWord ? `\\b(?:${sourcePattern})\\b` : sourcePattern
+    try { return Array.from(source.matchAll(new RegExp(pattern, searchCaseSensitive ? 'g' : 'gi'))).length } catch { return 0 }
+  }, [currentBody, response.data, jsonPath, searchTerm, searchCaseSensitive, searchWholeWord, searchRegex])
+  const displayedBody = jsonPath.trim()
+    ? (() => { const value = queryJsonPath(response.data, jsonPath); return value === undefined ? 'Not found' : typeof value === 'string' ? value : JSON.stringify(value, null, 2) })()
+    : currentBody
+
+  useEffect(() => { setJsonPathSuggestionIndex(0) }, [jsonPath])
+  useEffect(() => { if (isSearchOpen) { searchInputRef.current?.focus(); searchInputRef.current?.select() } }, [isSearchOpen])
+  useEffect(() => { setSearchActiveIndex(0) }, [searchTerm, searchCaseSensitive, searchWholeWord, searchRegex])
+
+  const openSearch = () => setIsSearchOpen(true)
+  const closeSearch = () => { setIsSearchOpen(false); setSearchTerm('') }
+  const selectJsonPathSuggestion = (value: string) => { setJsonPath(value); setIsJsonPathFocused(false) }
 
   const handleCopyBody = () => {
     navigator.clipboard.writeText(currentBody)
@@ -140,7 +190,16 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
   })
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-slate-950 text-slate-200 overflow-hidden select-none font-sans">
+    <div
+      className="flex flex-col h-screen w-screen bg-slate-950 text-slate-200 overflow-hidden select-none font-sans"
+      tabIndex={0}
+      onKeyDownCapture={(event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+          event.preventDefault()
+          openSearch()
+        }
+      }}
+    >
       {/* Top Header Bar */}
       <div className="px-4 py-3 border-b border-slate-800 bg-slate-900 flex items-center justify-between gap-4 drag-region shrink-0">
         {/* Left: Method + Title + URL */}
@@ -286,6 +345,15 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
               <WrapText className="w-3.5 h-3.5" />
               <span>{t('editor.wordWrap')}</span>
             </button>
+            <button
+              type="button"
+              onClick={openSearch}
+              className={`flex items-center gap-1 px-2 py-1 rounded border text-[11px] transition-colors ${isSearchOpen ? 'bg-sky-500/15 text-sky-400 border-sky-500/40' : 'bg-slate-800 text-slate-300 border-slate-700/80 hover:text-slate-100 hover:bg-slate-700'}`}
+              title="搜索响应内容 (Ctrl+F)"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>搜索</span>
+            </button>
 
             {/* Pretty / Raw toggle */}
             {typeof response.data === 'object' && (
@@ -353,12 +421,58 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
         )}
 
         {activeTab === 'body' && (
-          <div className="flex-1 h-full min-h-0">
+          <div className="relative flex-1 h-full min-h-0 flex flex-col gap-2">
+            <div className="relative shrink-0">
+              <input
+                type="text"
+                value={jsonPath}
+                onChange={(event) => { setJsonPath(event.target.value); setIsJsonPathFocused(true) }}
+                onFocus={() => setIsJsonPathFocused(true)}
+                onBlur={() => window.setTimeout(() => setIsJsonPathFocused(false), 120)}
+                onKeyDown={(event) => {
+                  if (!jsonPathSuggestions.length) return
+                  if (event.key === 'ArrowDown') { event.preventDefault(); setJsonPathSuggestionIndex((value) => (value + 1) % jsonPathSuggestions.length) }
+                  else if (event.key === 'ArrowUp') { event.preventDefault(); setJsonPathSuggestionIndex((value) => (value - 1 + jsonPathSuggestions.length) % jsonPathSuggestions.length) }
+                  else if (event.key === 'Enter' || event.key === 'Tab') { event.preventDefault(); selectJsonPathSuggestion(jsonPathSuggestions[jsonPathSuggestionIndex]) }
+                }}
+                placeholder="JSONPath: data.token or $.data.token"
+                className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 pr-9 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-sky-500"
+              />
+              {jsonPath && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setJsonPath('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200" title="清除 JSONPath"><X className="w-4 h-4" /></button>}
+              {isJsonPathFocused && jsonPath && jsonPathSuggestions.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-52 overflow-y-auto rounded border border-slate-700 bg-slate-900 py-1 shadow-xl">
+                  {jsonPathSuggestions.map((suggestion, index) => (
+                    <button key={suggestion} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => selectJsonPathSuggestion(suggestion)} className={`block w-full px-3 py-1.5 text-left font-mono text-xs ${index === jsonPathSuggestionIndex ? 'bg-sky-500/20 text-sky-300' : 'text-slate-300 hover:bg-slate-800'}`}>{suggestion}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {isSearchOpen && (
+              <div className="absolute top-0 right-0 z-20 flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 shadow-2xl">
+                <div className="relative">
+                  <input ref={searchInputRef} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); setSearchActiveIndex((value) => searchMatchCount ? (value + (event.shiftKey ? -1 : 1) + searchMatchCount) % searchMatchCount : 0) } else if (event.key === 'Escape') closeSearch() }} placeholder="Find in response" className="w-72 bg-slate-800 border border-slate-700 rounded px-2 py-1 pr-24 text-xs text-slate-200 focus:outline-none focus:border-sky-500" />
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+                    <button type="button" onClick={() => setSearchCaseSensitive((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${searchCaseSensitive ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title="区分大小写">Aa</button>
+                    <button type="button" onClick={() => setSearchWholeWord((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${searchWholeWord ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title="全字匹配">ab</button>
+                    <button type="button" onClick={() => setSearchRegex((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs font-mono ${searchRegex ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title="正则表达式">.*</button>
+                  </div>
+                </div>
+                <span className="min-w-12 text-center text-[11px] text-slate-400">{searchMatchCount ? `${searchActiveIndex + 1} / ${searchMatchCount}` : '0 / 0'}</span>
+                <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((value) => (value - 1 + searchMatchCount) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title="上一个"><ChevronUp className="w-4 h-4" /></button>
+                <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((value) => (value + 1) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title="下一个"><ChevronDown className="w-4 h-4" /></button>
+                <button type="button" onClick={closeSearch} className="p-1 text-slate-400 hover:text-slate-100" title="关闭"><X className="w-4 h-4" /></button>
+              </div>
+            )}
             <CodeEditor
-              value={currentBody}
+              value={displayedBody}
               readOnly={true}
               wrap={wrapLines}
               height="100%"
+              searchTerm={searchTerm}
+              searchActiveIndex={searchActiveIndex}
+              searchCaseSensitive={searchCaseSensitive}
+              searchWholeWord={searchWholeWord}
+              searchRegex={searchRegex}
             />
           </div>
         )}

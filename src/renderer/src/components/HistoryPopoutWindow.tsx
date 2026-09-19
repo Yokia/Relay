@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Trash2,
   Search,
@@ -18,12 +18,15 @@ import {
   FileCode,
   FileText,
   AlertCircle
+  ,ChevronUp
+  ,ChevronDown
 } from 'lucide-react'
 import { HistoryItem, RequestItem, HttpMethod, Language, Theme, ConstantItem, Environment } from '../types'
 import { CodeEditor } from './CodeEditor'
 import { I18nProvider, useI18n } from '../i18n'
 import { ThemeProvider, useTheme } from '../theme'
 import { stripJsonComments } from '../utils/jsonUtils'
+import { queryJsonPath } from '../utils/jsonPath'
 
 const methodColorMap: Record<HttpMethod, string> = {
   GET: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
@@ -57,6 +60,16 @@ function HistoryPopoutContent() {
   const [openedNotice, setOpenedNotice] = useState(false)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [showResponseHeaders, setShowResponseHeaders] = useState(false)
+  const [jsonPath, setJsonPath] = useState('')
+  const [isJsonPathFocused, setIsJsonPathFocused] = useState(false)
+  const [jsonPathSuggestionIndex, setJsonPathSuggestionIndex] = useState(0)
+  const [responseSearch, setResponseSearch] = useState('')
+  const [isResponseSearchOpen, setIsResponseSearchOpen] = useState(false)
+  const [responseSearchIndex, setResponseSearchIndex] = useState(0)
+  const [responseSearchCaseSensitive, setResponseSearchCaseSensitive] = useState(false)
+  const [responseSearchWholeWord, setResponseSearchWholeWord] = useState(false)
+  const [responseSearchRegex, setResponseSearchRegex] = useState(false)
+  const responseSearchInputRef = useRef<HTMLInputElement>(null)
 
   // Interpolate constant variables for older history items that saved raw templates
   const interpolateUrl = (url: string): string => {
@@ -148,6 +161,36 @@ function HistoryPopoutContent() {
     return selectedItem ? interpolateUrl(selectedItem.request.url) : ''
   }, [selectedItem, constants, environments, activeEnvId])
 
+  const responseBody = selectedItem?.response ? formatResponseData(selectedItem.response.data, responseFormat) : ''
+  const jsonPathSuggestions = useMemo(() => {
+    const data = selectedItem?.response?.data
+    if (!isJsonPathFocused || !data || typeof data !== 'object') return []
+    const paths: string[] = []
+    const visit = (value: any, path: string, depth: number) => {
+      if (depth > 4 || value === null || value === undefined || paths.length >= 200) return
+      if (Array.isArray(value)) value.slice(0, 10).forEach((item, index) => { const next = `${path}[${index}]`; paths.push(next); visit(item, next, depth + 1) })
+      else if (typeof value === 'object') Object.keys(value).forEach((key) => { if (paths.length >= 200) return; const next = /^[A-Za-z_$][\w$]*$/.test(key) ? `${path}.${key}` : `${path}['${key.replace(/'/g, "\\'")}']`; paths.push(next); visit(value[key], next, depth + 1) })
+    }
+    visit(data, '$', 0)
+    const query = jsonPath.trim().toLowerCase()
+    return paths.filter((path) => !query || path.toLowerCase().includes(query)).slice(0, 12)
+  }, [selectedItem, isJsonPathFocused, jsonPath])
+  const displayedResponseBody = useMemo(() => {
+    if (!jsonPath.trim() || !selectedItem?.response) return responseBody
+    const value = queryJsonPath(selectedItem.response.data, jsonPath)
+    return value === undefined ? 'Not found' : typeof value === 'string' ? value : JSON.stringify(value, null, 2)
+  }, [selectedItem, jsonPath, responseBody])
+  const responseSearchMatchCount = useMemo(() => {
+    if (!responseSearch.trim()) return 0
+    const sourcePattern = responseSearchRegex ? responseSearch : responseSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = responseSearchWholeWord ? `\\b(?:${sourcePattern})\\b` : sourcePattern
+    try { return Array.from(displayedResponseBody.matchAll(new RegExp(pattern, responseSearchCaseSensitive ? 'g' : 'gi'))).length } catch { return 0 }
+  }, [displayedResponseBody, responseSearch, responseSearchCaseSensitive, responseSearchWholeWord, responseSearchRegex])
+
+  useEffect(() => { setJsonPathSuggestionIndex(0) }, [jsonPath])
+  useEffect(() => { setResponseSearchIndex(0) }, [responseSearch, responseSearchCaseSensitive, responseSearchWholeWord, responseSearchRegex])
+  useEffect(() => { if (isResponseSearchOpen) { responseSearchInputRef.current?.focus(); responseSearchInputRef.current?.select() } }, [isResponseSearchOpen])
+
   // Delete single history item
   const handleDeleteItem = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -226,7 +269,7 @@ function HistoryPopoutContent() {
   }
 
   // Format response data
-  const formatResponseData = (data: any, format: 'pretty' | 'raw'): string => {
+  function formatResponseData(data: any, format: 'pretty' | 'raw'): string {
     if (data === null || data === undefined) return ''
     if (typeof data === 'string') {
       if (format === 'pretty') {
@@ -267,7 +310,7 @@ function HistoryPopoutContent() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-900 text-slate-200 select-none overflow-hidden font-sans">
+    <div className="h-screen w-screen flex flex-col bg-slate-900 text-slate-200 select-none overflow-hidden font-sans" tabIndex={0} onKeyDownCapture={(event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f' && activeDetailTab === 'response') { event.preventDefault(); setIsResponseSearchOpen(true) } }}>
       {/* Top Header */}
       <header className="h-11 px-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 font-bold text-sm text-slate-100">
@@ -651,6 +694,10 @@ function HistoryPopoutContent() {
                               {copiedResponse ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                               <span>{copiedResponse ? t('historyWindow.responseCopied') : t('historyWindow.copyResponse')}</span>
                             </button>
+                            <button type="button" onClick={() => setIsResponseSearchOpen(true)} className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded border transition-colors ${isResponseSearchOpen ? 'bg-sky-500/20 text-sky-300 border-sky-500/40' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'}`} title="Find in response (Ctrl+F)">
+                              <Search className="w-3.5 h-3.5" />
+                              <span>搜索</span>
+                            </button>
                           </div>
                         </div>
 
@@ -679,13 +726,10 @@ function HistoryPopoutContent() {
                         )}
 
                         {/* Response Body Viewer */}
-                        <div className="flex-1 min-h-[300px] border border-slate-800 rounded-lg overflow-hidden relative">
-                          <CodeEditor
-                            value={formatResponseData(selectedItem.response.data, responseFormat)}
-                            onChange={() => {}}
-                            readOnly={true}
-                            language={selectedItem.response.contentType?.includes('json') ? 'json' : 'text'}
-                          />
+                        <div className="relative flex-1 min-h-[300px] border border-slate-800 rounded-lg overflow-hidden flex flex-col p-2">
+                          {isResponseSearchOpen && <div className="absolute top-2 right-2 z-20 flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 shadow-2xl"><div className="relative"><input ref={responseSearchInputRef} value={responseSearch} onChange={(event) => setResponseSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') setIsResponseSearchOpen(false); if (event.key === 'Enter' && responseSearchMatchCount > 0) setResponseSearchIndex((current) => (current + (event.shiftKey ? -1 : 1) + responseSearchMatchCount) % responseSearchMatchCount) }} placeholder="Find in response" className="w-72 bg-slate-800 border border-slate-700 rounded px-2 py-1 pr-24 text-xs text-slate-200 focus:outline-none focus:border-sky-500" /><div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center"><button type="button" onClick={() => setResponseSearchCaseSensitive((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${responseSearchCaseSensitive ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`}>Aa</button><button type="button" onClick={() => setResponseSearchWholeWord((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${responseSearchWholeWord ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`}>ab</button><button type="button" onClick={() => setResponseSearchRegex((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs font-mono ${responseSearchRegex ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`}>.*</button></div></div><span className="min-w-12 text-center text-[11px] text-slate-400">{responseSearchMatchCount ? `${responseSearchIndex + 1} / ${responseSearchMatchCount}` : '0 / 0'}</span><button type="button" onClick={() => responseSearchMatchCount && setResponseSearchIndex((current) => (current - 1 + responseSearchMatchCount) % responseSearchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100"><ChevronUp className="w-4 h-4" /></button><button type="button" onClick={() => responseSearchMatchCount && setResponseSearchIndex((current) => (current + 1) % responseSearchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100"><ChevronDown className="w-4 h-4" /></button><button type="button" onClick={() => setIsResponseSearchOpen(false)} className="p-1 text-slate-400 hover:text-slate-100"><X className="w-4 h-4" /></button></div>}
+                          <div className="relative shrink-0 mb-2"><input value={jsonPath} onChange={(event) => { setJsonPath(event.target.value); setIsJsonPathFocused(true) }} onFocus={() => setIsJsonPathFocused(true)} onBlur={() => window.setTimeout(() => setIsJsonPathFocused(false), 120)} onKeyDown={(event) => { if (event.key === 'ArrowDown' && jsonPathSuggestions.length) { event.preventDefault(); setJsonPathSuggestionIndex((value) => (value + 1) % jsonPathSuggestions.length) } else if (event.key === 'ArrowUp' && jsonPathSuggestions.length) { event.preventDefault(); setJsonPathSuggestionIndex((value) => (value - 1 + jsonPathSuggestions.length) % jsonPathSuggestions.length) } else if ((event.key === 'Enter' || event.key === 'Tab') && jsonPathSuggestions.length) { event.preventDefault(); setJsonPath(jsonPathSuggestions[jsonPathSuggestionIndex]); setIsJsonPathFocused(false) } }} placeholder="JSONPath: data.token or $.data.token" className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 pr-7 text-[11px] text-slate-200 focus:outline-none focus:border-sky-500" />{jsonPath && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setJsonPath('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200"><X className="w-3.5 h-3.5" /></button>}{isJsonPathFocused && jsonPath.trim() && jsonPathSuggestions.length > 0 && <div className="absolute top-full left-0 right-0 z-30 mt-1 max-h-56 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 shadow-2xl text-[11px] font-mono">{jsonPathSuggestions.map((path, index) => <button key={path} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { setJsonPath(path); setIsJsonPathFocused(false) }} className={`block w-full text-left px-2 py-1.5 rounded truncate ${index === jsonPathSuggestionIndex ? 'bg-sky-500/15 text-sky-300' : 'text-slate-300 hover:bg-sky-500/15 hover:text-sky-300'}`}>{path}</button>)}</div>}</div>
+                          <div className="flex-1 min-h-0"><CodeEditor value={displayedResponseBody} onChange={() => {}} readOnly={true} language={selectedItem.response.contentType?.includes('json') ? 'json' : 'text'} searchTerm={responseSearch} searchActiveIndex={responseSearchIndex} searchCaseSensitive={responseSearchCaseSensitive} searchWholeWord={responseSearchWholeWord} searchRegex={responseSearchRegex} /></div>
                         </div>
                       </>
                     ) : (
