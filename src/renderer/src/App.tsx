@@ -178,52 +178,140 @@ function MainApp({
   // Resizable split pane
   const [splitRatio, setSplitRatio] = useState<number>(0.5)
   const isDraggingRef = useRef(false)
+  const isLoadedRef = useRef(false)
 
   // Load initial data from electron storage
   useEffect(() => {
     if (window.electronAPI) {
-      window.electronAPI.getData().then((data: any) => {
-        if (data) {
-          if (data.collections) setCollections(data.collections)
-          if (data.history) setHistory(data.history)
-          if (data.environments) setEnvironments(data.environments)
-          if (data.constants && data.constants.length > 0) {
-            setConstants(data.constants)
-          }
-          if (data.settings) {
-            setSettings((prev) => ({ ...prev, ...data.settings }))
-            if (data.settings.language) {
-              onLanguageChange(data.settings.language)
+      window.electronAPI
+        .getData()
+        .then((data: any) => {
+          if (data) {
+            if (data.collections) setCollections(data.collections)
+            if (data.history) setHistory(data.history)
+            if (data.environments) setEnvironments(data.environments)
+            if (data.constants && data.constants.length > 0) {
+              setConstants(data.constants)
             }
-            if (data.settings.theme) {
-              onThemeChange(data.settings.theme)
+            if (data.settings) {
+              setSettings((prev) => ({ ...prev, ...data.settings }))
+              if (data.settings.language) {
+                onLanguageChange(data.settings.language)
+              }
+              if (data.settings.theme) {
+                onThemeChange(data.settings.theme)
+              }
+            }
+            if (data.activeEnvironmentId) setActiveEnvId(data.activeEnvironmentId)
+            if (data.responseHistoryMap) {
+              setResponseHistoryMap(data.responseHistoryMap)
+            }
+            if (data.dirtyIds && Array.isArray(data.dirtyIds)) {
+              setDirtyIds(new Set(data.dirtyIds))
+            }
+
+            const savedDrafts = data.drafts || {}
+            if (data.drafts) {
+              setDrafts(data.drafts)
+            }
+
+            // Restore previously opened tabs or fallback to default collection item
+            if (data.tabs && Array.isArray(data.tabs) && data.tabs.length > 0) {
+              setTabs(data.tabs)
+              const targetActiveTabId =
+                data.activeTabId && data.tabs.some((t: any) => t.id === data.activeTabId)
+                  ? data.activeTabId
+                  : data.tabs[0].id
+              setActiveTabId(targetActiveTabId)
+
+              const targetTab = data.tabs.find((t: any) => t.id === targetActiveTabId) || data.tabs[0]
+              let reqToLoad: RequestItem | undefined = savedDrafts[targetTab.requestId]
+
+              if (!reqToLoad && data.collections) {
+                const found = findRequestInTree(data.collections, targetTab.requestId)
+                if (found) {
+                  reqToLoad = found.request
+                }
+              }
+
+              if (!reqToLoad) {
+                reqToLoad = {
+                  ...defaultNewRequest,
+                  id: targetTab.requestId,
+                  name: targetTab.name || 'New Request',
+                  method: targetTab.method || 'GET'
+                }
+              }
+
+              const cloned = JSON.parse(JSON.stringify(reqToLoad))
+              setCurrentRequest(cloned)
+              setDrafts((prev) => ({ ...prev, [cloned.id]: cloned }))
+
+              if (data.responseHistoryMap?.[cloned.id]?.[0]) {
+                setResponse(data.responseHistoryMap[cloned.id][0].response)
+              } else {
+                setResponse(null)
+              }
+            } else if (data.collections?.[0]?.requests?.[0]) {
+              const initialReq = JSON.parse(JSON.stringify(data.collections[0].requests[0]))
+              setCurrentRequest(initialReq)
+              setDrafts({ [initialReq.id]: initialReq })
+              const initialTab: WorkspaceTab = {
+                id: 'tab-' + initialReq.id,
+                requestId: initialReq.id,
+                name: initialReq.name,
+                method: initialReq.method,
+                isDirty: false
+              }
+              setTabs([initialTab])
+              setActiveTabId(initialTab.id)
+              if (data.responseHistoryMap?.[initialReq.id]?.[0]) {
+                setResponse(data.responseHistoryMap[initialReq.id][0].response)
+              }
             }
           }
-          if (data.activeEnvironmentId) setActiveEnvId(data.activeEnvironmentId)
-          if (data.responseHistoryMap) {
-            setResponseHistoryMap(data.responseHistoryMap)
-          }
-          if (data.collections?.[0]?.requests?.[0]) {
-            const initialReq = JSON.parse(JSON.stringify(data.collections[0].requests[0]))
-            setCurrentRequest(initialReq)
-            setDrafts((prev) => ({ ...prev, [initialReq.id]: initialReq }))
-            const initialTab: WorkspaceTab = {
-              id: 'tab-' + initialReq.id,
-              requestId: initialReq.id,
-              name: initialReq.name,
-              method: initialReq.method,
-              isDirty: false
-            }
-            setTabs([initialTab])
-            setActiveTabId(initialTab.id)
-            if (data.responseHistoryMap?.[initialReq.id]?.[0]) {
-              setResponse(data.responseHistoryMap[initialReq.id][0].response)
-            }
-          }
-        }
-      })
+          isLoadedRef.current = true
+        })
+        .catch((err: any) => {
+          console.error('Failed to load initial data:', err)
+          isLoadedRef.current = true
+        })
+    } else {
+      isLoadedRef.current = true
     }
   }, [])
+
+  // Debounced auto-persistence for tabs, activeTabId, drafts, and dirty states
+  useEffect(() => {
+    if (!isLoadedRef.current) return
+
+    const timer = setTimeout(() => {
+      persist({
+        tabs,
+        activeTabId,
+        drafts,
+        dirtyIds: Array.from(dirtyIds)
+      })
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [tabs, activeTabId, drafts, dirtyIds])
+
+  // Save on window unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (isLoadedRef.current && window.electronAPI) {
+        window.electronAPI.saveData({
+          tabs,
+          activeTabId,
+          drafts,
+          dirtyIds: Array.from(dirtyIds)
+        })
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [tabs, activeTabId, drafts, dirtyIds])
 
   // Keep tab metadata (name, method, dirty state) in sync when a request is edited
   useEffect(() => {
@@ -315,6 +403,16 @@ function MainApp({
         setActiveTabId(newTab.id)
         return [...prev, newTab]
       })
+    } else {
+      const singleTab: WorkspaceTab = {
+        id: 'tab-' + targetReq.id,
+        requestId: targetReq.id,
+        name: targetReq.name,
+        method: targetReq.method,
+        isDirty: dirtyIds.has(targetReq.id)
+      }
+      setTabs([singleTab])
+      setActiveTabId(singleTab.id)
     }
   }
 
@@ -821,6 +919,7 @@ function MainApp({
     if (currentRequest.id === reqId) {
       setCurrentRequest((prev) => ({ ...prev, name: trimmed }))
     }
+    setTabs((prev) => prev.map((t) => (t.requestId === reqId ? { ...t, name: trimmed } : t)))
     addToast(t('toast.requestRenamed', { name: trimmed }), 'success')
   }
 
@@ -840,6 +939,10 @@ function MainApp({
     const next = deleteRequestFromTree(collections, colId, reqId)
     setCollections(next)
     persist({ collections: next })
+    const openTab = tabs.find((t) => t.requestId === reqId)
+    if (openTab) {
+      handleCloseTab(openTab.id)
+    }
     addToast(t('toast.requestDeleted'), 'info')
   }
 
@@ -915,6 +1018,19 @@ function MainApp({
           const req = JSON.parse(JSON.stringify(parsed.collections[0].requests[0]))
           setCurrentRequest(req)
           setResponse(null)
+          const newTab: WorkspaceTab = {
+            id: 'tab-' + req.id,
+            requestId: req.id,
+            name: req.name,
+            method: req.method,
+            isDirty: false
+          }
+          setTabs([newTab])
+          setActiveTabId(newTab.id)
+          setDrafts({ [req.id]: req })
+          updates.tabs = [newTab]
+          updates.activeTabId = newTab.id
+          updates.drafts = { [req.id]: req }
         }
       }
       if (parsed.constants && parsed.constants.length > 0) {
@@ -1071,7 +1187,16 @@ function MainApp({
               id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
               name: 'New Request'
             }
+            const singleTab: WorkspaceTab = {
+              id: 'tab-' + newReq.id,
+              requestId: newReq.id,
+              name: newReq.name,
+              method: newReq.method,
+              isDirty: false
+            }
             setDrafts((prev) => ({ ...prev, [newReq.id]: newReq }))
+            setTabs([singleTab])
+            setActiveTabId(singleTab.id)
             setCurrentRequest(newReq)
             setResponse(null)
           }

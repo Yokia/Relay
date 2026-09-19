@@ -9,6 +9,11 @@ export interface StorageData {
   constants?: any[]
   settings?: any
   activeEnvironmentId?: string
+  responseHistoryMap?: Record<string, any>
+  tabs?: any[]
+  activeTabId?: string
+  drafts?: Record<string, any>
+  dirtyIds?: string[]
 }
 
 const defaultData: StorageData = {
