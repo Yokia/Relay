@@ -41,10 +41,17 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Tabs */}
-      <div className="flex items-center gap-4 px-3 border-b border-slate-800 text-xs font-medium text-slate-400">
+      <div
+        className="flex items-center gap-2 px-3 border-b border-slate-800 text-xs font-medium text-slate-400 overflow-x-auto no-scrollbar shrink-0"
+        onWheel={(event) => {
+          if (event.deltaY !== 0) {
+            event.currentTarget.scrollLeft += event.deltaY
+          }
+        }}
+      >
         <button
           onClick={() => setActiveTab('extract')}
-          className={"py-2.5 relative transition-colors " + (activeTab === 'extract' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+          className={"py-2.5 px-1 relative transition-colors shrink-0 whitespace-nowrap " + (activeTab === 'extract' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
         >
           <span>Extract</span>
           {(request.responseExtractions || []).length > 0 && <span className="ml-1.5 text-[10px] text-emerald-400">{request.responseExtractions?.length}</span>}
@@ -53,7 +60,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
 
         <button
           onClick={() => setActiveTab('auth')}
-          className={"py-2.5 relative transition-colors " + (activeTab === 'auth' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+          className={"py-2.5 px-1 relative transition-colors shrink-0 whitespace-nowrap " + (activeTab === 'auth' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
         >
           <span>Auth</span>
           {request.auth && request.auth.type !== 'none' && <span className="ml-1.5 w-1.5 h-1.5 inline-block bg-emerald-400 rounded-full align-middle" />}
@@ -62,7 +69,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
 
         <button
           onClick={() => setActiveTab('params')}
-          className={"py-2.5 relative transition-colors " + (activeTab === 'params' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+          className={"py-2.5 px-1 relative transition-colors shrink-0 whitespace-nowrap " + (activeTab === 'params' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
         >
           <span>{t('editor.params')}</span>
           {activeParamsCount > 0 && (
@@ -77,7 +84,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
 
         <button
           onClick={() => setActiveTab('headers')}
-          className={"py-2.5 relative transition-colors " + (activeTab === 'headers' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+          className={"py-2.5 px-1 relative transition-colors shrink-0 whitespace-nowrap " + (activeTab === 'headers' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
         >
           <span>{t('editor.headers')}</span>
           {activeHeadersCount > 0 && (
@@ -92,7 +99,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
 
         <button
           onClick={() => setActiveTab('body')}
-          className={"py-2.5 relative transition-colors " + (activeTab === 'body' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+          className={"py-2.5 px-1 relative transition-colors shrink-0 whitespace-nowrap " + (activeTab === 'body' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
         >
           <span>{t('editor.body')}</span>
           {request.bodyType !== 'none' && (
@@ -105,7 +112,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
 
         <button
           onClick={() => setActiveTab('preRequest')}
-          className={"py-2.5 relative transition-colors " + (activeTab === 'preRequest' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+          className={"py-2.5 px-1 relative transition-colors shrink-0 whitespace-nowrap " + (activeTab === 'preRequest' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
         >
           <span>{t('editor.preRequest')}</span>
           {Boolean(request.preRequestScript && request.preRequestScript.trim()) && (
@@ -118,7 +125,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
 
         <button
           onClick={() => setActiveTab('tests')}
-          className={"py-2.5 relative transition-colors " + (activeTab === 'tests' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+          className={"py-2.5 px-1 relative transition-colors shrink-0 whitespace-nowrap " + (activeTab === 'tests' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
         >
           <span>{t('editor.tests')}</span>
           {Boolean(request.testScript && request.testScript.trim()) && (

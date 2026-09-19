@@ -67,6 +67,11 @@ export const TabBar: React.FC<Props> = ({
       <div
         ref={tabContainerRef}
         className="flex-1 flex items-center overflow-x-auto no-scrollbar h-full"
+        onWheel={(event) => {
+          if (event.deltaY !== 0) {
+            event.currentTarget.scrollLeft += event.deltaY
+          }
+        }}
       >
         {tabs.map((tab, idx) => {
           const isActive = tab.id === activeTabId
