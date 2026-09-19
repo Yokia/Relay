@@ -1357,6 +1357,8 @@ function MainApp({
   // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      const isCodeEditorFocused = Boolean(target?.closest('.cm-editor'))
       // Ctrl+S: Save
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
@@ -1369,6 +1371,7 @@ function MainApp({
       }
       // Ctrl+D: Duplicate current request
       else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        if (isCodeEditorFocused) return
         e.preventDefault()
         const found = findRequestInTree(collections, currentRequest.id)
         if (found) {

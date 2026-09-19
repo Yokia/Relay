@@ -3,12 +3,35 @@ import CodeMirror from '@uiw/react-codemirror'
 import { json } from '@codemirror/lang-json'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
-import { RangeSetBuilder } from '@codemirror/state'
-import { MatchDecorator, ViewPlugin, Decoration, EditorView, DecorationSet, ViewUpdate } from '@codemirror/view'
+import { RangeSetBuilder, Prec } from '@codemirror/state'
+import { MatchDecorator, ViewPlugin, Decoration, EditorView, DecorationSet, ViewUpdate, keymap } from '@codemirror/view'
+import { copyLineDown, moveLineUp, moveLineDown } from '@codemirror/commands'
 import { ExternalLink, Plus, Copy, Check } from 'lucide-react'
 import { findCommentRanges } from '../utils/jsonUtils'
 import { useTheme } from '../theme'
 import { useI18n } from '../i18n'
+
+const toggleEditorLineComments = (view: EditorView): boolean => {
+  const lines = new Set<number>()
+  for (const range of view.state.selection.ranges) {
+    const from = view.state.doc.lineAt(range.from).number
+    const to = view.state.doc.lineAt(range.to).number
+    for (let line = from; line <= to; line++) lines.add(line)
+  }
+  const lineTexts = Array.from(lines).sort((a, b) => a - b).map((number) => view.state.doc.line(number))
+  const allCommented = lineTexts.every((line) => /^\s*\/\//.test(line.text))
+  const changes = lineTexts.map((line) => {
+    if (allCommented) {
+      const match = line.text.match(/^(\s*)\/\/ ?/)
+      return match ? { from: line.from + match[1].length, to: line.from + match[0].length, insert: '' } : null
+    }
+    const indent = line.text.match(/^\s*/)?.[0].length || 0
+    return { from: line.from + indent, insert: '// ' }
+  }).filter(Boolean) as Array<{ from: number; to?: number; insert: string }>
+  if (changes.length === 0) return false
+  view.dispatch({ changes })
+  return true
+}
 
 interface Props {
   value: string
@@ -335,9 +358,25 @@ export const CodeEditor: React.FC<Props> = ({
 
   const extensions = useMemo(() => {
     const exts = [json(), clickableLinkPlugin, jsonCommentPlugin, createSearchPlugin(searchTerm, searchActiveIndex, searchCaseSensitive, searchWholeWord, searchRegex), commentTheme, ...activeThemeExts]
+    if (!readOnly) {
+      exts.unshift(Prec.highest(keymap.of([
+        { key: 'Mod-/', run: toggleEditorLineComments },
+        { key: 'Ctrl-/', run: toggleEditorLineComments },
+        { key: 'Cmd-/', run: toggleEditorLineComments },
+        { key: 'Mod-d', run: copyLineDown },
+        { key: 'Ctrl-d', run: copyLineDown },
+        { key: 'Cmd-d', run: copyLineDown },
+        { key: 'Mod-Shift-ArrowUp', run: moveLineUp },
+        { key: 'Ctrl-Shift-ArrowUp', run: moveLineUp },
+        { key: 'Cmd-Shift-ArrowUp', run: moveLineUp },
+        { key: 'Mod-Shift-ArrowDown', run: moveLineDown }
+        ,{ key: 'Ctrl-Shift-ArrowDown', run: moveLineDown }
+        ,{ key: 'Cmd-Shift-ArrowDown', run: moveLineDown }
+      ])) as any)
+    }
     if (wrap) exts.push(EditorView.lineWrapping)
     return exts
-  }, [wrap, activeThemeExts, searchTerm, searchActiveIndex, searchCaseSensitive, searchWholeWord, searchRegex])
+  }, [wrap, readOnly, activeThemeExts, searchTerm, searchActiveIndex, searchCaseSensitive, searchWholeWord, searchRegex])
 
   useEffect(() => {
     const view = editorViewRef.current
@@ -431,6 +470,20 @@ export const CodeEditor: React.FC<Props> = ({
   return (
     <div
       ref={containerRef}
+      onKeyDownCapture={(event) => {
+        if (readOnly || !editorViewRef.current || !(event.ctrlKey || event.metaKey)) return
+        const view = editorViewRef.current
+        const key = event.key.toLowerCase()
+        let handled = false
+        if (key === '/' || event.code === 'Slash') handled = toggleEditorLineComments(view)
+        else if (key === 'd') handled = copyLineDown(view)
+        else if (event.shiftKey && key === 'arrowup') handled = moveLineUp(view)
+        else if (event.shiftKey && key === 'arrowdown') handled = moveLineDown(view)
+        if (handled) {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+      }}
       onMouseDownCapture={handleMouseDownCapture}
       onContextMenuCapture={handleContextMenuCapture}
       className={`flex flex-col h-full overflow-hidden border rounded-lg relative ${
