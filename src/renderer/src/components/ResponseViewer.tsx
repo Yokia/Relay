@@ -12,6 +12,7 @@ import {
   Calendar,
   ArrowLeftRight,
   Search,
+  Eye,
   ChevronUp,
   ChevronDown,
   X
@@ -71,7 +72,7 @@ export const ResponseViewer: React.FC<Props> = ({
 }) => {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
-  const [activeTab, setActiveTab] = useState<'body' | 'headers' | 'tests'>('body')
+  const [activeTab, setActiveTab] = useState<'body' | 'preview' | 'headers' | 'tests'>('body')
   const [bodyFormat, setBodyFormat] = useState<'pretty' | 'raw'>('pretty')
   const [wrapLines, setWrapLines] = useState(true)
   const [savedNotice, setSavedNotice] = useState<string | null>(null)
@@ -216,6 +217,16 @@ export const ResponseViewer: React.FC<Props> = ({
     return value === undefined ? 'Not found' : typeof value === 'string' ? value : JSON.stringify(value, null, 2)
   }
   const displayedBody = jsonPath.trim() ? getJsonPathResult() : searchedBody
+  const previewType = (displayResponse.contentType || '').toLowerCase().split(';')[0]
+  const previewSupported = previewType.startsWith('image/') || previewType.startsWith('video/') || previewType.startsWith('audio/') || previewType === 'text/html' || previewType === 'application/pdf'
+  const previewSource = typeof displayResponse.data === 'string' ? displayResponse.data : ''
+  const previewUrl = previewSource.startsWith('data:')
+    ? previewSource
+    : previewSource.startsWith('http://') || previewSource.startsWith('https://')
+      ? previewSource
+      : previewSource
+        ? `data:${previewType || 'application/octet-stream'};base64,${previewSource.replace(/^base64,/, '')}`
+        : ''
   const handleCopy = () => {
     navigator.clipboard.writeText(bodyFormat === 'pretty' ? bodyString : rawString)
     setCopied(true)
@@ -416,6 +427,15 @@ export const ResponseViewer: React.FC<Props> = ({
 
           <button
             type="button"
+            onClick={() => setActiveTab('preview')}
+            className={"py-2 relative transition-colors " + (activeTab === 'preview' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+          >
+            <span className="inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" />{t('response.tabPreview')}</span>
+            {activeTab === 'preview' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />}
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('tests')}
             className={"py-2 relative transition-colors " + (activeTab === 'tests' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
           >
@@ -502,6 +522,30 @@ export const ResponseViewer: React.FC<Props> = ({
         {displayResponse.error && (
           <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded text-xs mb-3 font-mono select-text">
             {displayResponse.error}
+          </div>
+        )}
+
+        {activeTab === 'preview' && (
+          <div className="flex-1 min-h-0 rounded-lg border border-slate-800 bg-slate-950/60 overflow-auto flex items-center justify-center p-4">
+            {previewSupported && previewUrl ? (
+              previewType.startsWith('image/') ? (
+                <img src={previewUrl} alt="Response preview" className="max-w-full max-h-full object-contain rounded" />
+              ) : previewType.startsWith('video/') ? (
+                <video src={previewUrl} controls className="max-w-full max-h-full rounded" />
+              ) : previewType.startsWith('audio/') ? (
+                <audio src={previewUrl} controls className="w-full max-w-xl" />
+              ) : previewType === 'text/html' ? (
+                <iframe srcDoc={previewSource} title="HTML response preview" sandbox="allow-forms" className="w-full h-full rounded bg-white" />
+              ) : (
+                <iframe src={previewUrl} title="PDF response preview" className="w-full h-full rounded bg-white" />
+              )
+            ) : (
+              <div className="text-center text-sm text-slate-500">
+                <Eye className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>{t('response.previewUnavailable')}</p>
+                <p className="mt-1 text-xs text-slate-600">{displayResponse.contentType || 'unknown type'}</p>
+              </div>
+            )}
           </div>
         )}
 

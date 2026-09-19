@@ -285,6 +285,7 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
     headers,
     params,
     data,
+    responseType: 'arraybuffer',
     timeout: req.timeout || 30000,
     validateStatus: () => true, // Don't throw for 4xx/5xx
     transformResponse: [(resData) => resData] // Keep raw string or stream to calculate accurate size
@@ -299,22 +300,27 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
     const endTime = Date.now()
     const duration = endTime - startTime
 
-    // Calculate response size
-    let resData = response.data
+    const contentType = (response.headers['content-type'] as string) || ''
+    const mediaType = contentType.split(';')[0].trim().toLowerCase()
+    const isBinaryPreviewType = mediaType.startsWith('image/') || mediaType.startsWith('video/') || mediaType.startsWith('audio/') || mediaType === 'application/pdf'
+    const rawResponse = response.data
+    let resData: any
     let size = 0
-    if (typeof resData === 'string') {
-      size = Buffer.byteLength(resData, 'utf8')
-    } else if (Buffer.isBuffer(resData)) {
-      size = resData.length
-      resData = resData.toString('utf8')
-    } else if (resData) {
-      const jsonStr = JSON.stringify(resData)
-      size = Buffer.byteLength(jsonStr, 'utf8')
+    const isArrayBuffer = rawResponse instanceof ArrayBuffer || ArrayBuffer.isView(rawResponse) || Buffer.isBuffer(rawResponse)
+    if (isArrayBuffer) {
+      const buffer = Buffer.from(rawResponse as any)
+      size = buffer.length
+      resData = isBinaryPreviewType ? `data:${mediaType};base64,${buffer.toString('base64')}` : buffer.toString('utf8')
+    } else if (typeof rawResponse === 'string') {
+      resData = rawResponse
+      size = Buffer.byteLength(rawResponse, 'utf8')
+    } else {
+      resData = rawResponse
+      if (rawResponse) size = Buffer.byteLength(JSON.stringify(rawResponse), 'utf8')
     }
 
     // Try parsing as JSON if possible
     let parsedData = resData
-    const contentType = (response.headers['content-type'] as string) || ''
     if (typeof resData === 'string' && contentType.includes('application/json')) {
       try {
         parsedData = JSON.parse(resData)

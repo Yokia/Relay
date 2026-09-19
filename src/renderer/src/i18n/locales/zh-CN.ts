@@ -146,6 +146,7 @@ export const zhCN: TranslationSchema = {
     time: '耗时',
     size: '大小',
     tabBody: '响应内容 (Body)',
+    tabPreview: '预览 (Preview)',
     tabHeaders: '响应头 (Headers)',
     tabTests: '测试断言 (Tests)',
     pretty: '美化',
@@ -158,6 +159,7 @@ export const zhCN: TranslationSchema = {
     noHeaders: '暂无响应头数据',
     requestTimestamp: '请求时间点',
     noTestsRun: '此接口尚未配置测试脚本 (Tests)',
+    previewUnavailable: '当前响应类型暂不支持预览，或响应内容为空。',
     noTestsRunTip: '前往中部编辑区的“后置脚本与测试”选项卡，编写 JavaScript 断言脚本',
     testSummary: '测试结果概览',
     totalTests: '个测试项'

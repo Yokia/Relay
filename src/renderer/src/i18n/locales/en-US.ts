@@ -146,6 +146,7 @@ export const enUS: TranslationSchema = {
     time: 'Time',
     size: 'Size',
     tabBody: 'Body',
+    tabPreview: 'Preview',
     tabHeaders: 'Headers',
     tabTests: 'Tests',
     pretty: 'Pretty',
@@ -158,6 +159,7 @@ export const enUS: TranslationSchema = {
     noHeaders: 'No response headers recorded',
     requestTimestamp: 'Request Time',
     noTestsRun: 'No test script configured for this request',
+    previewUnavailable: 'This response type cannot be previewed, or the response is empty.',
     noTestsRunTip: 'Switch to the "Tests" tab in the request editor to write JavaScript assertions',
     testSummary: 'Test Results',
     totalTests: 'tests'

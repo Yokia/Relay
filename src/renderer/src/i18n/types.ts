@@ -146,6 +146,7 @@ export interface TranslationSchema {
     time: string
     size: string
     tabBody: string
+    tabPreview: string
     tabHeaders: string
     tabTests: string
     pretty: string
@@ -158,6 +159,7 @@ export interface TranslationSchema {
     noHeaders: string
     requestTimestamp: string
     noTestsRun: string
+    previewUnavailable: string
     noTestsRunTip: string
     testSummary: string
     totalTests: string

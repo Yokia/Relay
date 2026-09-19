@@ -690,7 +690,7 @@ export const RequestHeader: React.FC<Props> = ({
                           e.stopPropagation()
                           startEditingAt(seg.start)
                         }}
-                        className="text-slate-200 select-text break-all cursor-text hover:text-white"
+                        className="text-slate-700 dark:text-slate-200 select-text break-all cursor-text hover:text-slate-900 dark:hover:text-white"
                       >
                         {seg.value}
                       </span>
