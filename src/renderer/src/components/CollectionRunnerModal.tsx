@@ -404,13 +404,15 @@ export const CollectionRunnerModal: React.FC<Props> = ({
         size: r.size,
         time: r.time,
         contentType: r.responseHeaders?.['content-type'] || r.responseHeaders?.['Content-Type'] || 'application/json',
-        error: r.error
+        error: r.error,
+        timestamp: r.timestamp
       }
       window.electronAPI.openResponseWindow({
         response: resData,
         url: r.url,
         method: r.method,
-        name: r.requestName
+        name: r.requestName,
+        timestamp: r.timestamp
       })
     }
   }

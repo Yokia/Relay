@@ -8,7 +8,8 @@ import {
   History,
   ExternalLink,
   Download,
-  WrapText
+  WrapText,
+  Calendar
 } from 'lucide-react'
 import { ResponseData, ResponseRun } from '../types'
 import { CodeEditor } from './CodeEditor'
@@ -89,6 +90,31 @@ export const ResponseViewer: React.FC<Props> = ({
     return (ms / 1000).toFixed(2) + ' s'
   }
 
+  const formatTimestamp = (ts?: number) => {
+    if (!ts) return ''
+    const d = new Date(ts)
+    if (isNaN(d.getTime())) return ''
+    const hours = String(d.getHours()).padStart(2, '0')
+    const minutes = String(d.getMinutes()).padStart(2, '0')
+    const seconds = String(d.getSeconds()).padStart(2, '0')
+    return `${hours}:${minutes}:${seconds}`
+  }
+
+  const formatFullDateTime = (ts?: number) => {
+    if (!ts) return ''
+    const d = new Date(ts)
+    if (isNaN(d.getTime())) return ''
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    const hours = String(d.getHours()).padStart(2, '0')
+    const minutes = String(d.getMinutes()).padStart(2, '0')
+    const seconds = String(d.getSeconds()).padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  }
+
+  const activeTimestamp = activeRun?.timestamp || displayResponse.timestamp
+
   const getFormattedBody = () => {
     if (displayResponse.data === null || displayResponse.data === undefined) return ''
     if (typeof displayResponse.data === 'object') {
@@ -118,7 +144,8 @@ export const ResponseViewer: React.FC<Props> = ({
         response: displayResponse,
         url: resolvedUrl,
         method: activeRun?.method || requestMethod,
-        name: requestName
+        name: requestName,
+        timestamp: activeTimestamp
       })
     }
   }
@@ -166,6 +193,17 @@ export const ResponseViewer: React.FC<Props> = ({
             <Database className="w-3.5 h-3.5" />
             <span>{formatSize(displayResponse.size)}</span>
           </div>
+
+          {/* Request Timestamp */}
+          {activeTimestamp && (
+            <div
+              className="flex items-center gap-1 text-slate-400 font-mono text-xs"
+              title={`${t('response.requestTimestamp')}: ${formatFullDateTime(activeTimestamp)}`}
+            >
+              <Calendar className="w-3.5 h-3.5 text-slate-400" />
+              <span>{formatTimestamp(activeTimestamp)}</span>
+            </div>
+          )}
 
           {/* Multi-run history dropdown for this request */}
           {runs.length > 0 && (

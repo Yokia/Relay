@@ -803,15 +803,20 @@ function MainApp({
 
     try {
       const res = await window.electronAPI.sendRequest(payload)
-      setResponse(res)
+      const reqTimestamp = res.timestamp || Date.now()
+      const fullRes: ResponseData = {
+        ...res,
+        timestamp: reqTimestamp
+      }
+      setResponse(fullRes)
 
       // Add to per-request response runs
       const newRun: ResponseRun = {
-        id: 'run-' + Date.now(),
-        timestamp: Date.now(),
+        id: 'run-' + reqTimestamp,
+        timestamp: reqTimestamp,
         method: currentRequest.method,
         url: processedUrl,
-        response: res
+        response: fullRes
       }
       setResponseHistoryMap((prev) => {
         const currentRuns = prev[reqId] || []
@@ -880,6 +885,7 @@ function MainApp({
         window.electronAPI.notifyHistoryUpdated(nextHistory)
       }
     } catch (err: any) {
+      const errTime = Date.now()
       const errRes: ResponseData = {
         status: 0,
         statusText: 'Client Error',
@@ -888,13 +894,14 @@ function MainApp({
         size: 0,
         time: 0,
         contentType: '',
-        error: err.message || 'Unknown error occurred'
+        error: err.message || 'Unknown error occurred',
+        timestamp: errTime
       }
       setResponse(errRes)
 
       const errRun: ResponseRun = {
-        id: 'run-' + Date.now(),
-        timestamp: Date.now(),
+        id: 'run-' + errTime,
+        timestamp: errTime,
         method: currentRequest.method,
         url: processedUrl,
         response: errRes

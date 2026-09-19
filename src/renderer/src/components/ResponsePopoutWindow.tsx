@@ -33,6 +33,7 @@ interface PopoutData {
   url?: string
   method?: string
   name?: string
+  timestamp?: number
 }
 
 const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
@@ -46,7 +47,8 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
   const [headerSearch, setHeaderSearch] = useState('')
   const [savedNotice, setSavedNotice] = useState<string | null>(null)
 
-  const { response, url, method = 'GET', name } = data
+  const { response, url, method = 'GET', name, timestamp: propTimestamp } = data
+  const reqTimestamp = propTimestamp || response?.timestamp
 
   const isSuccess = response.status >= 200 && response.status < 300
   const isRedirect = response.status >= 300 && response.status < 400
@@ -68,6 +70,29 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
     if (!ms) return '0 ms'
     if (ms < 1000) return ms + ' ms'
     return (ms / 1000).toFixed(2) + ' s'
+  }
+
+  const formatTimestamp = (ts?: number) => {
+    if (!ts) return ''
+    const d = new Date(ts)
+    if (isNaN(d.getTime())) return ''
+    const hours = String(d.getHours()).padStart(2, '0')
+    const minutes = String(d.getMinutes()).padStart(2, '0')
+    const seconds = String(d.getSeconds()).padStart(2, '0')
+    return `${hours}:${minutes}:${seconds}`
+  }
+
+  const formatFullDateTime = (ts?: number) => {
+    if (!ts) return ''
+    const d = new Date(ts)
+    if (isNaN(d.getTime())) return ''
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    const hours = String(d.getHours()).padStart(2, '0')
+    const minutes = String(d.getMinutes()).padStart(2, '0')
+    const seconds = String(d.getSeconds()).padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
   }
 
   const getFormattedBody = () => {
@@ -128,9 +153,14 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
               <span className="font-semibold text-sm text-slate-100 truncate">
                 {name || 'Response Details'}
               </span>
-              <span className="text-[10px] text-slate-500 font-mono">
-                {new Date().toLocaleTimeString()}
-              </span>
+              {reqTimestamp && (
+                <span
+                  className="text-[10px] text-slate-500 font-mono"
+                  title={`${t('response.requestTimestamp')}: ${formatFullDateTime(reqTimestamp)}`}
+                >
+                  {formatTimestamp(reqTimestamp)}
+                </span>
+              )}
             </div>
             {url && (
               <span className="text-xs font-mono text-slate-400 truncate max-w-xl select-text" title={url}>

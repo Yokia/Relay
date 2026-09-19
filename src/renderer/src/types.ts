@@ -68,6 +68,7 @@ export interface ResponseData {
   time: number
   contentType: string
   error?: string
+  timestamp?: number
 }
 
 export interface ResponseRun {

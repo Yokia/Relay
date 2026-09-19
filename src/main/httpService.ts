@@ -273,7 +273,8 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
       data: parsedData,
       size,
       time: duration,
-      contentType
+      contentType,
+      timestamp: startTime
     }
   } catch (err: any) {
     const duration = Date.now() - startTime
@@ -285,7 +286,8 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
       size: 0,
       time: duration,
       contentType: '',
-      error: err.message || 'Request failed'
+      error: err.message || 'Request failed',
+      timestamp: startTime
     }
   }
 }

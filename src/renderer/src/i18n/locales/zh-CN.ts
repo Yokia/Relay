@@ -151,7 +151,8 @@ export const zhCN: TranslationSchema = {
     popoutWindow: '在新窗口中打开',
     savedNotice: '已保存至 {path}',
     historyRuns: '历史记录',
-    noHeaders: '暂无响应头数据'
+    noHeaders: '暂无响应头数据',
+    requestTimestamp: '请求时间点'
   },
   settings: {
     title: '首选项与设置',

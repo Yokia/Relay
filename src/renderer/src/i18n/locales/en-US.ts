@@ -151,7 +151,8 @@ export const enUS: TranslationSchema = {
     popoutWindow: 'Open in New Window',
     savedNotice: 'Saved to {path}',
     historyRuns: 'History Runs',
-    noHeaders: 'No response headers recorded'
+    noHeaders: 'No response headers recorded',
+    requestTimestamp: 'Request Time'
   },
   settings: {
     title: 'Preferences & Settings',

@@ -152,6 +152,7 @@ export interface TranslationSchema {
     savedNotice: string
     historyRuns: string
     noHeaders: string
+    requestTimestamp: string
   }
   settings: {
     title: string
