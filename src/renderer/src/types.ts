@@ -19,6 +19,14 @@ export interface RequestItem {
   bodyFormData?: KeyValueItem[]
   bodyUrlEncoded?: KeyValueItem[]
   constantOverrides?: Record<string, string>
+  preRequestScript?: string
+  testScript?: string
+}
+
+export interface TestResultItem {
+  name: string
+  passed: boolean
+  error?: string
 }
 
 export interface CollectionItem {
@@ -69,6 +77,7 @@ export interface ResponseData {
   contentType: string
   error?: string
   timestamp?: number
+  testResults?: TestResultItem[]
 }
 
 export interface ResponseRun {
@@ -118,6 +127,7 @@ export interface RunnerRequestResult {
   requestParams?: Record<string, string>
   requestBody?: any
   timestamp: number
+  testResults?: TestResultItem[]
 }
 
 export interface RunnerReport {

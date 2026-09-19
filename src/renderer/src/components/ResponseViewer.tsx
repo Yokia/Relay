@@ -42,7 +42,7 @@ export const ResponseViewer: React.FC<Props> = ({
 }) => {
   const { t } = useI18n()
   const [copied, setCopied] = useState(false)
-  const [activeTab, setActiveTab] = useState<'body' | 'headers'>('body')
+  const [activeTab, setActiveTab] = useState<'body' | 'headers' | 'tests'>('body')
   const [bodyFormat, setBodyFormat] = useState<'pretty' | 'raw'>('pretty')
   const [wrapLines, setWrapLines] = useState(true)
   const [savedNotice, setSavedNotice] = useState<string | null>(null)
@@ -313,6 +313,28 @@ export const ResponseViewer: React.FC<Props> = ({
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />
             )}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('tests')}
+            className={"py-2 relative transition-colors " + (activeTab === 'tests' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+          >
+            <span>{t('response.tabTests')}</span>
+            {displayResponse.testResults && displayResponse.testResults.length > 0 && (
+              <span
+                className={`ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] font-mono font-medium ${
+                  displayResponse.testResults.every((t) => t.passed)
+                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                }`}
+              >
+                {displayResponse.testResults.filter((t) => t.passed).length}/{displayResponse.testResults.length}
+              </span>
+            )}
+            {activeTab === 'tests' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />
+            )}
+          </button>
         </div>
 
         {activeTab === 'body' && (
@@ -379,6 +401,68 @@ export const ResponseViewer: React.FC<Props> = ({
                   <span className="text-slate-300 flex-1 break-all">{v}</span>
                 </div>
               ))
+            )}
+          </div>
+        )}
+
+        {activeTab === 'tests' && (
+          <div className="flex-1 overflow-y-auto flex flex-col gap-2 p-1 text-xs select-text">
+            {!displayResponse.testResults || displayResponse.testResults.length === 0 ? (
+              <div className="text-slate-500 py-12 text-center flex flex-col items-center gap-2">
+                <AlertCircle className="w-8 h-8 opacity-40" />
+                <span>{t('response.noTestsRun')}</span>
+                <span className="text-[11px] text-slate-400">{t('response.noTestsRunTip')}</span>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {/* Summary Header */}
+                <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-200">{t('response.testSummary')}:</span>
+                    <span className="px-2 py-0.5 rounded text-emerald-400 bg-emerald-500/10 font-mono font-medium border border-emerald-500/20">
+                      PASS: {displayResponse.testResults.filter((r) => r.passed).length}
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-rose-400 bg-rose-500/10 font-mono font-medium border border-rose-500/20">
+                      FAIL: {displayResponse.testResults.filter((r) => !r.passed).length}
+                    </span>
+                  </div>
+                  <span className="text-slate-400 text-[11px]">
+                    {displayResponse.testResults.length} {t('response.totalTests')}
+                  </span>
+                </div>
+
+                {/* Individual Test Assertions */}
+                <div className="flex flex-col gap-1.5">
+                  {displayResponse.testResults.map((test, idx) => (
+                    <div
+                      key={idx}
+                      className={`p-2.5 rounded-lg border flex flex-col gap-1 transition-colors ${
+                        test.passed
+                          ? 'bg-emerald-500/5 border-emerald-500/25 text-emerald-300'
+                          : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {test.passed ? (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shrink-0">
+                            PASS
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40 shrink-0">
+                            FAIL
+                          </span>
+                        )}
+                        <span className="font-medium text-slate-200">{test.name}</span>
+                      </div>
+                      {test.error && (
+                        <div className="text-[11px] font-mono text-rose-400 pl-7 break-all">
+                          {test.error}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}

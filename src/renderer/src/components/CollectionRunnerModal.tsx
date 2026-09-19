@@ -32,6 +32,7 @@ import {
   HttpMethod,
   ResponseData
 } from '../types'
+import { executePreRequestScript, executeTestScript } from '../utils/scriptEngine'
 import { useI18n } from '../i18n'
 
 interface Props {
@@ -193,7 +194,22 @@ export const CollectionRunnerModal: React.FC<Props> = ({
       }
 
       setCurrentIndex(i)
-      const currentReq = runnableRequests[i]
+      let currentReq = { ...runnableRequests[i] }
+      const activeEnv = activeEnvId ? environments.find((e) => e.id === activeEnvId) : environments[0]
+
+      // 1. Run Pre-request script in Runner
+      if (currentReq.preRequestScript && currentReq.preRequestScript.trim()) {
+        const preResult = executePreRequestScript(currentReq.preRequestScript, {
+          request: currentReq,
+          activeEnv
+        })
+        if (preResult.modifiedRequest) {
+          currentReq = {
+            ...currentReq,
+            ...preResult.modifiedRequest
+          }
+        }
+      }
 
       // Prepare payload with interpolation
       const processedUrl = interpolate(currentReq.url.trim(), currentReq)
@@ -236,6 +252,18 @@ export const CollectionRunnerModal: React.FC<Props> = ({
 
       try {
         const res = await window.electronAPI.sendRequest(payload)
+
+        // 2. Run Test script in Runner
+        let testResults: any = undefined
+        if (currentReq.testScript && currentReq.testScript.trim()) {
+          const testRes = executeTestScript(currentReq.testScript, {
+            request: currentReq,
+            activeEnv,
+            response: res
+          })
+          testResults = testRes.testResults
+        }
+
         resResult = {
           id: 'res-' + Date.now() + '-' + i,
           requestId: currentReq.id,
@@ -252,7 +280,8 @@ export const CollectionRunnerModal: React.FC<Props> = ({
           requestHeaders: reqHeadersSnapshot,
           requestParams: reqParamsSnapshot,
           requestBody: processedBodyRaw || currentReq.bodyFormData || currentReq.bodyUrlEncoded,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          testResults
         }
       } catch (err: any) {
         resResult = {

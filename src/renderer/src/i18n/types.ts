@@ -134,6 +134,8 @@ export interface TranslationSchema {
     colKey: string
     colValue: string
     colDel: string
+    preRequest: string
+    tests: string
   }
   response: {
     emptyTitle: string
@@ -144,6 +146,7 @@ export interface TranslationSchema {
     size: string
     tabBody: string
     tabHeaders: string
+    tabTests: string
     pretty: string
     raw: string
     copyResponse: string
@@ -153,6 +156,10 @@ export interface TranslationSchema {
     historyRuns: string
     noHeaders: string
     requestTimestamp: string
+    noTestsRun: string
+    noTestsRunTip: string
+    testSummary: string
+    totalTests: string
   }
   settings: {
     title: string
@@ -477,5 +484,21 @@ export interface TranslationSchema {
     prevDiff: string
     nextDiff: string
     diffCount: string
+  }
+  script: {
+    preRequestTitle: string
+    testTitle: string
+    snippetsTitle: string
+    preRequestTip: string
+    testTip: string
+    snipSetEnv: string
+    snipGetEnv: string
+    snipTimestamp: string
+    snipAddHeader: string
+    snipStatus200: string
+    snipCheckJsonField: string
+    snipSetEnvFromResponse: string
+    snipResponseTime: string
+    snipStatus2xx: string
   }
 }

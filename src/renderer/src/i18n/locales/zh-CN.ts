@@ -133,7 +133,9 @@ export const zhCN: TranslationSchema = {
     colActive: '启用',
     colKey: '键名',
     colValue: '键值',
-    colDel: '删除'
+    colDel: '删除',
+    preRequest: '前置脚本 (Pre-request)',
+    tests: '后置脚本与测试 (Tests)'
   },
   response: {
     emptyTitle: '尚未发起请求',
@@ -144,6 +146,7 @@ export const zhCN: TranslationSchema = {
     size: '大小',
     tabBody: '响应内容 (Body)',
     tabHeaders: '响应头 (Headers)',
+    tabTests: '测试断言 (Tests)',
     pretty: '美化',
     raw: '原始',
     copyResponse: '复制响应内容',
@@ -152,7 +155,11 @@ export const zhCN: TranslationSchema = {
     savedNotice: '已保存至 {path}',
     historyRuns: '历史记录',
     noHeaders: '暂无响应头数据',
-    requestTimestamp: '请求时间点'
+    requestTimestamp: '请求时间点',
+    noTestsRun: '此接口尚未配置测试脚本 (Tests)',
+    noTestsRunTip: '前往中部编辑区的“后置脚本与测试”选项卡，编写 JavaScript 断言脚本',
+    testSummary: '测试结果概览',
+    totalTests: '个测试项'
   },
   settings: {
     title: '首选项与设置',
@@ -477,5 +484,21 @@ export const zhCN: TranslationSchema = {
     prevDiff: '上一处差异',
     nextDiff: '下一处差异',
     diffCount: '第 {current}/{total} 处差异'
+  },
+  script: {
+    preRequestTitle: '前置脚本 (Pre-request Script)',
+    testTitle: '后置脚本与断言测试 (Tests)',
+    snippetsTitle: '常用代码片段',
+    preRequestTip: '在请求发送前执行，支持使用 pm.environment.set() 动态设置参数或签名。',
+    testTip: '在收到响应后自动执行，支持使用 pm.test() 与 pm.expect() 进行接口自动化断言。',
+    snipSetEnv: '设置环境变量 (set)',
+    snipGetEnv: '获取环境变量 (get)',
+    snipTimestamp: '生成动态时间戳',
+    snipAddHeader: '动态附加请求头',
+    snipStatus200: '断言状态码为 200',
+    snipCheckJsonField: '断言 JSON 响应字段',
+    snipSetEnvFromResponse: '从响应提取 Token 到环境',
+    snipResponseTime: '断言响应耗时 < 500ms',
+    snipStatus2xx: '断言响应状态码为 2xx'
   }
 }

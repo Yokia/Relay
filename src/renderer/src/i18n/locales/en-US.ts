@@ -133,7 +133,9 @@ export const enUS: TranslationSchema = {
     colActive: 'Active',
     colKey: 'Key',
     colValue: 'Value',
-    colDel: 'Del'
+    colDel: 'Del',
+    preRequest: 'Pre-request Script',
+    tests: 'Tests'
   },
   response: {
     emptyTitle: 'No response yet',
@@ -144,6 +146,7 @@ export const enUS: TranslationSchema = {
     size: 'Size',
     tabBody: 'Body',
     tabHeaders: 'Headers',
+    tabTests: 'Tests',
     pretty: 'Pretty',
     raw: 'Raw',
     copyResponse: 'Copy Response',
@@ -152,7 +155,11 @@ export const enUS: TranslationSchema = {
     savedNotice: 'Saved to {path}',
     historyRuns: 'History Runs',
     noHeaders: 'No response headers recorded',
-    requestTimestamp: 'Request Time'
+    requestTimestamp: 'Request Time',
+    noTestsRun: 'No test script configured for this request',
+    noTestsRunTip: 'Switch to the "Tests" tab in the request editor to write JavaScript assertions',
+    testSummary: 'Test Results',
+    totalTests: 'tests'
   },
   settings: {
     title: 'Preferences & Settings',
@@ -477,5 +484,21 @@ export const enUS: TranslationSchema = {
     prevDiff: 'Previous Difference',
     nextDiff: 'Next Difference',
     diffCount: 'Diff {current} of {total}'
+  },
+  script: {
+    preRequestTitle: 'Pre-request Script',
+    testTitle: 'Post-response Tests',
+    snippetsTitle: 'Snippets',
+    preRequestTip: 'Executed before request is sent. Use pm.environment.set() to dynamically inject parameters.',
+    testTip: 'Executed after response is received. Use pm.test() and pm.expect() to write automated assertions.',
+    snipSetEnv: 'Set an environment variable',
+    snipGetEnv: 'Get an environment variable',
+    snipTimestamp: 'Generate timestamp / UUID',
+    snipAddHeader: 'Add request header',
+    snipStatus200: 'Status code is 200',
+    snipCheckJsonField: 'Check JSON response field',
+    snipSetEnvFromResponse: 'Save Token from JSON to environment',
+    snipResponseTime: 'Response time < 500ms',
+    snipStatus2xx: 'Successful status code (2xx)'
   }
 }

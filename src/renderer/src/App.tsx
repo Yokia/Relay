@@ -16,6 +16,7 @@ import { ToastContainer, ToastMessage } from './components/Toast'
 import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme, WorkspaceTab } from './types'
 import { stripJsonComments } from './utils/jsonUtils'
 import { mergeCollections, mergeConstants, mergeEnvironments, ParsedImportData } from './utils/dataTransferUtils'
+import { executePreRequestScript, executeTestScript } from './utils/scriptEngine'
 import { I18nProvider, useI18n } from './i18n'
 import { ThemeProvider } from './theme'
 import { Sun, Moon, Search, History, Zap, HelpCircle } from 'lucide-react'
@@ -772,28 +773,67 @@ function MainApp({
     if (!currentRequest.url.trim() || isLoading) return
     setIsLoading(true)
 
-    const processedUrl = interpolate(currentRequest.url.trim(), currentRequest)
-    const processedHeaders = (currentRequest.headers || []).map((h) => ({
+    // 1. Run Pre-request script if present
+    const activeEnv = activeEnvId ? environments.find((e) => e.id === activeEnvId) : environments[0]
+    let effectiveRequest = { ...currentRequest }
+
+    if (currentRequest.preRequestScript && currentRequest.preRequestScript.trim()) {
+      const preResult = executePreRequestScript(currentRequest.preRequestScript, {
+        request: currentRequest,
+        activeEnv
+      })
+
+      if (preResult.modifiedRequest) {
+        effectiveRequest = {
+          ...effectiveRequest,
+          ...preResult.modifiedRequest
+        }
+      }
+
+      if (preResult.envUpdates && preResult.envUpdates.length > 0 && activeEnv) {
+        setEnvironments((prevEnvs) => {
+          const nextEnvs = prevEnvs.map((env) => {
+            if (env.id !== activeEnv.id) return env
+            const updatedVars = [...env.variables]
+            preResult.envUpdates?.forEach((update) => {
+              const existing = updatedVars.find((v) => v.key === update.key)
+              if (existing) {
+                existing.value = update.value
+                existing.enabled = true
+              } else {
+                updatedVars.push({ key: update.key, value: update.value, enabled: true })
+              }
+            })
+            return { ...env, variables: updatedVars }
+          })
+          persist({ environments: nextEnvs })
+          return nextEnvs
+        })
+      }
+    }
+
+    const processedUrl = interpolate(effectiveRequest.url.trim(), effectiveRequest)
+    const processedHeaders = (effectiveRequest.headers || []).map((h) => ({
       ...h,
-      key: interpolate(h.key, currentRequest),
-      value: interpolate(h.value, currentRequest)
+      key: interpolate(h.key, effectiveRequest),
+      value: interpolate(h.value, effectiveRequest)
     }))
-    const processedParams = (currentRequest.params || []).map((p) => ({
+    const processedParams = (effectiveRequest.params || []).map((p) => ({
       ...p,
-      key: interpolate(p.key, currentRequest),
-      value: interpolate(p.value, currentRequest)
+      key: interpolate(p.key, effectiveRequest),
+      value: interpolate(p.value, effectiveRequest)
     }))
-    const processedBodyRaw = interpolate(currentRequest.bodyRaw || '', currentRequest)
+    const processedBodyRaw = interpolate(effectiveRequest.bodyRaw || '', effectiveRequest)
 
     const payload = {
-      method: currentRequest.method,
+      method: effectiveRequest.method,
       url: processedUrl,
       headers: processedHeaders,
       params: processedParams,
-      bodyType: currentRequest.bodyType,
+      bodyType: effectiveRequest.bodyType,
       bodyRaw: processedBodyRaw,
-      bodyUrlEncoded: currentRequest.bodyUrlEncoded,
-      bodyFormData: currentRequest.bodyFormData,
+      bodyUrlEncoded: effectiveRequest.bodyUrlEncoded,
+      bodyFormData: effectiveRequest.bodyFormData,
       timeout: settings.timeout || 30000,
       rejectUnauthorized: settings.sslVerify !== false
     }
@@ -804,17 +844,53 @@ function MainApp({
     try {
       const res = await window.electronAPI.sendRequest(payload)
       const reqTimestamp = res.timestamp || Date.now()
-      const fullRes: ResponseData = {
+      let fullRes: ResponseData = {
         ...res,
         timestamp: reqTimestamp
       }
+
+      // 2. Run Test script if present
+      if (currentRequest.testScript && currentRequest.testScript.trim()) {
+        const testResult = executeTestScript(currentRequest.testScript, {
+          request: effectiveRequest,
+          activeEnv,
+          response: fullRes
+        })
+
+        fullRes = {
+          ...fullRes,
+          testResults: testResult.testResults
+        }
+
+        if (testResult.envUpdates && testResult.envUpdates.length > 0 && activeEnv) {
+          setEnvironments((prevEnvs) => {
+            const nextEnvs = prevEnvs.map((env) => {
+              if (env.id !== activeEnv.id) return env
+              const updatedVars = [...env.variables]
+              testResult.envUpdates?.forEach((update) => {
+                const existing = updatedVars.find((v) => v.key === update.key)
+                if (existing) {
+                  existing.value = update.value
+                  existing.enabled = true
+                } else {
+                  updatedVars.push({ key: update.key, value: update.value, enabled: true })
+                }
+              })
+              return { ...env, variables: updatedVars }
+            })
+            persist({ environments: nextEnvs })
+            return nextEnvs
+          })
+        }
+      }
+
       setResponse(fullRes)
 
       // Add to per-request response runs
       const newRun: ResponseRun = {
         id: 'run-' + reqTimestamp,
         timestamp: reqTimestamp,
-        method: currentRequest.method,
+        method: effectiveRequest.method,
         url: processedUrl,
         response: fullRes
       }
@@ -829,7 +905,7 @@ function MainApp({
 
       // Append to global history (saves previewed URL, resolved parameters and safe response snapshot)
       const historyRequest: RequestItem = {
-        ...JSON.parse(JSON.stringify(currentRequest)),
+        ...JSON.parse(JSON.stringify(effectiveRequest)),
         url: processedUrl,
         headers: processedHeaders,
         params: processedParams,

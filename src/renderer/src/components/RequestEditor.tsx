@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { KeyValueEditor } from './KeyValueEditor'
 import { CodeEditor } from './CodeEditor'
+import { ScriptEditor } from './ScriptEditor'
 import { RequestItem } from '../types'
 import { Sparkles, WrapText, ChevronDown } from 'lucide-react'
 import { stripJsonComments } from '../utils/jsonUtils'
@@ -11,7 +12,7 @@ interface Props {
   onChange: (updates: Partial<RequestItem>) => void
 }
 
-type TabType = 'params' | 'headers' | 'body'
+type TabType = 'params' | 'headers' | 'body' | 'preRequest' | 'tests'
 
 export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
   const { t } = useI18n()
@@ -80,6 +81,32 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
             <span className="ml-1.5 w-1.5 h-1.5 inline-block bg-sky-400 rounded-full align-middle" />
           )}
           {activeTab === 'body' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('preRequest')}
+          className={"py-2.5 relative transition-colors " + (activeTab === 'preRequest' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+        >
+          <span>{t('editor.preRequest')}</span>
+          {Boolean(request.preRequestScript && request.preRequestScript.trim()) && (
+            <span className="ml-1.5 w-1.5 h-1.5 inline-block bg-emerald-400 rounded-full align-middle" />
+          )}
+          {activeTab === 'preRequest' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('tests')}
+          className={"py-2.5 relative transition-colors " + (activeTab === 'tests' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+        >
+          <span>{t('editor.tests')}</span>
+          {Boolean(request.testScript && request.testScript.trim()) && (
+            <span className="ml-1.5 w-1.5 h-1.5 inline-block bg-amber-400 rounded-full align-middle" />
+          )}
+          {activeTab === 'tests' && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />
           )}
         </button>
@@ -177,6 +204,28 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
                 placeholderValue="value"
               />
             )}
+          </div>
+        )}
+
+        {activeTab === 'preRequest' && (
+          <div className="flex-1 h-full min-h-[300px]">
+            <ScriptEditor
+              value={request.preRequestScript || ''}
+              onChange={(val) => onChange({ preRequestScript: val })}
+              mode="pre-request"
+              placeholder="// Write JavaScript to execute before sending request..."
+            />
+          </div>
+        )}
+
+        {activeTab === 'tests' && (
+          <div className="flex-1 h-full min-h-[300px]">
+            <ScriptEditor
+              value={request.testScript || ''}
+              onChange={(val) => onChange({ testScript: val })}
+              mode="test"
+              placeholder="// Write JavaScript assertions to test response..."
+            />
           </div>
         )}
       </div>
