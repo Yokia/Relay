@@ -29,7 +29,8 @@ import {
   ArrowUpDown,
   FolderDown,
   Play,
-  BookOpen
+  BookOpen,
+  Sparkles
 } from 'lucide-react'
 import { CollectionItem, HistoryItem, Environment, RequestItem, HttpMethod, ConstantItem } from '../types'
 import {
@@ -74,6 +75,7 @@ interface Props {
   onSwitchConstant: (name: string, value: string) => void
   dirtyIds?: Set<string>
   onOpenSettings: () => void
+  onOpenDevToys?: () => void
   onOpenDataTransfer?: (tab?: 'export' | 'import', targetColId?: string, format?: 'json' | 'html' | 'markdown') => void
   onRunCollection?: (col: CollectionItem) => void
   onRunRequests?: (requests: RequestItem[], title: string) => void
@@ -148,6 +150,7 @@ export const Sidebar: React.FC<Props> = ({
   onSwitchConstant,
   dirtyIds,
   onOpenSettings,
+  onOpenDevToys,
   onOpenDataTransfer,
   onRunCollection,
   onRunRequests
@@ -853,6 +856,16 @@ export const Sidebar: React.FC<Props> = ({
           </select>
         </div>
         <div className="flex items-center gap-1">
+          {onOpenDevToys && (
+            <button
+              type="button"
+              onClick={onOpenDevToys}
+              title={`${t('devtoys.title')} (Ctrl+Shift+T)`}
+              className="p-1 text-slate-400 hover:text-emerald-300 hover:bg-slate-800 rounded transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            </button>
+          )}
           <button
             type="button"
             onClick={onOpenEnvModal}

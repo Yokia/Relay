@@ -12,6 +12,7 @@ import { TabBar } from './components/TabBar'
 import { CommandPaletteModal } from './components/CommandPaletteModal'
 import { CodeSnippetModal } from './components/CodeSnippetModal'
 import { CollectionRunnerModal } from './components/CollectionRunnerModal'
+import { DevToysModal } from './components/DevToysModal'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastContainer, ToastMessage } from './components/Toast'
 import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme, WorkspaceTab } from './types'
@@ -20,7 +21,7 @@ import { mergeCollections, mergeConstants, mergeEnvironments, ParsedImportData }
 import { executePreRequestScript, executeTestScript } from './utils/scriptEngine'
 import { I18nProvider, useI18n } from './i18n'
 import { ThemeProvider } from './theme'
-import { Sun, Moon, Search, History, Zap, HelpCircle } from 'lucide-react'
+import { Sun, Moon, Search, History, Zap, HelpCircle, Sparkles } from 'lucide-react'
 import {
   findCollectionInTree,
   findRequestInTree,
@@ -167,6 +168,7 @@ function MainApp({
     title: '',
     requests: []
   })
+  const [isDevToysOpen, setIsDevToysOpen] = useState(false)
 
   // Toast Notification System
   const [toasts, setToasts] = useState<ToastMessage[]>([])
@@ -1324,8 +1326,13 @@ function MainApp({
           addToast(t('toast.requestDuplicatedViaShortcut'), 'success')
         }
       }
+      // Ctrl+Shift+T: Open DevToys / Scratchpad
+      else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 't') {
+        e.preventDefault()
+        setIsDevToysOpen(true)
+      }
       // Ctrl+T: New Tab
-      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 't') {
+      else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 't') {
         e.preventDefault()
         handleNewTab()
       }
@@ -1400,6 +1407,17 @@ function MainApp({
 
   const renderTopRightToolbar = () => (
     <div className="flex items-center gap-2 text-xs">
+      {/* DevToys / Scratchpad Toolbox */}
+      <button
+        type="button"
+        onClick={() => setIsDevToysOpen(true)}
+        className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-emerald-300 border border-slate-800/80 transition-colors cursor-pointer"
+        title={`${t('devtoys.title')} (Ctrl+Shift+T)`}
+      >
+        <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+        <span className="text-[11px] font-medium">{t('devtoys.title')}</span>
+      </button>
+
       {/* Help / User Guide */}
       <button
         type="button"
@@ -1504,6 +1522,7 @@ function MainApp({
         onOpenCurlModal={() => setCurlModalState({ isOpen: true, mode: 'import' })}
         onOpenConstantModal={() => setIsConstantModalOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
+        onOpenDevToys={() => setIsDevToysOpen(true)}
         onSelectEnv={(id) => {
           setActiveEnvId(id || undefined)
           persist({ activeEnvironmentId: id || undefined })
@@ -1749,6 +1768,14 @@ function MainApp({
           activeEnvId={activeEnvId}
           settings={settings}
           onClose={() => setRunnerState((prev) => ({ ...prev, isOpen: false }))}
+          onToast={(msg, type) => addToast(msg, type || 'success')}
+        />
+      )}
+
+      {isDevToysOpen && (
+        <DevToysModal
+          isOpen={isDevToysOpen}
+          onClose={() => setIsDevToysOpen(false)}
           onToast={(msg, type) => addToast(msg, type || 'success')}
         />
       )}

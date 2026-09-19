@@ -521,4 +521,65 @@ export interface TranslationSchema {
     snipResponseTime: string
     snipStatus2xx: string
   }
+  devtoys: {
+    title: string
+    scratchpad: string
+    timestamp: string
+    urlEncoder: string
+    base64: string
+    jwt: string
+    hash: string
+    uuid: string
+    scratchpadDesc: string
+    timestampDesc: string
+    urlDesc: string
+    base64Desc: string
+    jwtDesc: string
+    hashDesc: string
+    uuidDesc: string
+    inputPlaceholder: string
+    outputPlaceholder: string
+    encode: string
+    decode: string
+    swap: string
+    clear: string
+    copy: string
+    copied: string
+    prettify: string
+    minify: string
+    characters: string
+    lines: string
+    bytes: string
+    currentTimestamp: string
+    timestampToDate: string
+    dateToTimestamp: string
+    seconds: string
+    milliseconds: string
+    localTime: string
+    utcTime: string
+    iso8601: string
+    relativeTime: string
+    plus1Hour: string
+    plus1Day: string
+    plus7Days: string
+    now: string
+    pause: string
+    resume: string
+    urlSafe: string
+    upperCase: string
+    hyphens: string
+    quantity: string
+    generate: string
+    copyAll: string
+    jwtHeader: string
+    jwtPayload: string
+    jwtSignature: string
+    jwtExpired: string
+    jwtValid: string
+    jwtExpiresAt: string
+    jwtIssuedAt: string
+    jwtNotBefore: string
+    invalidJwt: string
+    invalidTimestamp: string
+  }
 }
