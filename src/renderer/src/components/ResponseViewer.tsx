@@ -79,6 +79,9 @@ export const ResponseViewer: React.FC<Props> = ({
   const [searchTerm, setSearchTerm] = useState('')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchActiveIndex, setSearchActiveIndex] = useState(0)
+  const [searchCaseSensitive, setSearchCaseSensitive] = useState(false)
+  const [searchWholeWord, setSearchWholeWord] = useState(false)
+  const [searchRegex, setSearchRegex] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [jsonPath, setJsonPath] = useState('')
   const [isJsonPathFocused, setIsJsonPathFocused] = useState(false)
@@ -100,8 +103,14 @@ export const ResponseViewer: React.FC<Props> = ({
   const searchMatchCount = useMemo(() => {
     if (!displayResponse || !searchTerm.trim()) return 0
     const source = typeof displayResponse.data === 'object' ? JSON.stringify(displayResponse.data, null, 2) : String(displayResponse.data || '')
-    return Array.from(source.matchAll(new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'))).length
-  }, [displayResponse, searchTerm])
+    const sourcePattern = searchRegex ? searchTerm : searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = searchWholeWord ? `\\b(?:${sourcePattern})\\b` : sourcePattern
+    try {
+      return Array.from(source.matchAll(new RegExp(pattern, searchCaseSensitive ? 'g' : 'gi'))).length
+    } catch {
+      return 0
+    }
+  }, [displayResponse, searchTerm, searchCaseSensitive, searchWholeWord, searchRegex])
 
   useEffect(() => {
     if (isSearchOpen) {
@@ -112,7 +121,7 @@ export const ResponseViewer: React.FC<Props> = ({
 
   useEffect(() => {
     setSearchActiveIndex(0)
-  }, [searchTerm])
+  }, [searchTerm, searchCaseSensitive, searchWholeWord, searchRegex])
 
   if (isLoading) {
     return (
@@ -466,17 +475,24 @@ export const ResponseViewer: React.FC<Props> = ({
       <div className="relative flex-1 min-h-0 flex flex-col p-2.5" style={{ overflow: 'clip' }}>
         {isSearchOpen && (
           <div className="absolute top-3 right-3 z-50 flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 shadow-2xl">
-            <input
-              ref={searchInputRef}
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') closeSearch()
-                if (event.key === 'Enter' && searchMatchCount > 0) setSearchActiveIndex((current) => (current + (event.shiftKey ? -1 : 1) + searchMatchCount) % searchMatchCount)
-              }}
-              placeholder="Find in response"
-              className="w-48 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
-            />
+            <div className="relative">
+              <input
+                ref={searchInputRef}
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') closeSearch()
+                  if (event.key === 'Enter' && searchMatchCount > 0) setSearchActiveIndex((current) => (current + (event.shiftKey ? -1 : 1) + searchMatchCount) % searchMatchCount)
+                }}
+                placeholder="Find in response"
+                className="w-72 bg-slate-800 border border-slate-700 rounded px-2 py-1 pr-24 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+              />
+              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+                <button type="button" onClick={() => setSearchCaseSensitive((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${searchCaseSensitive ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title="区分大小写">Aa</button>
+                <button type="button" onClick={() => setSearchWholeWord((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${searchWholeWord ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title="全字匹配">ab</button>
+                <button type="button" onClick={() => setSearchRegex((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs font-mono ${searchRegex ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title="正则表达式">.*</button>
+              </div>
+            </div>
             <span className="min-w-12 text-center text-[11px] text-slate-400">{searchMatchCount ? `${searchActiveIndex + 1} / ${searchMatchCount}` : '0 / 0'}</span>
             <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((current) => (current - 1 + searchMatchCount) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title="Previous"><ChevronUp className="w-4 h-4" /></button>
             <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((current) => (current + 1) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title="Next"><ChevronDown className="w-4 h-4" /></button>
@@ -554,6 +570,9 @@ export const ResponseViewer: React.FC<Props> = ({
               wrap={wrapLines}
               searchTerm={searchTerm}
               searchActiveIndex={searchActiveIndex}
+              searchCaseSensitive={searchCaseSensitive}
+              searchWholeWord={searchWholeWord}
+              searchRegex={searchRegex}
               onOpenUrlInRelay={onOpenUrlInRelay}
             />
           </div>

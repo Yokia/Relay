@@ -20,6 +20,9 @@ interface Props {
   wrap?: boolean
   searchTerm?: string
   searchActiveIndex?: number
+  searchCaseSensitive?: boolean
+  searchWholeWord?: boolean
+  searchRegex?: boolean
 }
 
 interface ContextMenuState {
@@ -96,7 +99,7 @@ const jsonCommentPlugin = ViewPlugin.fromClass(
   }
 )
 
-function createSearchPlugin(term: string, activeIndex: number) {
+function createSearchPlugin(term: string, activeIndex: number, caseSensitive: boolean, wholeWord: boolean, regexMode: boolean) {
   return ViewPlugin.fromClass(
     class {
       decorations: DecorationSet
@@ -107,8 +110,14 @@ function createSearchPlugin(term: string, activeIndex: number) {
         const builder = new RangeSetBuilder<Decoration>()
         if (!term.trim()) return builder.finish()
         const source = view.state.doc.toString()
-        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-        const matcher = new RegExp(escaped, 'gi')
+        const sourcePattern = regexMode ? term : term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const pattern = wholeWord ? `\\b(?:${sourcePattern})\\b` : sourcePattern
+        let matcher: RegExp
+        try {
+          matcher = new RegExp(pattern, caseSensitive ? 'g' : 'gi')
+        } catch {
+          return builder.finish()
+        }
         let match: RegExpExecArray | null
         let index = 0
         while ((match = matcher.exec(source))) {
@@ -310,7 +319,10 @@ export const CodeEditor: React.FC<Props> = ({
   onOpenUrlInRelay,
   wrap = true,
   searchTerm = '',
-  searchActiveIndex = 0
+  searchActiveIndex = 0,
+  searchCaseSensitive = false,
+  searchWholeWord = false,
+  searchRegex = false
 }) => {
   const { theme } = useTheme()
   const editorViewRef = useRef<EditorView | null>(null)
@@ -320,17 +332,23 @@ export const CodeEditor: React.FC<Props> = ({
   }, [theme])
 
   const extensions = useMemo(() => {
-    const exts = [json(), clickableLinkPlugin, jsonCommentPlugin, createSearchPlugin(searchTerm, searchActiveIndex), commentTheme, ...activeThemeExts]
+    const exts = [json(), clickableLinkPlugin, jsonCommentPlugin, createSearchPlugin(searchTerm, searchActiveIndex, searchCaseSensitive, searchWholeWord, searchRegex), commentTheme, ...activeThemeExts]
     if (wrap) exts.push(EditorView.lineWrapping)
     return exts
-  }, [wrap, activeThemeExts, searchTerm, searchActiveIndex])
+  }, [wrap, activeThemeExts, searchTerm, searchActiveIndex, searchCaseSensitive, searchWholeWord, searchRegex])
 
   useEffect(() => {
     const view = editorViewRef.current
     if (!view || !searchTerm.trim()) return
     const source = view.state.doc.toString()
-    const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const matcher = new RegExp(escaped, 'gi')
+    const sourcePattern = searchRegex ? searchTerm : searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const pattern = searchWholeWord ? `\\b(?:${sourcePattern})\\b` : sourcePattern
+    let matcher: RegExp
+    try {
+      matcher = new RegExp(pattern, searchCaseSensitive ? 'g' : 'gi')
+    } catch {
+      return
+    }
     let match: RegExpExecArray | null
     let index = 0
     while ((match = matcher.exec(source))) {
@@ -342,7 +360,7 @@ export const CodeEditor: React.FC<Props> = ({
       }
       index++
     }
-  }, [searchTerm, searchActiveIndex])
+  }, [searchTerm, searchActiveIndex, searchCaseSensitive, searchWholeWord, searchRegex])
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [copied, setCopied] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
