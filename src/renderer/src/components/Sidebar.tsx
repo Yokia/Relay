@@ -28,7 +28,8 @@ import {
   FolderTree,
   ArrowUpDown,
   FolderDown,
-  Play
+  Play,
+  BookOpen
 } from 'lucide-react'
 import { CollectionItem, HistoryItem, Environment, RequestItem, HttpMethod, ConstantItem } from '../types'
 import {
@@ -73,7 +74,7 @@ interface Props {
   onSwitchConstant: (name: string, value: string) => void
   dirtyIds?: Set<string>
   onOpenSettings: () => void
-  onOpenDataTransfer?: (tab?: 'export' | 'import', targetColId?: string) => void
+  onOpenDataTransfer?: (tab?: 'export' | 'import', targetColId?: string, format?: 'json' | 'html' | 'markdown') => void
   onRunCollection?: (col: CollectionItem) => void
   onRunRequests?: (requests: RequestItem[], title: string) => void
 }
@@ -949,17 +950,31 @@ export const Sidebar: React.FC<Props> = ({
               </button>
 
               {onOpenDataTransfer && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onOpenDataTransfer('export', contextMenu.colId)
-                    setContextMenu(null)
-                  }}
-                  className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
-                >
-                  <FolderDown className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>{t('sidebar.exportCollection')}</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenDataTransfer('export', contextMenu.colId, 'json')
+                      setContextMenu(null)
+                    }}
+                    className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
+                  >
+                    <FolderDown className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>{t('sidebar.exportCollection')}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onOpenDataTransfer('export', contextMenu.colId, 'html')
+                      setContextMenu(null)
+                    }}
+                    className="px-2.5 py-1.5 text-left hover:bg-emerald-500/20 hover:text-emerald-300 rounded flex items-center gap-2 transition-colors text-emerald-300"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{t('sidebar.exportDocCollection')}</span>
+                  </button>
+                </>
               )}
 
               <div className="h-px bg-slate-800 my-0.5" />

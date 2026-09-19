@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import {
   X,
   Download,
@@ -14,9 +14,13 @@ import {
   Sparkles,
   ArrowDownToLine,
   FolderDown,
-  FolderTree
+  FolderTree,
+  BookOpen,
+  FileCode,
+  Loader2
 } from 'lucide-react'
 import { CollectionItem, ConstantItem, Environment, AppSettings } from '../types'
+import { generateMarkdownDoc, generateHtmlDoc } from '../utils/docExportUtils'
 import {
   countCollectionsInTree,
   countRequestsInTree,
@@ -32,10 +36,12 @@ import { useI18n } from '../i18n'
 interface Props {
   isOpen: boolean
   initialTab?: 'export' | 'import'
+  initialExportFormat?: 'json' | 'html' | 'markdown'
   selectedCollectionId?: string
   collections: CollectionItem[]
   constants: ConstantItem[]
   environments: Environment[]
+  activeEnvId?: string
   settings: AppSettings
   onClose: () => void
   onImport: (data: ParsedImportData, mode: 'merge' | 'overwrite') => void
@@ -43,15 +49,18 @@ interface Props {
 }
 
 type ExportScope = 'all' | 'collections' | 'singleCollection' | 'envConstants'
+type ExportFormat = 'json' | 'html' | 'markdown'
 type ImportStrategy = 'merge' | 'overwrite'
 
 export const DataTransferModal: React.FC<Props> = ({
   isOpen,
   initialTab = 'export',
+  initialExportFormat,
   selectedCollectionId,
-  collections,
-  constants,
-  environments,
+  collections = [],
+  constants = [],
+  environments = [],
+  activeEnvId,
   settings,
   onClose,
   onImport,
@@ -61,12 +70,17 @@ export const DataTransferModal: React.FC<Props> = ({
   const [activeTab, setActiveTab] = useState<'export' | 'import'>(initialTab)
 
   // Export State
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('json')
   const [exportScope, setExportScope] = useState<ExportScope>(
     selectedCollectionId ? 'singleCollection' : 'all'
   )
   const [targetCollectionId, setTargetCollectionId] = useState<string>(
     selectedCollectionId || collections[0]?.id || ''
   )
+  const [docTitle, setDocTitle] = useState('')
+  const [docDesc, setDocDesc] = useState('')
+  const [docIncludeCurl, setDocIncludeCurl] = useState(true)
+  const [docIncludeScripts, setDocIncludeScripts] = useState(false)
   const [copiedExport, setCopiedExport] = useState(false)
 
   // Import State
@@ -83,12 +97,15 @@ export const DataTransferModal: React.FC<Props> = ({
   useEffect(() => {
     if (isOpen) {
       setActiveTab(initialTab)
+      if (initialExportFormat) {
+        setExportFormat(initialExportFormat)
+      }
       if (selectedCollectionId) {
         setExportScope('singleCollection')
         setTargetCollectionId(selectedCollectionId)
       }
     }
-  }, [isOpen, initialTab, selectedCollectionId])
+  }, [isOpen, initialTab, initialExportFormat, selectedCollectionId])
 
   // Parse imported text when changed
   useEffect(() => {
@@ -124,125 +141,293 @@ export const DataTransferModal: React.FC<Props> = ({
   }
   const allFlatCols = flattenCollections(collections)
 
-  // Calculate Export Data
-  const generateExportPayload = () => {
-    const timestamp = new Date().toISOString()
-    if (exportScope === 'all') {
-      const payload: RelayBackupData = {
-        type: 'relay-backup',
-        version: 1,
-        exportedAt: timestamp,
-        collections,
-        constants,
-        environments,
-        settings
-      }
-      return {
-        data: payload,
-        filename: `relay-backup-${timestamp.slice(0, 10)}.json`,
-        collectionsCount: countCollectionsInTree(collections),
-        requestsCount: countRequestsInTree(collections),
-        constantsCount: constants.length,
-        environmentsCount: environments.length
-      }
-    }
+  // Safe state for export in progress
+  const [isExporting, setIsExporting] = useState(false)
 
-    if (exportScope === 'collections') {
-      const payload: RelayCollectionsData = {
-        type: 'relay-collections',
+  // Calculate Export Data safely with useMemo and defensive fallback
+  const exportPayload = useMemo(() => {
+    try {
+      const timestamp = new Date().toISOString()
+      const dateStr = timestamp.slice(0, 10)
+
+      // Target collections based on scope
+      let exportCols: CollectionItem[] = []
+      let targetColName = 'relay-api-docs'
+
+      if (exportScope === 'singleCollection') {
+        const singleCol =
+          (targetCollectionId ? findCollectionInTree(collections, targetCollectionId) : null) ||
+          collections[0] ||
+          null
+
+        if (singleCol) {
+          exportCols = [singleCol]
+          targetColName = (singleCol.name || 'collection').replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '_')
+        }
+      } else {
+        exportCols = collections || []
+      }
+
+      // Default title
+      const effectiveTitle =
+        docTitle.trim() ||
+        (exportScope === 'singleCollection' && exportCols[0]
+          ? `${exportCols[0].name || 'Collection'} API Documentation`
+          : 'Relay API Documentation')
+
+      // Helper: resolve {{variable}} placeholders using constants + active environment
+      const resolveText = (text: string, overrides?: Record<string, string>): string => {
+        if (!text) return text
+        let result = text
+        // 1. Replace constants (request-level overrides take precedence)
+        for (const c of constants) {
+          if (c.name && (c.currentValue || (overrides && overrides[c.name] !== undefined))) {
+            const effectiveVal = overrides && overrides[c.name] !== undefined ? overrides[c.name] : c.currentValue
+            if (effectiveVal) {
+              result = result.replaceAll('{{' + c.name + '}}', effectiveVal)
+            }
+          }
+        }
+        // 2. Replace active environment variables
+        if (activeEnvId) {
+          const env = environments.find((e) => e.id === activeEnvId)
+          if (env) {
+            for (const v of env.variables) {
+              if (v.enabled && v.key.trim()) {
+                result = result.replaceAll('{{' + v.key.trim() + '}}', v.value)
+              }
+            }
+          }
+        }
+        return result
+      }
+
+      // Deep clone collections and resolve all request URLs/headers/params for doc export
+      const resolveCollections = (cols: CollectionItem[]): CollectionItem[] =>
+        cols.map((col) => ({
+          ...col,
+          requests: (col.requests || []).map((req) => ({
+            ...req,
+            url: resolveText(req.url || '', req.constantOverrides),
+            headers: (req.headers || []).map((h) => ({
+              ...h,
+              key: resolveText(h.key, req.constantOverrides),
+              value: resolveText(h.value, req.constantOverrides)
+            })),
+            params: (req.params || []).map((p) => ({
+              ...p,
+              key: resolveText(p.key, req.constantOverrides),
+              value: resolveText(p.value, req.constantOverrides)
+            }))
+          })),
+          children: col.children ? resolveCollections(col.children) : []
+        }))
+
+      const resolvedExportCols = resolveCollections(exportCols)
+
+      // 1. Standalone HTML Export
+      if (exportFormat === 'html') {
+        const htmlContent = generateHtmlDoc({
+          title: effectiveTitle,
+          description: docDesc.trim(),
+          collections: resolvedExportCols,
+          includeCurl: docIncludeCurl,
+          includeScripts: docIncludeScripts
+        })
+        return {
+          format: 'html' as const,
+          rawContent: htmlContent,
+          filename: `${targetColName}-${dateStr}.html`,
+          collectionsCount: countCollectionsInTree(exportCols),
+          requestsCount: countRequestsInTree(exportCols),
+          constantsCount: 0,
+          environmentsCount: 0
+        }
+      }
+
+      // 2. Markdown Export
+      if (exportFormat === 'markdown') {
+        const mdContent = generateMarkdownDoc({
+          title: effectiveTitle,
+          description: docDesc.trim(),
+          collections: resolvedExportCols,
+          includeCurl: docIncludeCurl,
+          includeScripts: docIncludeScripts
+        })
+        return {
+          format: 'markdown' as const,
+          rawContent: mdContent,
+          filename: `${targetColName}-${dateStr}.md`,
+          collectionsCount: countCollectionsInTree(exportCols),
+          requestsCount: countRequestsInTree(exportCols),
+          constantsCount: 0,
+          environmentsCount: 0
+        }
+      }
+
+      // 3. JSON Exports
+      if (exportScope === 'all') {
+        const payload: RelayBackupData = {
+          type: 'relay-backup',
+          version: 1,
+          exportedAt: timestamp,
+          collections: collections || [],
+          constants: constants || [],
+          environments: environments || [],
+          settings
+        }
+        return {
+          format: 'json' as const,
+          rawContent: JSON.stringify(payload, null, 2),
+          filename: `relay-backup-${dateStr}.json`,
+          collectionsCount: countCollectionsInTree(collections || []),
+          requestsCount: countRequestsInTree(collections || []),
+          constantsCount: (constants || []).length,
+          environmentsCount: (environments || []).length
+        }
+      }
+
+      if (exportScope === 'collections') {
+        const payload: RelayCollectionsData = {
+          type: 'relay-collections',
+          version: 1,
+          exportedAt: timestamp,
+          collections: collections || []
+        }
+        return {
+          format: 'json' as const,
+          rawContent: JSON.stringify(payload, null, 2),
+          filename: `relay-collections-${dateStr}.json`,
+          collectionsCount: countCollectionsInTree(collections || []),
+          requestsCount: countRequestsInTree(collections || []),
+          constantsCount: 0,
+          environmentsCount: 0
+        }
+      }
+
+      if (exportScope === 'singleCollection') {
+        const singleCol =
+          (targetCollectionId ? findCollectionInTree(collections, targetCollectionId) : null) ||
+          collections[0] ||
+          null
+        const cols = singleCol ? [singleCol] : []
+        const payload: RelayCollectionsData = {
+          type: 'relay-collections',
+          version: 1,
+          exportedAt: timestamp,
+          collections: cols
+        }
+        return {
+          format: 'json' as const,
+          rawContent: JSON.stringify(payload, null, 2),
+          filename: `relay-col-${targetColName}-${dateStr}.json`,
+          collectionsCount: singleCol ? countCollectionsInTree([singleCol]) : 0,
+          requestsCount: singleCol ? countRequestsInTree([singleCol]) : 0,
+          constantsCount: 0,
+          environmentsCount: 0
+        }
+      }
+
+      // envConstants
+      const payload: RelayEnvConstantsData = {
+        type: 'relay-env-constants',
         version: 1,
         exportedAt: timestamp,
-        collections
+        constants: constants || [],
+        environments: environments || []
       }
       return {
-        data: payload,
-        filename: `relay-collections-${timestamp.slice(0, 10)}.json`,
-        collectionsCount: countCollectionsInTree(collections),
-        requestsCount: countRequestsInTree(collections),
+        format: 'json' as const,
+        rawContent: JSON.stringify(payload, null, 2),
+        filename: `relay-env-constants-${dateStr}.json`,
+        collectionsCount: 0,
+        requestsCount: 0,
+        constantsCount: (constants || []).length,
+        environmentsCount: (environments || []).length
+      }
+    } catch (err) {
+      console.error('Failed to compute export payload:', err)
+      return {
+        format: exportFormat,
+        rawContent: '',
+        filename: `export-error.txt`,
+        collectionsCount: 0,
+        requestsCount: 0,
         constantsCount: 0,
         environmentsCount: 0
       }
     }
-
-    if (exportScope === 'singleCollection') {
-      const singleCol = findCollectionInTree(collections, targetCollectionId) || collections[0]
-      const cols = singleCol ? [singleCol] : []
-      const payload: RelayCollectionsData = {
-        type: 'relay-collections',
-        version: 1,
-        exportedAt: timestamp,
-        collections: cols
-      }
-      const cleanName = (singleCol?.name || 'collection').replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '_')
-      return {
-        data: payload,
-        filename: `relay-col-${cleanName}-${timestamp.slice(0, 10)}.json`,
-        collectionsCount: singleCol ? countCollectionsInTree([singleCol]) : 0,
-        requestsCount: singleCol ? countRequestsInTree([singleCol]) : 0,
-        constantsCount: 0,
-        environmentsCount: 0
-      }
-    }
-
-    // envConstants
-    const payload: RelayEnvConstantsData = {
-      type: 'relay-env-constants',
-      version: 1,
-      exportedAt: timestamp,
-      constants,
-      environments
-    }
-    return {
-      data: payload,
-      filename: `relay-env-constants-${timestamp.slice(0, 10)}.json`,
-      collectionsCount: 0,
-      requestsCount: 0,
-      constantsCount: constants.length,
-      environmentsCount: environments.length
-    }
-  }
-
-  const exportPayload = generateExportPayload()
-  const exportJsonString = JSON.stringify(exportPayload.data, null, 2)
+  }, [
+    exportFormat,
+    exportScope,
+    targetCollectionId,
+    collections,
+    constants,
+    environments,
+    activeEnvId,
+    settings,
+    docTitle,
+    docDesc,
+    docIncludeCurl,
+    docIncludeScripts
+  ])
 
   // Action: Save to File
   const handleSaveToFile = async () => {
-    if (window.electronAPI?.saveFileDialog) {
-      try {
-        const res = await window.electronAPI.saveFileDialog({
-          defaultPath: exportPayload.filename,
-          content: exportJsonString
-        })
-        if (res && res.success) {
-          if (onExportToast) onExportToast(t('toast.dataExported'))
-          onClose()
-          return
+    setIsExporting(true)
+    try {
+      const mimeType =
+        exportPayload.format === 'html'
+          ? 'text/html;charset=utf-8'
+          : exportPayload.format === 'markdown'
+          ? 'text/markdown;charset=utf-8'
+          : 'application/json;charset=utf-8'
+
+      if (window.electronAPI?.saveFileDialog) {
+        try {
+          const res = await window.electronAPI.saveFileDialog({
+            defaultPath: exportPayload.filename,
+            content: exportPayload.rawContent
+          })
+          if (res && res.success) {
+            if (onExportToast) {
+              onExportToast(exportPayload.format === 'json' ? t('toast.dataExported') : t('toast.docExported'))
+            }
+            onClose()
+            return
+          }
+        } catch (err) {
+          console.error('Failed to save file dialog:', err)
         }
-      } catch (err) {
-        console.error('Failed to save file dialog:', err)
       }
+
+      // Fallback: Web Blob Download
+      const blob = new Blob([exportPayload.rawContent], { type: mimeType })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = exportPayload.filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      if (onExportToast) {
+        onExportToast(exportPayload.format === 'json' ? t('toast.dataExported') : t('toast.docExported'))
+      }
+      onClose()
+    } finally {
+      setIsExporting(false)
     }
-
-    // Fallback: Web Blob Download
-    const blob = new Blob([exportJsonString], { type: 'application/json;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = exportPayload.filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-
-    if (onExportToast) onExportToast(t('toast.dataExported'))
-    onClose()
   }
 
-  // Action: Copy JSON to Clipboard
-  const handleCopyJson = () => {
-    navigator.clipboard.writeText(exportJsonString)
+  // Action: Copy to Clipboard
+  const handleCopyContent = () => {
+    navigator.clipboard.writeText(exportPayload.rawContent)
     setCopiedExport(true)
-    if (onExportToast) onExportToast(t('toast.dataCopied'))
+    if (onExportToast) {
+      onExportToast(exportPayload.format === 'markdown' ? t('toast.markdownCopied') : t('toast.dataCopied'))
+    }
     setTimeout(() => setCopiedExport(false), 2000)
   }
 
@@ -390,6 +575,158 @@ export const DataTransferModal: React.FC<Props> = ({
           {/* ===================== EXPORT TAB ===================== */}
           {activeTab === 'export' && (
             <div className="flex flex-col gap-4">
+              {/* Export Format Selection */}
+              <div className="flex flex-col gap-2">
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  {t('dataTransfer.exportFormatTitle')}
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                  {/* Format 1: JSON */}
+                  <label
+                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                      exportFormat === 'json'
+                        ? 'border-sky-500 bg-sky-500/10 text-slate-100 ring-1 ring-sky-500/50'
+                        : 'border-slate-800 bg-slate-950/40 hover:bg-slate-950/70 text-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="exportFormat"
+                      checked={exportFormat === 'json'}
+                      onChange={() => setExportFormat('json')}
+                      className="mt-0.5 text-sky-500 focus:ring-sky-500"
+                    />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-slate-200">
+                        <FileJson className="w-3.5 h-3.5 text-sky-400" />
+                        {t('dataTransfer.formatJson')}
+                      </span>
+                      <span className="text-[10px] text-slate-400 leading-relaxed">
+                        {t('dataTransfer.formatJsonDesc')}
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Format 2: HTML Doc */}
+                  <label
+                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                      exportFormat === 'html'
+                        ? 'border-sky-500 bg-sky-500/10 text-slate-100 ring-1 ring-sky-500/50'
+                        : 'border-slate-800 bg-slate-950/40 hover:bg-slate-950/70 text-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="exportFormat"
+                      checked={exportFormat === 'html'}
+                      onChange={() => {
+                        setExportFormat('html')
+                        if (exportScope === 'envConstants') setExportScope('all')
+                      }}
+                      className="mt-0.5 text-sky-500 focus:ring-sky-500"
+                    />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-slate-200">
+                        <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                        {t('dataTransfer.formatHtml')}
+                      </span>
+                      <span className="text-[10px] text-slate-400 leading-relaxed">
+                        {t('dataTransfer.formatHtmlDesc')}
+                      </span>
+                    </div>
+                  </label>
+
+                  {/* Format 3: Markdown Doc */}
+                  <label
+                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                      exportFormat === 'markdown'
+                        ? 'border-sky-500 bg-sky-500/10 text-slate-100 ring-1 ring-sky-500/50'
+                        : 'border-slate-800 bg-slate-950/40 hover:bg-slate-950/70 text-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="exportFormat"
+                      checked={exportFormat === 'markdown'}
+                      onChange={() => {
+                        setExportFormat('markdown')
+                        if (exportScope === 'envConstants') setExportScope('all')
+                      }}
+                      className="mt-0.5 text-sky-500 focus:ring-sky-500"
+                    />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-semibold text-xs flex items-center gap-1.5 text-slate-200">
+                        <FileCode className="w-3.5 h-3.5 text-indigo-400" />
+                        {t('dataTransfer.formatMarkdown')}
+                      </span>
+                      <span className="text-[10px] text-slate-400 leading-relaxed">
+                        {t('dataTransfer.formatMarkdownDesc')}
+                      </span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Documentation Configuration (Shown for HTML & Markdown) */}
+              {exportFormat !== 'json' && (
+                <div className="p-3.5 rounded-lg bg-slate-950/50 border border-slate-800 flex flex-col gap-3">
+                  <span className="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-sky-400" />
+                    {t('dataTransfer.docOptionsTitle')}
+                  </span>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-slate-400 font-medium">
+                        {t('dataTransfer.docTitleLabel')}
+                      </label>
+                      <input
+                        type="text"
+                        value={docTitle}
+                        onChange={(e) => setDocTitle(e.target.value)}
+                        placeholder={t('dataTransfer.docTitlePlaceholder')}
+                        className="bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[11px] text-slate-400 font-medium">
+                        {t('dataTransfer.docDescLabel')}
+                      </label>
+                      <input
+                        type="text"
+                        value={docDesc}
+                        onChange={(e) => setDocDesc(e.target.value)}
+                        placeholder={t('dataTransfer.docDescPlaceholder')}
+                        className="bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 pt-1 text-slate-300">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={docIncludeCurl}
+                        onChange={(e) => setDocIncludeCurl(e.target.checked)}
+                        className="rounded border-slate-700 text-sky-500 focus:ring-sky-500"
+                      />
+                      <span className="text-xs">{t('dataTransfer.docIncludeCurl')}</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={docIncludeScripts}
+                        onChange={(e) => setDocIncludeScripts(e.target.checked)}
+                        className="rounded border-slate-700 text-sky-500 focus:ring-sky-500"
+                      />
+                      <span className="text-xs">{t('dataTransfer.docIncludeScripts')}</span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
               {/* Scope Selection */}
               <div className="flex flex-col gap-2">
                 <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -489,31 +826,33 @@ export const DataTransferModal: React.FC<Props> = ({
                     </div>
                   </label>
 
-                  {/* Option 4: Constants & Env */}
-                  <label
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      exportScope === 'envConstants'
-                        ? 'border-sky-500 bg-sky-500/10 text-slate-100 ring-1 ring-sky-500/50'
-                        : 'border-slate-800 bg-slate-950/40 hover:bg-slate-950/70 text-slate-300'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="exportScope"
-                      checked={exportScope === 'envConstants'}
-                      onChange={() => setExportScope('envConstants')}
-                      className="mt-0.5 text-sky-500 focus:ring-sky-500"
-                    />
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-semibold text-xs flex items-center gap-1.5 text-slate-200">
-                        <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                        {t('dataTransfer.exportEnvConstantsOnly')}
-                      </span>
-                      <span className="text-[11px] text-slate-400 leading-relaxed">
-                        {t('dataTransfer.exportEnvConstantsOnlyDesc')}
-                      </span>
-                    </div>
-                  </label>
+                  {/* Option 4: Constants & Env (Only relevant for JSON data transfer) */}
+                  {exportFormat === 'json' && (
+                    <label
+                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        exportScope === 'envConstants'
+                          ? 'border-sky-500 bg-sky-500/10 text-slate-100 ring-1 ring-sky-500/50'
+                          : 'border-slate-800 bg-slate-950/40 hover:bg-slate-950/70 text-slate-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="exportScope"
+                        checked={exportScope === 'envConstants'}
+                        onChange={() => setExportScope('envConstants')}
+                        className="mt-0.5 text-sky-500 focus:ring-sky-500"
+                      />
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-semibold text-xs flex items-center gap-1.5 text-slate-200">
+                          <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                          {t('dataTransfer.exportEnvConstantsOnly')}
+                        </span>
+                        <span className="text-[11px] text-slate-400 leading-relaxed">
+                          {t('dataTransfer.exportEnvConstantsOnlyDesc')}
+                        </span>
+                      </div>
+                    </label>
+                  )}
                 </div>
               </div>
 
@@ -750,21 +1089,40 @@ export const DataTransferModal: React.FC<Props> = ({
 
           {activeTab === 'export' ? (
             <div className="flex items-center gap-2">
+              {exportFormat !== 'html' && (
+                <button
+                  type="button"
+                  onClick={handleCopyContent}
+                  className="px-3.5 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-md transition-colors border border-slate-700 flex items-center gap-1.5"
+                >
+                  {copiedExport ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{exportFormat === 'markdown' ? t('dataTransfer.copyMarkdown') : t('dataTransfer.copyJson')}</span>
+                </button>
+              )}
               <button
                 type="button"
-                onClick={handleCopyJson}
-                className="px-3.5 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-md transition-colors border border-slate-700 flex items-center gap-1.5"
-              >
-                {copiedExport ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{t('dataTransfer.copyJson')}</span>
-              </button>
-              <button
-                type="button"
+                disabled={isExporting}
                 onClick={handleSaveToFile}
-                className="px-4 py-1.5 text-xs bg-sky-500 hover:bg-sky-600 text-white font-medium rounded-md transition-colors shadow-sm flex items-center gap-1.5"
+                className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors shadow-sm flex items-center gap-1.5 ${
+                  isExporting
+                    ? 'bg-sky-600/70 text-white/80 cursor-wait'
+                    : 'bg-sky-500 hover:bg-sky-600 text-white'
+                }`}
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>{t('dataTransfer.saveAsJsonFile')}</span>
+                {isExporting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {isExporting
+                    ? t('dataTransfer.exporting')
+                    : exportFormat === 'html'
+                    ? t('dataTransfer.saveAsHtmlFile')
+                    : exportFormat === 'markdown'
+                    ? t('dataTransfer.saveAsMdFile')
+                    : t('dataTransfer.saveAsJsonFile')}
+                </span>
               </button>
             </div>
           ) : (

@@ -48,6 +48,7 @@ export interface TranslationSchema {
     addSubCollection: string
     duplicateCollection: string
     exportCollection: string
+    exportDocCollection: string
     deleteCollection: string
     runCollection: string
     runSelected: string
@@ -268,7 +269,24 @@ export interface TranslationSchema {
     exportSingleCol: string
     exportSingleColDesc: string
     chooseCollection: string
+    exportFormatTitle: string
+    formatJson: string
+    formatJsonDesc: string
+    formatHtml: string
+    formatHtmlDesc: string
+    formatMarkdown: string
+    formatMarkdownDesc: string
+    docTitleLabel: string
+    docTitlePlaceholder: string
+    docDescLabel: string
+    docDescPlaceholder: string
+    docOptionsTitle: string
+    docIncludeCurl: string
+    docIncludeScripts: string
     saveAsJsonFile: string
+    saveAsHtmlFile: string
+    saveAsMdFile: string
+    copyMarkdown: string
     copyJson: string
     summaryTitle: string
     summaryCollections: string
@@ -455,6 +473,8 @@ export interface TranslationSchema {
     dataImported: string
     dataCopied: string
     codeCopied: string
+    markdownCopied: string
+    docExported: string
     requestDuplicatedViaShortcut: string
     runnerReportExported: string
   }

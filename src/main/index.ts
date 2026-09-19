@@ -249,16 +249,38 @@ app.whenReady().then(() => {
     return popoutDataMap.get(event.sender.id) || null
   })
 
-  ipcMain.handle('relay:save-file-dialog', async (event, { defaultPath, content }) => {
+  ipcMain.handle('relay:save-file-dialog', async (event, { defaultPath, content, filters }: { defaultPath?: string; content: string; filters?: Electron.FileFilter[] }) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win) return { canceled: true }
-    const result = await dialog.showSaveDialog(win, {
-      defaultPath: defaultPath || 'response.json',
-      filters: [
-        { name: 'JSON', extensions: ['json'] },
-        { name: 'Text', extensions: ['txt', 'log'] },
+    
+    let defaultFilters: Electron.FileFilter[] = [
+      { name: 'HTML Document', extensions: ['html', 'htm'] },
+      { name: 'Markdown Document', extensions: ['md', 'markdown'] },
+      { name: 'JSON', extensions: ['json'] },
+      { name: 'Text', extensions: ['txt', 'log'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+
+    if (defaultPath?.endsWith('.html')) {
+      defaultFilters = [
+        { name: 'HTML Document', extensions: ['html', 'htm'] },
         { name: 'All Files', extensions: ['*'] }
       ]
+    } else if (defaultPath?.endsWith('.md')) {
+      defaultFilters = [
+        { name: 'Markdown Document', extensions: ['md', 'markdown'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    } else if (defaultPath?.endsWith('.json')) {
+      defaultFilters = [
+        { name: 'JSON', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    }
+
+    const result = await dialog.showSaveDialog(win, {
+      defaultPath: defaultPath || 'export.json',
+      filters: filters || defaultFilters
     })
     if (!result.canceled && result.filePath) {
       fs.writeFileSync(result.filePath, content, 'utf-8')

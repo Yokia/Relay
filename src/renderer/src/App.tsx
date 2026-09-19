@@ -12,6 +12,7 @@ import { TabBar } from './components/TabBar'
 import { CommandPaletteModal } from './components/CommandPaletteModal'
 import { CodeSnippetModal } from './components/CodeSnippetModal'
 import { CollectionRunnerModal } from './components/CollectionRunnerModal'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastContainer, ToastMessage } from './components/Toast'
 import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme, WorkspaceTab } from './types'
 import { stripJsonComments } from './utils/jsonUtils'
@@ -151,6 +152,7 @@ function MainApp({
   const [dataTransferState, setDataTransferState] = useState<{
     isOpen: boolean
     initialTab: 'export' | 'import'
+    initialFormat?: 'json' | 'html' | 'markdown'
     targetColId?: string
   }>({
     isOpen: false,
@@ -1507,10 +1509,11 @@ function MainApp({
           persist({ activeEnvironmentId: id || undefined })
         }}
         onSwitchConstant={handleSwitchConstant}
-        onOpenDataTransfer={(tab, colId) =>
+        onOpenDataTransfer={(tab, colId, format) =>
           setDataTransferState({
             isOpen: true,
             initialTab: tab || 'export',
+            initialFormat: format || 'json',
             targetColId: colId
           })
         }
@@ -1681,18 +1684,40 @@ function MainApp({
       )}
 
       {dataTransferState.isOpen && (
-        <DataTransferModal
-          isOpen={dataTransferState.isOpen}
-          initialTab={dataTransferState.initialTab}
-          selectedCollectionId={dataTransferState.targetColId}
-          collections={collections}
-          constants={constants}
-          environments={environments}
-          settings={settings}
-          onClose={() => setDataTransferState((prev) => ({ ...prev, isOpen: false }))}
-          onImport={handleImportData}
-          onExportToast={(msg) => addToast(msg, 'success')}
-        />
+        <ErrorBoundary
+          fallback={
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-md w-full shadow-2xl text-slate-200 flex flex-col gap-4">
+                <h3 className="font-semibold text-rose-400 text-sm">打开导出窗口时遇到异常</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  当前集合数据可能包含不兼容格式，请检查集合结构。已自动阻止整屏崩溃。
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setDataTransferState((prev) => ({ ...prev, isOpen: false }))}
+                  className="self-end px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs rounded text-slate-200 transition-colors"
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
+          }
+        >
+          <DataTransferModal
+            isOpen={dataTransferState.isOpen}
+            initialTab={dataTransferState.initialTab}
+            initialExportFormat={dataTransferState.initialFormat}
+            selectedCollectionId={dataTransferState.targetColId}
+            collections={collections}
+            constants={constants}
+            environments={environments}
+            activeEnvId={activeEnvId}
+            settings={settings}
+            onClose={() => setDataTransferState((prev) => ({ ...prev, isOpen: false }))}
+            onImport={handleImportData}
+            onExportToast={(msg) => addToast(msg, 'success')}
+          />
+        </ErrorBoundary>
       )}
 
       {isCommandPaletteOpen && (
