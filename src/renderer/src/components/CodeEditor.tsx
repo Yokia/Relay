@@ -7,6 +7,7 @@ import { RangeSetBuilder } from '@codemirror/state'
 import { MatchDecorator, ViewPlugin, Decoration, EditorView, DecorationSet, ViewUpdate } from '@codemirror/view'
 import { ExternalLink, Plus, Copy, Check } from 'lucide-react'
 import { findCommentRanges } from '../utils/jsonUtils'
+import { useTheme } from '../theme'
 
 interface Props {
   value: string
@@ -189,6 +190,82 @@ const relayTheme = EditorView.theme({
 
 const relayDark = [relayTheme, syntaxHighlighting(relayHighlightStyle)]
 
+// Modern syntax highlighting style for Light Mode in Relay
+const relayLightHighlightStyle = HighlightStyle.define([
+  // JSON Keys / Property Names - Deep Sapphire Blue
+  { tag: tags.propertyName, color: '#0369a1', fontWeight: '600' },
+  // String Values - Forest Emerald Green
+  { tag: tags.string, color: '#15803d' },
+  // Numbers - Warm Golden Amber
+  { tag: [tags.number, tags.integer, tags.float], color: '#b45309' },
+  // Booleans - Deep Violet
+  { tag: tags.bool, color: '#7e22ce', fontWeight: '600' },
+  // Null & Atom - Ruby Coral Red
+  { tag: [tags.null, tags.atom], color: '#dc2626' },
+  // Keywords & Operators - Deep Indigo
+  { tag: [tags.keyword, tags.operator, tags.operatorKeyword], color: '#4338ca' },
+  // Punctuation, Separators, Brackets, Braces - Dark Slate
+  { tag: [tags.punctuation, tags.separator, tags.bracket, tags.brace, tags.squareBracket], color: '#475569' },
+  // Comments - Clean readable Slate Gray
+  { tag: [tags.comment, tags.lineComment, tags.blockComment], color: '#64748b', fontStyle: 'italic' },
+  // URLs / Links
+  { tag: tags.link, color: '#0284c7', textDecoration: 'underline' },
+  // Invalid
+  { tag: tags.invalid, color: '#dc2626' }
+])
+
+// Clean, high-contrast light theme for Relay's CodeMirror editors
+const relayLightTheme = EditorView.theme({
+  '&': {
+    color: '#0f172a',
+    backgroundColor: '#ffffff'
+  },
+  '.cm-content': {
+    caretColor: '#0284c7',
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+  },
+  '.cm-cursor, .cm-dropCursor': {
+    borderLeftColor: '#0284c7',
+    borderLeftWidth: '2px'
+  },
+  '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
+    backgroundColor: 'rgba(14, 165, 233, 0.18) !important'
+  },
+  '.cm-activeLine': {
+    backgroundColor: 'rgba(14, 165, 233, 0.04)'
+  },
+  '.cm-gutters': {
+    backgroundColor: '#f8fafc',
+    color: '#94a3b8',
+    borderRight: '1px solid #e2e8f0'
+  },
+  '.cm-activeLineGutter': {
+    backgroundColor: 'rgba(14, 165, 233, 0.08)',
+    color: '#0284c7',
+    fontWeight: 'bold'
+  },
+  '.cm-foldPlaceholder': {
+    backgroundColor: '#f1f5f9',
+    border: '1px solid #cbd5e1',
+    color: '#64748b',
+    borderRadius: '4px',
+    padding: '0 4px',
+    margin: '0 2px'
+  },
+  '&.cm-focused .cm-matchingBracket, &.cm-focused .cm-nonmatchingBracket': {
+    backgroundColor: 'rgba(14, 165, 233, 0.2)',
+    outline: '1px solid rgba(14, 165, 233, 0.5)'
+  },
+  '.cm-searchMatch': {
+    backgroundColor: 'rgba(234, 179, 8, 0.2)',
+    outline: '1px solid rgba(234, 179, 8, 0.6)'
+  },
+  '.cm-searchMatch.cm-searchMatch-selected': {
+    backgroundColor: 'rgba(234, 179, 8, 0.35)'
+  }
+}, { dark: false })
+
+const relayLight = [relayLightTheme, syntaxHighlighting(relayLightHighlightStyle)]
 
 export const CodeEditor: React.FC<Props> = ({
   value,
@@ -200,11 +277,17 @@ export const CodeEditor: React.FC<Props> = ({
   onOpenUrlInRelay,
   wrap = true
 }) => {
+  const { theme } = useTheme()
+
+  const activeThemeExts = useMemo(() => {
+    return theme === 'light' ? relayLight : relayDark
+  }, [theme])
+
   const extensions = useMemo(() => {
-    const exts = [json(), clickableLinkPlugin, jsonCommentPlugin, commentTheme]
+    const exts = [json(), clickableLinkPlugin, jsonCommentPlugin, commentTheme, ...activeThemeExts]
     if (wrap) exts.push(EditorView.lineWrapping)
     return exts
-  }, [wrap])
+  }, [wrap, activeThemeExts])
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [copied, setCopied] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -275,7 +358,9 @@ export const CodeEditor: React.FC<Props> = ({
       ref={containerRef}
       onMouseDownCapture={handleMouseDownCapture}
       onContextMenuCapture={handleContextMenuCapture}
-      className="flex flex-col h-full overflow-hidden border border-slate-800 rounded-lg bg-[#0d131f] relative"
+      className={`flex flex-col h-full overflow-hidden border rounded-lg relative ${
+        theme === 'light' ? 'bg-white border-slate-700/80' : 'bg-slate-900 border-slate-800'
+      }`}
     >
       {/* CodeMirror Area */}
       <div className="flex-1 overflow-auto text-xs font-mono select-text">
@@ -283,7 +368,7 @@ export const CodeEditor: React.FC<Props> = ({
           value={value}
           height={height}
           minHeight={minHeight}
-          theme={relayDark}
+          theme={theme === 'light' ? relayLightTheme : relayTheme}
           extensions={extensions}
           onChange={(val) => onChange && onChange(val)}
           readOnly={readOnly}

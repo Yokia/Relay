@@ -19,7 +19,11 @@ export const zhCN: TranslationSchema = {
     value: '键值',
     description: '说明',
     untitled: '未命名',
-    loading: '加载中...'
+    loading: '加载中...',
+    theme: '主题',
+    themeDark: '深色主题',
+    themeLight: '浅色主题',
+    toggleTheme: '切换浅色/深色主题'
   },
   sidebar: {
     collections: '集合',
@@ -92,7 +96,9 @@ export const zhCN: TranslationSchema = {
     insertConstant: '插入常量',
     constantsAutocomplete: '快捷插入常量',
     noMatchingConstants: '无匹配常量',
-    manageConstantsBtn: '常量管理'
+    manageConstantsBtn: '常量管理',
+    constantsBtn: '常量',
+    constantsTip: '管理自定义常量与候选值'
   },
   editor: {
     params: 'Params 参数',
@@ -151,7 +157,11 @@ export const zhCN: TranslationSchema = {
     languageTitle: '界面语言 (Language)',
     languageDesc: '选择应用界面的展示语言',
     langZh: '简体中文 (Chinese)',
-    langEn: 'English'
+    langEn: 'English',
+    themeTitle: '界面主题 (Theme)',
+    themeDesc: '在深色与浅色视觉风格之间自由切换，文本、高亮与图标全面自适应',
+    themeDark: '深色主题 (Dark)',
+    themeLight: '浅色主题 (Light)'
   },
   constantsModal: {
     title: '自定义常量管理',
@@ -160,7 +170,11 @@ export const zhCN: TranslationSchema = {
     constantsList: '常量列表',
     varName: '常量变量名',
     optionsList: '候选值池 (Options)',
-    addOptionPlaceholder: '输入新候选值 (如 http://localhost:8080) 按回车添加',
+    addOptionPlaceholder: '候选值 (如 192.168.1.100)',
+    addNotePlaceholder: '备注 (如 电信机房/本地开发)',
+    noteLabel: '备注',
+    addNote: '添加备注',
+    editNote: '编辑备注',
     activeBadge: '当前默认',
     clickToActivate: '点击设为全局默认值',
     description: '说明备注 (可选)',
@@ -168,6 +182,15 @@ export const zhCN: TranslationSchema = {
     deleteConstant: '删除此常量',
     cannotDeleteLast: '至少需保留一个常量',
     emptyOptionsTip: '暂无候选值，请在上方输入并添加'
+  },
+  constantsBar: {
+    constants: '常量:',
+    noConstants: '未配置常量',
+    followGlobal: '跟随全局默认',
+    exclusiveBadge: '专属',
+    globalBadge: '全局',
+    exclusiveSection: '专属候选值',
+    globalDefaultSuffix: '(全局默认)'
   },
   envModal: {
     title: '环境变量管理',

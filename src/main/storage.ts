@@ -17,7 +17,8 @@ const defaultData: StorageData = {
     autoSave: false,
     timeout: 30000,
     sslVerify: true,
-    language: 'zh-CN'
+    language: 'zh-CN',
+    theme: 'dark'
   },
   constants: [
     {
@@ -25,6 +26,12 @@ const defaultData: StorageData = {
       name: 'server',
       currentValue: 'http://localhost',
       options: ['http://localhost', 'http://127.0.0.1', 'http://192.168.1.100', 'https://api.dev.local'],
+      optionNotes: {
+        'http://localhost': '本地',
+        'http://127.0.0.1': '回环地址',
+        'http://192.168.1.100': '局域网测试',
+        'https://api.dev.local': '开发域名'
+      },
       description: 'Target server host/IP'
     },
     {
@@ -32,6 +39,11 @@ const defaultData: StorageData = {
       name: 'port',
       currentValue: '8080',
       options: ['3000', '8080', '8000', '5000', '9000'],
+      optionNotes: {
+        '3000': '前端开发端口',
+        '8080': '默认后台端口',
+        '8000': '网关端口'
+      },
       description: 'Server listening port'
     },
     {
@@ -39,6 +51,10 @@ const defaultData: StorageData = {
       name: 'baseUrl',
       currentValue: 'https://jsonplaceholder.typicode.com',
       options: ['https://jsonplaceholder.typicode.com', 'https://api.github.com'],
+      optionNotes: {
+        'https://jsonplaceholder.typicode.com': '测试API',
+        'https://api.github.com': 'GitHub开放API'
+      },
       description: 'Public API base URL'
     }
   ],

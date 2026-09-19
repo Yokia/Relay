@@ -19,7 +19,11 @@ export const enUS: TranslationSchema = {
     value: 'Value',
     description: 'Description',
     untitled: 'Untitled',
-    loading: 'Loading...'
+    loading: 'Loading...',
+    theme: 'Theme',
+    themeDark: 'Dark Theme',
+    themeLight: 'Light Theme',
+    toggleTheme: 'Toggle Light/Dark Theme'
   },
   sidebar: {
     collections: 'Collections',
@@ -92,7 +96,9 @@ export const enUS: TranslationSchema = {
     insertConstant: 'Insert Constant',
     constantsAutocomplete: 'Insert Constant',
     noMatchingConstants: 'No matching constants',
-    manageConstantsBtn: 'Constants'
+    manageConstantsBtn: 'Constants',
+    constantsBtn: 'Constants',
+    constantsTip: 'Manage constants and candidate values'
   },
   editor: {
     params: 'Params',
@@ -151,7 +157,11 @@ export const enUS: TranslationSchema = {
     languageTitle: 'Interface Language',
     languageDesc: 'Select the display language for the application',
     langZh: '简体中文 (Chinese)',
-    langEn: 'English'
+    langEn: 'English',
+    themeTitle: 'Interface Theme',
+    themeDesc: 'Switch between dark and light visual themes with adaptive text, code and syntax highlighting',
+    themeDark: 'Dark Theme',
+    themeLight: 'Light Theme'
   },
   constantsModal: {
     title: 'Custom Constants Management',
@@ -160,7 +170,11 @@ export const enUS: TranslationSchema = {
     constantsList: 'Constants List',
     varName: 'Variable Name',
     optionsList: 'Options Pool',
-    addOptionPlaceholder: 'Enter new option (e.g. http://localhost:8080) and press Enter',
+    addOptionPlaceholder: 'Value (e.g. 192.168.1.100)',
+    addNotePlaceholder: 'Note (e.g. Telecom / Dev)',
+    noteLabel: 'Note',
+    addNote: 'Add Note',
+    editNote: 'Edit Note',
     activeBadge: 'Active Default',
     clickToActivate: 'Click to set as global default',
     description: 'Description (Optional)',
@@ -168,6 +182,15 @@ export const enUS: TranslationSchema = {
     deleteConstant: 'Delete this constant',
     cannotDeleteLast: 'Must keep at least one constant',
     emptyOptionsTip: 'No options yet. Add an option above.'
+  },
+  constantsBar: {
+    constants: 'Constants:',
+    noConstants: 'No constants configured',
+    followGlobal: 'Follow Global Default',
+    exclusiveBadge: 'Exclusive',
+    globalBadge: 'Global',
+    exclusiveSection: 'Exclusive Values',
+    globalDefaultSuffix: '(Global Default)'
   },
   envModal: {
     title: 'Environment Management',

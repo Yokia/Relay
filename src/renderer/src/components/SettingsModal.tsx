@@ -1,15 +1,9 @@
 import React from 'react'
-import { X, Settings, ShieldCheck, Zap, Globe } from 'lucide-react'
-import { Language } from '../types'
+import { X, Settings, ShieldCheck, Zap, Globe, Sun, Moon } from 'lucide-react'
+import { Language, Theme, AppSettings } from '../types'
 import { useI18n } from '../i18n'
 
-export interface AppSettings {
-  autoSave: boolean
-  timeout: number
-  sslVerify: boolean
-  maxResponsesPerRequest?: number
-  language?: Language
-}
+export type { AppSettings }
 
 interface Props {
   isOpen: boolean
@@ -44,6 +38,31 @@ export const SettingsModal: React.FC<Props> = ({
 
         {/* Content */}
         <div className="p-5 flex flex-col gap-4 text-xs">
+          {/* Theme Switcher */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-1.5 font-semibold text-slate-200">
+                {settings.theme === 'light' ? (
+                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                ) : (
+                  <Moon className="w-3.5 h-3.5 text-sky-400" />
+                )}
+                <span>{t('settings.themeTitle')}</span>
+              </div>
+              <span className="text-slate-400 text-[11px]">{t('settings.themeDesc')}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <select
+                value={settings.theme || 'dark'}
+                onChange={(e) => onUpdateSettings({ theme: e.target.value as Theme })}
+                className="bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 cursor-pointer font-medium"
+              >
+                <option value="dark">{t('settings.themeDark')}</option>
+                <option value="light">{t('settings.themeLight')}</option>
+              </select>
+            </div>
+          </div>
+
           {/* Language Switcher */}
           <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/50 border border-slate-800">
             <div className="flex flex-col gap-0.5">

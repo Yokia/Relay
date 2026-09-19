@@ -8,9 +8,11 @@ import { CurlModal } from './components/CurlModal'
 import { ConstantManagerModal } from './components/ConstantManagerModal'
 import { SettingsModal, AppSettings } from './components/SettingsModal'
 import { ToastContainer, ToastMessage } from './components/Toast'
-import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language } from './types'
+import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme } from './types'
 import { stripJsonComments } from './utils/jsonUtils'
 import { I18nProvider, useI18n } from './i18n'
+import { ThemeProvider } from './theme'
+import { Sun, Moon } from 'lucide-react'
 import {
   findCollectionInTree,
   findRequestInTree,
@@ -33,6 +35,12 @@ const initialConstants: ConstantItem[] = [
     name: 'server',
     currentValue: 'http://localhost',
     options: ['http://localhost', 'http://127.0.0.1', 'http://192.168.1.100', 'https://api.dev.local'],
+    optionNotes: {
+      'http://localhost': '本地',
+      'http://127.0.0.1': '回环地址',
+      'http://192.168.1.100': '局域网测试',
+      'https://api.dev.local': '开发域名'
+    },
     description: 'Target server host/IP'
   },
   {
@@ -40,6 +48,11 @@ const initialConstants: ConstantItem[] = [
     name: 'port',
     currentValue: '8080',
     options: ['3000', '8080', '8000', '5000', '9000'],
+    optionNotes: {
+      '3000': '前端开发端口',
+      '8080': '默认后台端口',
+      '8000': '网关端口'
+    },
     description: 'Server listening port'
   },
   {
@@ -47,6 +60,10 @@ const initialConstants: ConstantItem[] = [
     name: 'baseUrl',
     currentValue: 'https://jsonplaceholder.typicode.com',
     options: ['https://jsonplaceholder.typicode.com', 'https://api.github.com'],
+    optionNotes: {
+      'https://jsonplaceholder.typicode.com': '测试API',
+      'https://api.github.com': 'GitHub开放API'
+    },
     description: 'Public API base URL'
   }
 ]
@@ -67,10 +84,17 @@ const defaultSettings: AppSettings = {
   timeout: 30000,
   sslVerify: true,
   maxResponsesPerRequest: 5,
-  language: 'zh-CN'
+  language: 'zh-CN',
+  theme: 'dark'
 }
 
-function MainApp({ onLanguageChange }: { onLanguageChange: (lang: Language) => void }) {
+function MainApp({
+  onLanguageChange,
+  onThemeChange
+}: {
+  onLanguageChange: (lang: Language) => void
+  onThemeChange: (theme: Theme) => void
+}) {
   const { t } = useI18n()
   const [collections, setCollections] = useState<CollectionItem[]>([])
   const [history, setHistory] = useState<HistoryItem[]>([])
@@ -129,6 +153,9 @@ function MainApp({ onLanguageChange }: { onLanguageChange: (lang: Language) => v
             setSettings((prev) => ({ ...prev, ...data.settings }))
             if (data.settings.language) {
               onLanguageChange(data.settings.language)
+            }
+            if (data.settings.theme) {
+              onThemeChange(data.settings.theme)
             }
           }
           if (data.activeEnvironmentId) setActiveEnvId(data.activeEnvironmentId)
@@ -250,6 +277,9 @@ function MainApp({ onLanguageChange }: { onLanguageChange: (lang: Language) => v
     if (newSettings.language) {
       onLanguageChange(newSettings.language)
     }
+    if (newSettings.theme) {
+      onThemeChange(newSettings.theme)
+    }
 
     if (newSettings.maxResponsesPerRequest !== undefined) {
       const maxLimit = newSettings.maxResponsesPerRequest
@@ -265,7 +295,7 @@ function MainApp({ onLanguageChange }: { onLanguageChange: (lang: Language) => v
       persist({ settings: next })
     }
 
-    if (newSettings.language && Object.keys(newSettings).length === 1) {
+    if ((newSettings.language || newSettings.theme) && Object.keys(newSettings).length === 1) {
       addToast(t('toast.settingsSaved'), 'success')
       return
     }
@@ -746,6 +776,25 @@ function MainApp({ onLanguageChange }: { onLanguageChange: (lang: Language) => v
             )}
           </div>
           <div className="flex items-center gap-2 text-[11px] text-slate-500">
+            <button
+              type="button"
+              onClick={() => handleUpdateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 transition-colors"
+              title={t('common.toggleTheme')}
+            >
+              {settings.theme === 'light' ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="text-[10px] font-medium">{t('settings.themeLight')}</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="text-[10px] font-medium">{t('settings.themeDark')}</span>
+                </>
+              )}
+            </button>
+            <span className="text-slate-700">|</span>
             <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400">Ctrl+Enter</kbd> {t('header.send')}
             <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400 ml-1">Ctrl+S</kbd> {t('header.save')}
           </div>
@@ -864,10 +913,13 @@ function MainApp({ onLanguageChange }: { onLanguageChange: (lang: Language) => v
 
 export default function App() {
   const [language, setLanguage] = useState<Language>('zh-CN')
+  const [theme, setTheme] = useState<Theme>('dark')
 
   return (
     <I18nProvider language={language} onLanguageChange={setLanguage}>
-      <MainApp onLanguageChange={setLanguage} />
+      <ThemeProvider theme={theme} onThemeChange={setTheme}>
+        <MainApp onLanguageChange={setLanguage} onThemeChange={setTheme} />
+      </ThemeProvider>
     </I18nProvider>
   )
 }

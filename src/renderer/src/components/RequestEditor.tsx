@@ -157,7 +157,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
                   <button
                     type="button"
                     onClick={() => setWrapLines((prev) => !prev)}
-                    className={"px-1.5 py-0.5 rounded flex items-center gap-1 text-[11px] transition-colors " + (wrapLines ? "bg-sky-500/20 text-sky-300 border border-sky-500/30" : "text-slate-400 hover:text-slate-200 border border-transparent")}
+                    className={"px-2 py-0.5 rounded flex items-center gap-1 text-[11px] transition-colors " + (wrapLines ? "bg-sky-500/15 text-sky-400 border border-sky-500/40 font-medium" : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/60 border border-transparent")}
                     title={t('editor.wordWrap')}
                   >
                     <WrapText className="w-3 h-3" />
@@ -170,7 +170,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
                     type="button"
                     onClick={handleFormatJson}
                     title={t('editor.formatJson')}
-                    className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 font-medium px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 transition-colors"
+                    className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 font-medium px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 transition-colors"
                   >
                     <Sparkles className="w-3 h-3" /> {t('editor.formatJson')}
                   </button>

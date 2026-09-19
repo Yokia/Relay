@@ -20,6 +20,10 @@ export interface TranslationSchema {
     description: string
     untitled: string
     loading: string
+    theme: string
+    themeDark: string
+    themeLight: string
+    toggleTheme: string
   }
   sidebar: {
     collections: string
@@ -93,6 +97,8 @@ export interface TranslationSchema {
     constantsAutocomplete: string
     noMatchingConstants: string
     manageConstantsBtn: string
+    constantsBtn: string
+    constantsTip: string
   }
   editor: {
     params: string
@@ -152,6 +158,10 @@ export interface TranslationSchema {
     languageDesc: string
     langZh: string
     langEn: string
+    themeTitle: string
+    themeDesc: string
+    themeDark: string
+    themeLight: string
   }
   constantsModal: {
     title: string
@@ -161,6 +171,10 @@ export interface TranslationSchema {
     varName: string
     optionsList: string
     addOptionPlaceholder: string
+    addNotePlaceholder: string
+    noteLabel: string
+    addNote: string
+    editNote: string
     activeBadge: string
     clickToActivate: string
     description: string
@@ -168,6 +182,15 @@ export interface TranslationSchema {
     deleteConstant: string
     cannotDeleteLast: string
     emptyOptionsTip: string
+  }
+  constantsBar: {
+    constants: string
+    noConstants: string
+    followGlobal: string
+    exclusiveBadge: string
+    globalBadge: string
+    exclusiveSection: string
+    globalDefaultSuffix: string
   }
   envModal: {
     title: string

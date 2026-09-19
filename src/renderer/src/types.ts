@@ -48,6 +48,7 @@ export interface ConstantItem {
   name: string
   currentValue: string
   options: string[]
+  optionNotes?: Record<string, string>
   description?: string
 }
 
@@ -77,3 +78,14 @@ export interface ResponseRun {
 }
 
 export type Language = 'zh-CN' | 'en-US'
+
+export type Theme = 'dark' | 'light'
+
+export interface AppSettings {
+  autoSave: boolean
+  timeout: number
+  sslVerify: boolean
+  maxResponsesPerRequest?: number
+  language?: Language
+  theme?: Theme
+}

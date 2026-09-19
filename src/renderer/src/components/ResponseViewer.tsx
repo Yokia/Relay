@@ -62,7 +62,7 @@ export const ResponseViewer: React.FC<Props> = ({
       <div className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-2 p-6 select-none">
         <div className="text-4xl">⚡</div>
         <span className="text-sm font-medium text-slate-400">{t('response.emptyTitle')}</span>
-        <p className="text-xs text-slate-600 max-w-xs text-center">
+        <p className="text-xs text-slate-400 max-w-xs text-center">
           {t('response.emptyDesc')}
         </p>
       </div>
@@ -73,10 +73,10 @@ export const ResponseViewer: React.FC<Props> = ({
   const isRedirect = displayResponse.status >= 300 && displayResponse.status < 400
   const isError = displayResponse.status >= 400 || displayResponse.status === 0
 
-  let statusBadgeClass = 'bg-slate-800 text-slate-300 border-slate-700'
-  if (isSuccess) statusBadgeClass = 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-  else if (isRedirect) statusBadgeClass = 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-  else if (isError) statusBadgeClass = 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+  let statusBadgeClass = 'bg-slate-800 text-slate-200 border border-slate-700 font-semibold'
+  if (isSuccess) statusBadgeClass = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 font-semibold'
+  else if (isRedirect) statusBadgeClass = 'bg-blue-500/15 text-blue-400 border border-blue-500/40 font-semibold'
+  else if (isError) statusBadgeClass = 'bg-rose-500/15 text-rose-400 border border-rose-500/40 font-semibold'
 
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B'
@@ -267,7 +267,7 @@ export const ResponseViewer: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setWrapLines((prev) => !prev)}
-              className={"px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors " + (wrapLines ? "bg-sky-500/20 text-sky-300 border border-sky-500/30" : "text-slate-400 hover:text-slate-200")}
+              className={"px-2 py-0.5 rounded flex items-center gap-1 transition-colors " + (wrapLines ? "bg-sky-500/15 text-sky-400 border border-sky-500/40 font-medium" : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/60")}
               title={t('editor.wordWrap')}
             >
               <WrapText className="w-3 h-3" />
@@ -275,22 +275,22 @@ export const ResponseViewer: React.FC<Props> = ({
             </button>
 
             {typeof displayResponse.data === 'object' && (
-              <>
+              <div className="flex items-center bg-slate-800/60 rounded border border-slate-700/60 p-0.5">
                 <button
                   type="button"
                   onClick={() => setBodyFormat('pretty')}
-                  className={"px-1.5 py-0.5 rounded " + (bodyFormat === 'pretty' ? "bg-slate-800 text-sky-400" : "text-slate-400 hover:text-slate-200")}
+                  className={"px-2 py-0.5 rounded font-medium transition-colors " + (bodyFormat === 'pretty' ? "bg-sky-500 text-white shadow-sm" : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/60")}
                 >
                   {t('response.pretty')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setBodyFormat('raw')}
-                  className={"px-1.5 py-0.5 rounded " + (bodyFormat === 'raw' ? "bg-slate-800 text-sky-400" : "text-slate-400 hover:text-slate-200")}
+                  className={"px-2 py-0.5 rounded font-medium transition-colors " + (bodyFormat === 'raw' ? "bg-sky-500 text-white shadow-sm" : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/60")}
                 >
                   {t('response.raw')}
                 </button>
-              </>
+              </div>
             )}
           </div>
         )}

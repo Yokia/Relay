@@ -2,6 +2,69 @@
 @tailwind components;
 @tailwind utilities;
 
+:root,
+[data-theme="dark"],
+.dark {
+  /* Slate Dark Palette */
+  --color-slate-50: 248 250 252;
+  --color-slate-100: 241 245 249;
+  --color-slate-200: 226 232 240;
+  --color-slate-300: 203 213 225;
+  --color-slate-400: 148 163 184;
+  --color-slate-500: 100 116 139;
+  --color-slate-600: 71 85 105;
+  --color-slate-700: 51 65 85;
+  --color-slate-800: 30 41 59;
+  --color-slate-900: 15 23 42;
+  --color-slate-950: 2 6 23;
+
+  /* Accents Dark */
+  --color-sky-300: 125 211 252;
+  --color-sky-400: 56 189 248;
+  --color-amber-300: 252 211 77;
+  --color-amber-400: 251 191 36;
+  --color-emerald-400: 52 211 153;
+  --color-rose-400: 251 113 133;
+  --color-blue-400: 96 165 250;
+  --color-purple-400: 192 132 252;
+  --color-cyan-400: 34 211 238;
+
+  /* Scrollbars Dark */
+  --scrollbar-thumb: #334155;
+  --scrollbar-thumb-hover: #475569;
+}
+
+[data-theme="light"],
+.light {
+  /* Slate Light Palette (Harmoniously inverted for crisp, modern light UI) */
+  --color-slate-50: 2 6 23;        /* #020617 deepest black */
+  --color-slate-100: 15 23 42;      /* #0f172a bold titles & headers */
+  --color-slate-200: 30 41 59;      /* #1e293b primary body text */
+  --color-slate-300: 51 65 85;      /* #334155 secondary body text */
+  --color-slate-400: 71 85 105;     /* #475569 muted/label text */
+  --color-slate-500: 100 116 139;   /* #64748b caption / subtle text */
+  --color-slate-600: 148 163 184;   /* #94a3b8 very subtle text */
+  --color-slate-700: 203 213 225;   /* #cbd5e1 strong borders / input borders */
+  --color-slate-800: 226 232 240;   /* #e2e8f0 dividers / panel borders / button bg */
+  --color-slate-900: 255 255 255;   /* #ffffff surface / card / modal background */
+  --color-slate-950: 248 250 252;   /* #f8fafc root window canvas / recessed inputs */
+
+  /* Accents Light (Rich, AAA-contrast against white & slate-50) */
+  --color-sky-300: 3 105 161;       /* #0369a1 */
+  --color-sky-400: 2 132 199;       /* #0284c7 */
+  --color-amber-300: 180 83 9;      /* #b45309 */
+  --color-amber-400: 217 119 6;     /* #d97706 */
+  --color-emerald-400: 5 150 105;   /* #059669 */
+  --color-rose-400: 225 29 72;      /* #e11d48 */
+  --color-blue-400: 37 99 235;      /* #2563eb */
+  --color-purple-400: 147 51 234;   /* #9333ea */
+  --color-cyan-400: 8 145 178;      /* #0891b2 */
+
+  /* Scrollbars Light */
+  --scrollbar-thumb: #cbd5e1;
+  --scrollbar-thumb-hover: #94a3b8;
+}
+
 /* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
@@ -11,11 +74,11 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: var(--scrollbar-thumb-hover);
 }
 
 .drag-region {
@@ -27,24 +90,54 @@
 }
 
 /* Styling for commented-out lines and blocks in CodeMirror JSON editor */
-.cm-json-comment,
-.cm-json-comment * {
+.dark .cm-json-comment,
+.dark .cm-json-comment *,
+[data-theme="dark"] .cm-json-comment,
+[data-theme="dark"] .cm-json-comment * {
   color: #94a3b8 !important;
   opacity: 1 !important;
   font-style: italic !important;
 }
 
-.cm-json-comment .cm-clickable-link,
-.cm-json-comment a {
+.light .cm-json-comment,
+.light .cm-json-comment *,
+[data-theme="light"] .cm-json-comment,
+[data-theme="light"] .cm-json-comment * {
+  color: #64748b !important;
+  opacity: 1 !important;
+  font-style: italic !important;
+}
+
+.dark .cm-json-comment .cm-clickable-link,
+.dark .cm-json-comment a,
+[data-theme="dark"] .cm-json-comment .cm-clickable-link,
+[data-theme="dark"] .cm-json-comment a {
   color: #7dd3fc !important;
   text-decoration: underline !important;
   text-decoration-color: rgba(56, 189, 248, 0.4) !important;
   font-style: normal !important;
 }
-
-.cm-json-comment .cm-clickable-link:hover,
-.cm-json-comment a:hover {
+.dark .cm-json-comment .cm-clickable-link:hover,
+.dark .cm-json-comment a:hover,
+[data-theme="dark"] .cm-json-comment .cm-clickable-link:hover,
+[data-theme="dark"] .cm-json-comment a:hover {
   color: #38bdf8 !important;
   text-decoration-color: #38bdf8 !important;
 }
 
+.light .cm-json-comment .cm-clickable-link,
+.light .cm-json-comment a,
+[data-theme="light"] .cm-json-comment .cm-clickable-link,
+[data-theme="light"] .cm-json-comment a {
+  color: #0284c7 !important;
+  text-decoration: underline !important;
+  text-decoration-color: rgba(2, 132, 199, 0.4) !important;
+  font-style: normal !important;
+}
+.light .cm-json-comment .cm-clickable-link:hover,
+.light .cm-json-comment a:hover,
+[data-theme="light"] .cm-json-comment .cm-clickable-link:hover,
+[data-theme="light"] .cm-json-comment a:hover {
+  color: #0369a1 !important;
+  text-decoration-color: #0369a1 !important;
+}

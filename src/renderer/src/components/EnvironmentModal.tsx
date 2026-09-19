@@ -119,7 +119,7 @@ export const EnvironmentModal: React.FC<Props> = ({
                 <div
                   key={env.id}
                   onClick={() => setSelectedEnvId(env.id)}
-                  className={"flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer text-xs transition-colors " + (selectedEnvId === env.id ? "bg-sky-500/20 text-sky-300 font-medium" : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200")}
+                  className={"flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer text-xs transition-colors " + (selectedEnvId === env.id ? "bg-sky-500/15 text-sky-400 font-bold shadow-sm" : "text-slate-200 hover:bg-slate-800/60 hover:text-slate-100")}
                 >
                   <span className="truncate">{env.name || t('common.untitled')}</span>
                   {envs.length > 1 && (

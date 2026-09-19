@@ -419,25 +419,25 @@ export const RequestHeader: React.FC<Props> = ({
           <button
             type="button"
             onClick={onOpenManageConstants}
-            title="Manage Constants and candidate values"
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-amber-300 bg-slate-900 hover:bg-slate-800 border border-slate-800 px-2 py-1 rounded transition-colors"
+            title={t('header.constantsTip')}
+            className="flex items-center gap-1 text-xs text-slate-200 hover:text-slate-100 bg-slate-800 hover:bg-slate-700 border border-slate-700/80 px-2.5 py-1 rounded transition-colors shadow-sm"
           >
             <Zap className="w-3.5 h-3.5 text-amber-400" />
-            <span>Constants</span>
+            <span>{t('header.constantsBtn')}</span>
           </button>
 
           {/* Auto Save Status Badge & Toggle */}
           <button
             type="button"
             onClick={onToggleAutoSave}
-            className={"flex items-center gap-1 text-[11px] px-2 py-1 rounded border transition-colors " +
+            className={"flex items-center gap-1 text-[11px] px-2.5 py-1 rounded border transition-colors shadow-sm " +
               (autoSave
-                ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/20"
-                : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-300")
+                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-400 font-semibold hover:bg-emerald-500/25"
+                : "bg-slate-800 hover:bg-slate-700 border-slate-700/80 text-slate-300 hover:text-slate-100")
             }
             title={autoSave ? t('header.autoSaveOnTip') : t('header.autoSaveOffTip')}
           >
-            <Zap className={"w-3 h-3 " + (autoSave ? "text-emerald-400" : "text-slate-500")} />
+            <Zap className={"w-3 h-3 " + (autoSave ? "text-emerald-400" : "text-slate-400")} />
             <span>{t('header.autoSave')}: {autoSave ? 'ON' : 'OFF'}</span>
           </button>
 
@@ -446,7 +446,7 @@ export const RequestHeader: React.FC<Props> = ({
             type="button"
             onClick={onExportCurl}
             title={t('header.copyCurl')}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 bg-slate-900 hover:bg-slate-800 border border-slate-800 px-2 py-1 rounded transition-colors"
+            className="flex items-center gap-1 text-xs text-slate-200 hover:text-slate-100 bg-slate-800 hover:bg-slate-700 border border-slate-700/80 px-2.5 py-1 rounded transition-colors shadow-sm"
           >
             <Code className="w-3.5 h-3.5" />
             <span>cURL</span>
@@ -457,10 +457,10 @@ export const RequestHeader: React.FC<Props> = ({
             type="button"
             onClick={onSave}
             title={`${t('header.save')} (Ctrl+S)`}
-            className={"flex items-center gap-1 text-xs px-2.5 py-1 rounded transition-colors active:scale-95 " +
+            className={"flex items-center gap-1 text-xs px-3 py-1 rounded transition-colors active:scale-95 shadow-sm " +
               (isDirty && !autoSave
-                ? "bg-sky-500 hover:bg-sky-600 text-white font-medium shadow-sm ring-1 ring-sky-400/50"
-                : "bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white")
+                ? "bg-sky-500 hover:bg-sky-600 text-white font-medium ring-1 ring-sky-400/50"
+                : "bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-200 hover:text-slate-100")
             }
           >
             <Save className="w-3.5 h-3.5" />
@@ -531,19 +531,19 @@ export const RequestHeader: React.FC<Props> = ({
               {autocompleteState && (
                 <div
                   onMouseDown={(e) => e.preventDefault()}
-                  className="absolute left-0 top-full mt-1.5 w-96 max-w-[calc(100vw-50px)] bg-slate-900/95 backdrop-blur-md border border-sky-500/60 rounded-xl shadow-2xl overflow-hidden z-50 flex flex-col animate-in fade-in zoom-in-95 duration-100 ring-1 ring-sky-500/20 select-none"
+                  className="absolute left-0 top-full mt-1.5 w-96 max-w-[calc(100vw-50px)] bg-slate-900 border border-sky-500/60 rounded-xl shadow-2xl overflow-hidden z-50 flex flex-col animate-in fade-in zoom-in-95 duration-100 ring-1 ring-sky-500/20 select-none"
                 >
-                  <div className="px-3 py-1.5 flex items-center justify-between border-b border-slate-800 bg-slate-950/80 text-[11px] text-slate-400">
+                  <div className="px-3 py-1.5 flex items-center justify-between border-b border-slate-800 bg-slate-950 text-[11px] text-slate-400">
                     <div className="flex items-center gap-1.5">
                       <Braces className="w-3.5 h-3.5 text-sky-400" />
-                      <span className="font-medium text-slate-300">{t('header.constantsAutocomplete')}</span>
+                      <span className="font-semibold text-slate-100">{t('header.constantsAutocomplete')}</span>
                       {autocompleteState.query && (
-                        <span className="font-mono text-sky-400 bg-sky-500/10 px-1.5 py-0.2 rounded text-[10px]">
+                        <span className="font-mono text-sky-400 bg-sky-500/15 px-1.5 py-0.2 rounded text-[10px]">
                           "{autocompleteState.query}"
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-sans">
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-sans">
                       <span>↑↓</span>
                       <span>·</span>
                       <span>Enter</span>
@@ -562,7 +562,7 @@ export const RequestHeader: React.FC<Props> = ({
                             setAutocompleteState(null)
                             onOpenManageConstants()
                           }}
-                          className="text-sky-400 hover:underline text-[11px] flex items-center gap-1 mt-1"
+                          className="text-sky-400 hover:underline text-[11px] flex items-center gap-1 mt-1 font-medium"
                         >
                           <Plus className="w-3 h-3" /> {t('header.addThisConstant')}
                         </button>
@@ -579,18 +579,23 @@ export const RequestHeader: React.FC<Props> = ({
                             onClick={() => handleSelectAutocomplete(c.name)}
                             className={"flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors font-mono text-xs cursor-pointer " +
                               (isSelected
-                                ? "bg-sky-500/20 border border-sky-500/60 text-sky-200 shadow-sm"
-                                : "text-slate-300 hover:bg-slate-800/60 border border-transparent")}
+                                ? "bg-sky-500/15 border border-sky-500/50 text-sky-400 font-bold shadow-sm"
+                                : "text-slate-200 hover:text-slate-100 hover:bg-slate-800/60 border border-transparent")}
                           >
                             <div className="flex items-center gap-2 truncate flex-1 mr-2">
                               <span className="font-bold text-sky-400 shrink-0">{'{{' + c.name + '}}'}</span>
-                              <span className="text-[11px] text-slate-500 truncate font-mono">
+                              <span className="text-[11px] text-slate-400 truncate font-mono">
                                 = {c.currentValue || <span className="italic">--</span>}
                               </span>
+                              {c.currentValue && c.optionNotes?.[c.currentValue] && (
+                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700/80 font-sans truncate shrink-0">
+                                  {c.optionNotes[c.currentValue]}
+                                </span>
+                              )}
                             </div>
-                            <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-slate-500 font-sans">
+                            <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-slate-400 font-sans">
                               {c.options && c.options.length > 1 && (
-                                <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
+                                <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-200 border border-slate-700/80">
                                   {c.options.length}
                                 </span>
                               )}
@@ -602,7 +607,7 @@ export const RequestHeader: React.FC<Props> = ({
                     )}
                   </div>
 
-                  <div className="px-2.5 py-1.5 border-t border-slate-800/80 bg-slate-950/40 flex items-center justify-between text-[10px] text-slate-500">
+                  <div className="px-2.5 py-1.5 border-t border-slate-800 bg-slate-950 flex items-center justify-between text-[10px] text-slate-400">
                     <button
                       type="button"
                       onClick={() => {
@@ -671,18 +676,18 @@ export const RequestHeader: React.FC<Props> = ({
                         }}
                         className={"inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono cursor-pointer transition-all shadow-sm group/pill " +
                           (isOverridden
-                            ? "bg-purple-950/70 hover:bg-purple-900/90 border border-purple-500/70 text-purple-200 ring-1 ring-purple-500/30"
-                            : "bg-sky-950/70 hover:bg-sky-900/90 border border-sky-500/70 text-sky-200 ring-1 ring-sky-500/30")
+                            ? "bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-400 ring-1 ring-purple-500/20"
+                            : "bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-400 ring-1 ring-sky-500/20")
                         }
                         title={isOverridden ? `{{${seg.value}}} ${t('header.exclusiveValue')}: ${overrideVal}` : `{{${seg.value}}} ${t('header.globalValue')}: ${constant?.currentValue || ''}`}
                       >
                         <span className="font-semibold">{seg.raw}</span>
                         {isOverridden ? (
-                          <span className="text-[9px] px-1 py-0.1 rounded bg-purple-500/30 text-purple-300 font-sans font-medium">
+                          <span className="text-[9px] px-1 py-0.1 rounded bg-purple-500/25 text-purple-400 border border-purple-500/40 font-sans font-medium">
                             {t('header.exclusiveValue')}
                           </span>
                         ) : (
-                          <span className="text-[9px] px-1 py-0.1 rounded bg-sky-500/20 text-sky-300 font-sans font-medium">
+                          <span className="text-[9px] px-1 py-0.1 rounded bg-sky-500/25 text-sky-400 border border-sky-500/40 font-sans font-medium">
                             {t('header.globalValue')}
                           </span>
                         )}
@@ -693,7 +698,7 @@ export const RequestHeader: React.FC<Props> = ({
                             e.stopPropagation()
                             handleRemoveConstant(seg.start, seg.end)
                           }}
-                          className="p-0.5 text-slate-400 hover:text-rose-300 hover:bg-rose-500/20 rounded transition-colors ml-0.5"
+                          className="p-0.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/20 rounded transition-colors ml-0.5"
                           title={`${t('header.removeConstantFromUrl')} {{${seg.value}}}`}
                         >
                           <X className="w-3 h-3" />
@@ -718,12 +723,12 @@ export const RequestHeader: React.FC<Props> = ({
                           rect
                         })
                       }}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono cursor-pointer bg-rose-950/70 hover:bg-rose-900/90 border border-rose-500/80 text-rose-200 ring-1 ring-rose-500/40 transition-all shadow-sm group/pill"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono cursor-pointer bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/40 text-rose-400 ring-1 ring-rose-500/20 transition-all shadow-sm group/pill"
                       title={t('header.undefinedConstantWarn', { name: seg.value })}
                     >
                       <AlertTriangle className="w-3 h-3 text-rose-400 shrink-0" />
-                      <span className="font-semibold underline decoration-rose-500/60 decoration-wavy">{seg.raw}</span>
-                      <span className="text-[9px] px-1 py-0.1 rounded bg-rose-500/30 text-rose-300 border border-rose-500/40 font-sans font-medium">
+                      <span className="font-semibold underline decoration-rose-500 decoration-wavy">{seg.raw}</span>
+                      <span className="text-[9px] px-1 py-0.1 rounded bg-rose-500/25 text-rose-400 border border-rose-500/40 font-sans font-medium">
                         {t('header.undefinedConstant')}
                       </span>
                       <button
@@ -732,7 +737,7 @@ export const RequestHeader: React.FC<Props> = ({
                           e.stopPropagation()
                           handleRemoveConstant(seg.start, seg.end)
                         }}
-                        className="p-0.5 text-rose-400 hover:text-white hover:bg-rose-600/40 rounded transition-colors ml-0.5"
+                        className="p-0.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 rounded transition-colors ml-0.5"
                         title={`${t('header.removeConstantFromUrl')} {{${seg.value}}}`}
                       >
                         <X className="w-3 h-3" />
@@ -805,7 +810,7 @@ export const RequestHeader: React.FC<Props> = ({
                         key={c.id}
                         type="button"
                         onClick={() => handleInsertConstant(c.name)}
-                        className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800 text-left transition-colors text-slate-300 hover:text-white"
+                        className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-800 text-left transition-colors text-slate-300 hover:text-slate-100"
                       >
                         <span className="font-mono text-sky-400">{'{{' + c.name + '}}'}</span>
                         <span className="text-[11px] text-slate-500 truncate max-w-[120px] font-mono">{c.currentValue}</span>
@@ -833,11 +838,11 @@ export const RequestHeader: React.FC<Props> = ({
       {/* 2. Direct Preview Row: Right below the address bar */}
       <div className="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-slate-950/80 border border-slate-800 text-xs font-mono select-text">
         <div className="flex items-center gap-2 truncate flex-1 mr-2">
-          <div className="flex items-center gap-1 text-[11px] font-sans font-medium text-slate-500 shrink-0 select-none">
+          <div className="flex items-center gap-1 text-[11px] font-sans font-medium text-slate-400 shrink-0 select-none">
             <Globe className="w-3.5 h-3.5 text-emerald-400" />
             <span>{t('header.preview')}:</span>
           </div>
-          <span className={"truncate " + (resolvedUrl ? "text-emerald-400 font-semibold" : "text-slate-600 italic font-sans")}>
+          <span className={"truncate " + (resolvedUrl ? "text-emerald-400 font-semibold" : "text-slate-400 italic font-sans")}>
             {resolvedUrl || '(Enter URL above to preview full request address)'}
           </span>
         </div>
@@ -846,13 +851,13 @@ export const RequestHeader: React.FC<Props> = ({
           <button
             type="button"
             onClick={handleCopyPreview}
-            className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-slate-800 transition-colors shrink-0 select-none"
+            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-slate-100 hover:bg-slate-800/80 px-1.5 py-0.5 rounded transition-colors shrink-0 select-none"
             title={t('header.copyPreview')}
           >
             {copiedPreview ? (
               <>
                 <Check className="w-3 h-3 text-emerald-400" />
-                <span className="text-emerald-400">{t('header.copySuccess')}</span>
+                <span className="text-emerald-400 font-medium">{t('header.copySuccess')}</span>
               </>
             ) : (
               <>
@@ -885,7 +890,7 @@ export const RequestHeader: React.FC<Props> = ({
               top: Math.min(activePill.rect.bottom + 6, window.innerHeight - 340),
               left: Math.max(12, Math.min(activePill.rect.left, window.innerWidth - 340))
             }}
-            className="z-50 w-80 bg-slate-900 border border-slate-700/90 rounded-xl shadow-2xl p-3 text-xs text-slate-200 animate-in fade-in duration-100 select-none flex flex-col gap-2.5"
+            className="z-50 w-80 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3 text-xs text-slate-200 animate-in fade-in duration-100 select-none flex flex-col gap-2.5"
           >
             {/* Popover Header */}
             <div className="flex items-center justify-between pb-2 border-b border-slate-800">
@@ -893,12 +898,12 @@ export const RequestHeader: React.FC<Props> = ({
                 {activePill.isValid ? (
                   <>
                     <Braces className="w-4 h-4 text-sky-400 shrink-0" />
-                    <span className="font-bold text-sky-300">{activePill.raw}</span>
+                    <span className="font-bold text-sky-400">{activePill.raw}</span>
                   </>
                 ) : (
                   <>
                     <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                    <span className="font-bold text-rose-300">{activePill.raw}</span>
+                    <span className="font-bold text-rose-400">{activePill.raw}</span>
                   </>
                 )}
               </div>
@@ -906,23 +911,23 @@ export const RequestHeader: React.FC<Props> = ({
               <div className="flex items-center gap-1.5">
                 {activePill.isValid ? (
                   request.constantOverrides && request.constantOverrides[activePill.name] !== undefined ? (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/40 font-medium">
                       {t('header.exclusiveValue')}
                     </span>
                   ) : (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-400 border border-sky-500/40 font-medium">
                       {t('header.globalValue')}
                     </span>
                   )
                 ) : (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-semibold">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/40 font-semibold">
                     {t('header.undefinedConstant')}
                   </span>
                 )}
                 <button
                   type="button"
                   onClick={() => setActivePill(null)}
-                  className="p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors ml-1"
+                  className="p-1 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded transition-colors ml-1"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -952,8 +957,13 @@ export const RequestHeader: React.FC<Props> = ({
                     <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
                       {t('header.activeValue')}
                     </span>
-                    <div className="px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-emerald-400 text-xs break-all select-text font-medium">
-                      {effectiveVal || <span className="italic text-slate-500">--</span>}
+                    <div className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 font-mono text-emerald-800 dark:text-emerald-400 text-xs break-all select-text font-bold flex items-center justify-between gap-2">
+                      <span>{effectiveVal || <span className="italic text-slate-400">--</span>}</span>
+                      {effectiveVal && activeConstantItem.optionNotes?.[effectiveVal] && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-800 dark:text-emerald-200 font-sans shrink-0 font-medium">
+                          {activeConstantItem.optionNotes[effectiveVal]}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -975,14 +985,14 @@ export const RequestHeader: React.FC<Props> = ({
                         }}
                         className={"flex items-center justify-between px-2 py-1.5 rounded-lg border text-left transition-colors text-xs font-mono " +
                           (!isOverridden
-                            ? "bg-sky-500/15 border-sky-500/50 text-sky-200 font-semibold"
-                            : "bg-slate-800/60 border-slate-750 hover:bg-slate-800 text-slate-300 hover:text-white")
+                            ? "bg-sky-500/15 border-sky-500/50 text-sky-400 font-bold shadow-sm"
+                            : "bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-200 hover:text-slate-100")
                         }
                       >
                         <div className="flex items-center gap-1.5 truncate">
                           <span>🌐 {t('header.followGlobalDefault')}</span>
                           <span className="text-[10px] text-slate-400 truncate">
-                            ({activeConstantItem.currentValue || '--'})
+                            ({activeConstantItem.currentValue || '--'}{activeConstantItem.currentValue && activeConstantItem.optionNotes?.[activeConstantItem.currentValue] ? ` · ${activeConstantItem.optionNotes[activeConstantItem.currentValue]}` : ''})
                           </span>
                         </div>
                         {!isOverridden && <Check className="w-3.5 h-3.5 text-sky-400 shrink-0 ml-1" />}
@@ -991,6 +1001,7 @@ export const RequestHeader: React.FC<Props> = ({
                       {/* Candidate Options */}
                       {allOptions.map((opt) => {
                         const isSelected = isOverridden && overrideVal === opt
+                        const note = activeConstantItem.optionNotes?.[opt]
                         return (
                           <button
                             key={opt}
@@ -1001,14 +1012,25 @@ export const RequestHeader: React.FC<Props> = ({
                             }}
                             className={"flex items-center justify-between px-2 py-1.5 rounded-lg border text-left transition-colors text-xs font-mono " +
                               (isSelected
-                                ? "bg-purple-500/20 border-purple-500/60 text-purple-200 font-semibold shadow-sm"
-                                : "bg-slate-800/40 border-slate-700/60 hover:bg-slate-800 text-slate-300 hover:text-white")
+                                ? "bg-purple-500/20 border-purple-500/60 text-purple-400 font-bold shadow-sm"
+                                : "bg-slate-900 border-slate-800 hover:bg-slate-800 text-slate-200 hover:text-slate-100")
                             }
                           >
-                            <span className="truncate mr-1">{opt}</span>
+                            <div className="flex items-center gap-1.5 truncate mr-1">
+                              <span className="truncate">{opt}</span>
+                              {note && (
+                                <span className={"text-[10px] px-1.5 py-0.2 rounded font-sans shrink-0 font-normal border " +
+                                  (isSelected
+                                    ? "bg-purple-500/20 text-purple-800 dark:text-purple-200 border-purple-500/40 font-medium"
+                                    : "bg-slate-800 text-slate-300 border-slate-700/80")
+                                }>
+                                  {note}
+                                </span>
+                              )}
+                            </div>
                             <div className="flex items-center gap-1 shrink-0">
                               {opt === activeConstantItem.currentValue && (
-                                <span className="text-[9px] text-slate-500 font-sans">({t('header.globalValue')})</span>
+                                <span className="text-[9px] text-slate-400 font-sans">({t('header.globalValue')})</span>
                               )}
                               {isSelected && <Check className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
                             </div>
@@ -1026,7 +1048,7 @@ export const RequestHeader: React.FC<Props> = ({
                         setActivePill(null)
                         onOpenManageConstants()
                       }}
-                      className="flex items-center gap-1 text-slate-400 hover:text-sky-300 transition-colors"
+                      className="flex items-center gap-1 text-slate-400 hover:text-sky-400 transition-colors font-medium"
                     >
                       <Zap className="w-3 h-3 text-amber-400" />
                       <span>{t('header.manageConstant')}...</span>
@@ -1035,7 +1057,7 @@ export const RequestHeader: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => handleRemoveConstant(activePill.start, activePill.end)}
-                      className="flex items-center gap-1 text-rose-400 hover:text-rose-300 transition-colors"
+                      className="flex items-center gap-1 text-rose-400 hover:text-rose-300 transition-colors font-medium"
                     >
                       <X className="w-3 h-3" />
                       <span>{t('header.removeConstantFromUrl')}</span>
@@ -1046,7 +1068,7 @@ export const RequestHeader: React.FC<Props> = ({
             })() : (
               /* Invalid Constant Body */
               <div className="flex flex-col gap-2.5">
-                <div className="p-2 rounded-lg bg-rose-950/40 border border-rose-500/30 text-rose-200 text-xs leading-relaxed">
+                <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs leading-relaxed font-medium">
                   {t('header.undefinedConstantWarn', { name: activePill.name })}
                 </div>
 
