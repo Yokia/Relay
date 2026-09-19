@@ -138,7 +138,7 @@ export const ResponseViewer: React.FC<Props> = ({
   const searchedBody = searchTerm.trim()
     ? (bodyFormat === 'pretty' ? bodyString : rawString).split('\n').filter((line) => line.toLowerCase().includes(searchTerm.toLowerCase())).join('\n')
     : (bodyFormat === 'pretty' ? bodyString : rawString)
-  const queryJsonPath = () => {
+  const getJsonPathResult = () => {
     if (!jsonPath.trim()) return ''
     const value = queryJsonPath(displayResponse.data, jsonPath)
     return value === undefined ? 'Not found' : typeof value === 'string' ? value : JSON.stringify(value, null, 2)
@@ -400,7 +400,7 @@ export const ResponseViewer: React.FC<Props> = ({
           <div className="flex-1 h-full min-h-0">
             <div className="flex items-center gap-2 mb-2">
               <input value={jsonPath} onChange={(e) => setJsonPath(e.target.value)} placeholder="JSONPath: data.token or $.data.token" className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-sky-500" />
-              {jsonPath && <div className="max-w-[45%] max-h-14 overflow-auto whitespace-pre-wrap rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 text-[11px] text-emerald-300 font-mono">{queryJsonPath()}</div>}
+              {jsonPath && <div className="max-w-[45%] max-h-14 overflow-auto whitespace-pre-wrap rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 text-[11px] text-emerald-300 font-mono">{getJsonPathResult()}</div>}
             </div>
             <CodeEditor
               value={searchedBody}
