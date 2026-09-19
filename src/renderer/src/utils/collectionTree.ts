@@ -577,3 +577,16 @@ export function collectAllCollectionIds(cols: CollectionItem[]): string[] {
   recurse(cols)
   return ids
 }
+
+/**
+ * Recursively collect all requests inside a collection and its child collections
+ */
+export function collectAllRequests(col: CollectionItem): RequestItem[] {
+  let list: RequestItem[] = [...(col.requests || [])]
+  if (col.children && col.children.length > 0) {
+    for (const child of col.children) {
+      list = list.concat(collectAllRequests(child))
+    }
+  }
+  return list
+}

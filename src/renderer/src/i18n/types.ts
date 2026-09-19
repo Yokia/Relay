@@ -46,6 +46,9 @@ export interface TranslationSchema {
     duplicateCollection: string
     exportCollection: string
     deleteCollection: string
+    runCollection: string
+    runSelected: string
+    runInRunner: string
     importExportData: string
     renameRequest: string
     duplicateRequest: string
@@ -311,6 +314,47 @@ export interface TranslationSchema {
     importBtn: string
     copyBtn: string
   }
+  runner: {
+    title: string
+    runCollection: string
+    runSelected: string
+    run: string
+    stop: string
+    rerun: string
+    running: string
+    completed: string
+    aborted: string
+    summary: string
+    totalRequests: string
+    passed: string
+    failed: string
+    totalDuration: string
+    avgDuration: string
+    statusCodeDistribution: string
+    delayMs: string
+    stopOnError: string
+    exportReport: string
+    copySummary: string
+    copied: string
+    noRequests: string
+    requestDetails: string
+    responseBody: string
+    responseHeaders: string
+    requestHeaders: string
+    requestParams: string
+    statusPending: string
+    statusRunning: string
+    statusSuccess: string
+    statusFailed: string
+    queue: string
+    report: string
+    selectAll: string
+    deselectAll: string
+    iteration: string
+    smokeReportTitle: string
+    openInNewWindow: string
+    runnerSubtitle: string
+  }
   toast: {
     collectionCreated: string
     subCollectionCreated: string
@@ -340,5 +384,6 @@ export interface TranslationSchema {
     dataCopied: string
     codeCopied: string
     requestDuplicatedViaShortcut: string
+    runnerReportExported: string
   }
 }

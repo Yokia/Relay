@@ -98,3 +98,34 @@ export interface WorkspaceTab {
   method: HttpMethod
   isDirty?: boolean
 }
+
+export interface RunnerRequestResult {
+  id: string
+  requestId: string
+  requestName: string
+  method: HttpMethod
+  url: string
+  status: number
+  statusText: string
+  time: number
+  size: number
+  error?: string
+  responseBody?: any
+  responseHeaders?: Record<string, string>
+  requestHeaders?: Record<string, string>
+  requestParams?: Record<string, string>
+  requestBody?: any
+  timestamp: number
+}
+
+export interface RunnerReport {
+  title: string
+  startTime: number
+  endTime: number
+  totalDuration: number
+  totalCount: number
+  passedCount: number
+  failedCount: number
+  statusCodeDistribution: Record<string, number>
+  results: RunnerRequestResult[]
+}

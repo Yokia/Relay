@@ -27,7 +27,8 @@ import {
   AlertTriangle,
   FolderTree,
   ArrowUpDown,
-  FolderDown
+  FolderDown,
+  Play
 } from 'lucide-react'
 import { CollectionItem, HistoryItem, Environment, RequestItem, HttpMethod, ConstantItem } from '../types'
 import {
@@ -36,7 +37,8 @@ import {
   countAllSubCollections,
   filterCollectionTree,
   collectAllCollectionIds,
-  isDescendant
+  isDescendant,
+  collectAllRequests
 } from '../utils/collectionTree'
 import { useI18n } from '../i18n'
 
@@ -71,6 +73,8 @@ interface Props {
   dirtyIds?: Set<string>
   onOpenSettings: () => void
   onOpenDataTransfer?: (tab?: 'export' | 'import', targetColId?: string) => void
+  onRunCollection?: (col: CollectionItem) => void
+  onRunRequests?: (requests: RequestItem[], title: string) => void
 }
 
 const methodBadgeColor: Record<HttpMethod, string> = {
@@ -141,12 +145,62 @@ export const Sidebar: React.FC<Props> = ({
   onSwitchConstant,
   dirtyIds,
   onOpenSettings,
-  onOpenDataTransfer
+  onOpenDataTransfer,
+  onRunCollection,
+  onRunRequests
 }) => {
   const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<'collections' | 'history' | 'constants'>('collections')
   const [collapsedCols, setCollapsedCols] = useState<Record<string, boolean>>({})
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Multi-selection state for batch operations
+  const [selectedReqIds, setSelectedReqIds] = useState<Set<string>>(new Set())
+  const lastSelectedReqIdRef = useRef<string | null>(null)
+
+  // Flat list of requests in tree order for range selection
+  const flatRequestList = useMemo(() => {
+    let list: RequestItem[] = []
+    const traverse = (cols: CollectionItem[]) => {
+      for (const c of cols) {
+        if (c.requests) list.push(...c.requests)
+        if (c.children) traverse(c.children)
+      }
+    }
+    traverse(collections)
+    return list
+  }, [collections])
+
+  const handleRequestClick = (e: React.MouseEvent, req: RequestItem) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault()
+      setSelectedReqIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(req.id)) next.delete(req.id)
+        else next.add(req.id)
+        return next
+      })
+      lastSelectedReqIdRef.current = req.id
+    } else if (e.shiftKey && lastSelectedReqIdRef.current) {
+      e.preventDefault()
+      const lastId = lastSelectedReqIdRef.current
+      const idx1 = flatRequestList.findIndex((r) => r.id === lastId)
+      const idx2 = flatRequestList.findIndex((r) => r.id === req.id)
+      if (idx1 !== -1 && idx2 !== -1) {
+        const start = Math.min(idx1, idx2)
+        const end = Math.max(idx1, idx2)
+        const rangeIds = flatRequestList.slice(start, end + 1).map((r) => r.id)
+        setSelectedReqIds(new Set(rangeIds))
+      } else {
+        setSelectedReqIds(new Set([req.id]))
+        lastSelectedReqIdRef.current = req.id
+      }
+    } else {
+      setSelectedReqIds(new Set())
+      lastSelectedReqIdRef.current = req.id
+      onSelectRequest(req)
+    }
+  }
 
   // Context Menu State
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
@@ -308,11 +362,14 @@ export const Sidebar: React.FC<Props> = ({
           setDragOverColId(null)
           setDragOverReqId(null)
         }}
-        onClick={() => onSelectRequest(req)}
+        onClick={(e) => handleRequestClick(e, req)}
         onContextMenu={(e) => {
           e.preventDefault()
           e.stopPropagation()
           setShowMoveSubmenu(false)
+          if (!selectedReqIds.has(req.id)) {
+            setSelectedReqIds(new Set())
+          }
           setContextMenu({
             type: 'request',
             x: Math.min(e.clientX, window.innerWidth - 220),
@@ -324,7 +381,9 @@ export const Sidebar: React.FC<Props> = ({
         }}
         style={{ paddingLeft: `${22 + depth * 14}px`, paddingRight: '8px' }}
         className={"flex items-center justify-between py-1.5 rounded cursor-pointer text-xs group transition-all " +
-          (selectedRequestId === req.id
+          (selectedReqIds.has(req.id)
+            ? "bg-sky-100 text-sky-950 font-bold ring-1 ring-sky-400/60 dark:bg-sky-500/25 dark:text-sky-200 dark:ring-sky-500/50 shadow-sm"
+            : selectedRequestId === req.id
             ? "bg-sky-100 text-sky-950 font-bold dark:bg-sky-500/20 dark:text-sky-300 dark:font-medium shadow-sm"
             : "text-slate-200 hover:bg-slate-800/60 hover:text-slate-100") +
           (isBeingDragged ? " opacity-40 border border-dashed border-sky-400" : "") +
@@ -531,6 +590,19 @@ export const Sidebar: React.FC<Props> = ({
 
           {/* Collection Actions (Hover) */}
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            {onRunCollection && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRunCollection(col)
+                }}
+                className="p-1 hover:text-emerald-400 text-slate-500 rounded hover:bg-slate-800"
+                title={t('sidebar.runCollection')}
+              >
+                <Play className="w-3 h-3 text-emerald-400 fill-emerald-400/20" />
+              </button>
+            )}
             <button
               type="button"
               onClick={(e) => {
@@ -939,6 +1011,23 @@ export const Sidebar: React.FC<Props> = ({
         >
           {contextMenu.type === 'collection' && (
             <>
+              {onRunCollection && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const col = findCollectionInTree(collections, contextMenu.colId)
+                    if (col) {
+                      onRunCollection(col)
+                    }
+                    setContextMenu(null)
+                  }}
+                  className="px-2.5 py-1.5 text-left hover:bg-emerald-500/20 hover:text-emerald-300 rounded flex items-center gap-2 transition-colors font-medium text-emerald-400"
+                >
+                  <Play className="w-3.5 h-3.5 fill-emerald-400/20" />
+                  <span>{t('sidebar.runCollection')}</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => {
@@ -1025,6 +1114,44 @@ export const Sidebar: React.FC<Props> = ({
 
           {contextMenu.type === 'request' && contextMenu.request && (
             <>
+              {selectedReqIds.size > 1 && selectedReqIds.has(contextMenu.request.id) ? (
+                onRunRequests && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const selectedList = flatRequestList.filter((r) => selectedReqIds.has(r.id))
+                      if (selectedList.length > 0) {
+                        onRunRequests(
+                          selectedList,
+                          t('sidebar.runSelected', { count: selectedList.length })
+                        )
+                      }
+                      setContextMenu(null)
+                    }}
+                    className="px-2.5 py-1.5 text-left hover:bg-emerald-500/20 hover:text-emerald-300 rounded flex items-center gap-2 transition-colors font-semibold text-emerald-400"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-emerald-400/20" />
+                    <span>{t('sidebar.runSelected', { count: selectedReqIds.size })}</span>
+                  </button>
+                )
+              ) : (
+                onRunRequests && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (contextMenu.request) {
+                        onRunRequests([contextMenu.request], contextMenu.request.name || 'Request')
+                      }
+                      setContextMenu(null)
+                    }}
+                    className="px-2.5 py-1.5 text-left hover:bg-emerald-500/20 hover:text-emerald-300 rounded flex items-center gap-2 transition-colors text-emerald-400 font-medium"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-emerald-400/20" />
+                    <span>{t('sidebar.runInRunner')}</span>
+                  </button>
+                )
+              )}
+
               <button
                 type="button"
                 onClick={() => {

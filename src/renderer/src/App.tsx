@@ -11,6 +11,7 @@ import { DataTransferModal } from './components/DataTransferModal'
 import { TabBar } from './components/TabBar'
 import { CommandPaletteModal } from './components/CommandPaletteModal'
 import { CodeSnippetModal } from './components/CodeSnippetModal'
+import { CollectionRunnerModal } from './components/CollectionRunnerModal'
 import { ToastContainer, ToastMessage } from './components/Toast'
 import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme, WorkspaceTab } from './types'
 import { stripJsonComments } from './utils/jsonUtils'
@@ -31,7 +32,8 @@ import {
   deleteCollectionFromTree,
   duplicateCollectionInTree,
   moveCollectionInTree,
-  moveRequestInTree
+  moveRequestInTree,
+  collectAllRequests
 } from './utils/collectionTree'
 
 const initialConstants: ConstantItem[] = [
@@ -150,6 +152,15 @@ function MainApp({
   }>({
     isOpen: false,
     initialTab: 'export'
+  })
+  const [runnerState, setRunnerState] = useState<{
+    isOpen: boolean
+    title: string
+    requests: RequestItem[]
+  }>({
+    isOpen: false,
+    title: '',
+    requests: []
   })
 
   // Toast Notification System
@@ -509,6 +520,30 @@ function MainApp({
     setCurrentRequest(newReq)
     setResponse(null)
     addToast('Created new request from link', 'info')
+  }
+
+  // Open Collection Runner for entire collection (and its children)
+  const handleRunCollection = (col: CollectionItem) => {
+    const allReqs = collectAllRequests(col)
+    if (allReqs.length === 0) {
+      addToast(t('runner.noRequests'), 'info')
+      return
+    }
+    setRunnerState({
+      isOpen: true,
+      title: col.name,
+      requests: allReqs
+    })
+  }
+
+  // Open Runner for selected requests
+  const handleRunSelectedRequests = (reqs: RequestItem[], title: string) => {
+    if (reqs.length === 0) return
+    setRunnerState({
+      isOpen: true,
+      title: title || `${reqs.length} Requests`,
+      requests: reqs
+    })
   }
 
   // Replace variables like {{server}} or {{port}} with constants and environment variables
@@ -1058,6 +1093,8 @@ function MainApp({
             targetColId: colId
           })
         }
+        onRunCollection={handleRunCollection}
+        onRunRequests={handleRunSelectedRequests}
       />
 
       {/* Main Workspace */}
@@ -1297,6 +1334,20 @@ function MainApp({
           resolvedUrl={interpolate(currentRequest.url, currentRequest)}
           onClose={() => setIsCodeSnippetOpen(false)}
           onToast={(msg) => addToast(msg, 'success')}
+        />
+      )}
+
+      {runnerState.isOpen && (
+        <CollectionRunnerModal
+          isOpen={runnerState.isOpen}
+          title={runnerState.title}
+          requests={runnerState.requests}
+          constants={constants}
+          environments={environments}
+          activeEnvId={activeEnvId}
+          settings={settings}
+          onClose={() => setRunnerState((prev) => ({ ...prev, isOpen: false }))}
+          onToast={(msg, type) => addToast(msg, type || 'success')}
         />
       )}
     </div>
