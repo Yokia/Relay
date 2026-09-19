@@ -218,6 +218,28 @@ export const SettingsModal: React.FC<Props> = ({
                   </label>
                 </div>
 
+                {/* Collection Path in Tabs Toggle */}
+                <div className="flex items-start justify-between gap-4 p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1.5 font-semibold text-slate-200">
+                      <Layers className="w-3.5 h-3.5 text-purple-400" />
+                      <span>{t('settings.showCollectionPathTitle')}</span>
+                    </div>
+                    <p className="text-slate-400 text-[11px] leading-relaxed">
+                      {t('settings.showCollectionPathDesc')}
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-0.5">
+                    <input
+                      type="checkbox"
+                      checked={settings.showCollectionPath === true}
+                      onChange={(e) => onUpdateSettings({ showCollectionPath: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-500"></div>
+                  </label>
+                </div>
+
                 {/* Auto Save Toggle */}
                 <div className="flex items-start justify-between gap-4 p-3 rounded-lg bg-slate-950/50 border border-slate-800">
                   <div className="flex flex-col gap-1">

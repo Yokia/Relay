@@ -37,7 +37,8 @@ import {
   duplicateCollectionInTree,
   moveCollectionInTree,
   moveRequestInTree,
-  collectAllRequests
+  collectAllRequests,
+  findRequestCollectionPath
 } from './utils/collectionTree'
 
 const initialConstants: ConstantItem[] = [
@@ -140,6 +141,12 @@ function MainApp({
   // Per-request response runs history (Preserves responses across switching APIs and app restarts)
   const [responseHistoryMap, setResponseHistoryMap] = useState<Record<string, ResponseRun[]>>({})
   const [selectedRunIdMap, setSelectedRunIdMap] = useState<Record<string, string>>({})
+
+  const getTabDisplayName = (requestId: string, fallbackName: string) => {
+    if (!settings.showCollectionPath) return fallbackName
+    const path = findRequestCollectionPath(collections, requestId)
+    return path && path.length > 0 ? `${path.join(' - ')} - ${fallbackName}` : fallbackName
+  }
 
   // Modals
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false)
@@ -355,17 +362,21 @@ function MainApp({
   useEffect(() => {
     setTabs((prev) =>
       prev.map((t) =>
-        t.requestId === currentRequest.id
-          ? {
-              ...t,
-              name: currentRequest.name,
-              method: currentRequest.method,
-              isDirty: dirtyIds.has(currentRequest.id)
-            }
-          : t
+        (() => {
+          const tabRequest = findRequestInTree(collections, t.requestId)?.request
+          const isCurrent = t.requestId === currentRequest.id
+          const baseName = tabRequest?.name || (isCurrent ? currentRequest.name : t.requestName || t.name)
+          return {
+            ...t,
+            name: getTabDisplayName(t.requestId, baseName),
+            requestName: baseName,
+            method: tabRequest?.method || (isCurrent ? currentRequest.method : t.method),
+            isDirty: dirtyIds.has(t.requestId)
+          }
+        })()
       )
     )
-  }, [currentRequest.id, currentRequest.name, currentRequest.method, dirtyIds])
+  }, [currentRequest.id, currentRequest.name, currentRequest.method, dirtyIds, collections, settings.showCollectionPath])
 
   // Persist helper
   const persist = (updates: any) => {

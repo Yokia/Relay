@@ -128,12 +128,14 @@ export interface AppSettings {
   language?: Language
   theme?: Theme
   enableMultiTabs?: boolean
+  showCollectionPath?: boolean
 }
 
 export interface WorkspaceTab {
   id: string
   requestId: string
   name: string
+  requestName?: string
   method: HttpMethod
   isDirty?: boolean
 }

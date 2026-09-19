@@ -190,7 +190,9 @@ export const zhCN: TranslationSchema = {
     catShortcuts: '快捷键一览',
     catBackup: '备份与数据',
     multiTabsTitle: '多标签页工作区 (Multi-Tabs)',
-    multiTabsDesc: '在顶部开启多标签页，方便在多个关联接口之间快速来回切换对比。关闭后将恢复单工作区模式。'
+    multiTabsDesc: '在顶部开启多标签页，方便在多个关联接口之间快速来回切换对比。关闭后将恢复单工作区模式。',
+    showCollectionPathTitle: '标签页显示集合名称',
+    showCollectionPathDesc: '在请求名称前显示所属集合和子集合路径，例如：用户管理 - 登录接口。'
   },
   tabs: {
     newTab: '新建标签页',

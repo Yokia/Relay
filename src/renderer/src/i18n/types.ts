@@ -191,6 +191,8 @@ export interface TranslationSchema {
     catBackup: string
     multiTabsTitle: string
     multiTabsDesc: string
+    showCollectionPathTitle: string
+    showCollectionPathDesc: string
   }
   tabs: {
     newTab: string

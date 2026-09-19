@@ -56,6 +56,22 @@ export function findRequestInTree(
   return null
 }
 
+/** Return the collection path for a request, from root collection to its direct parent. */
+export function findRequestCollectionPath(
+  cols: CollectionItem[],
+  reqId: string,
+  parents: string[] = []
+): string[] | null {
+  for (const col of cols) {
+    if (col.requests.some((request) => request.id === reqId)) return [...parents, col.name]
+    if (col.children && col.children.length > 0) {
+      const nested = findRequestCollectionPath(col.children, reqId, [...parents, col.name])
+      if (nested) return nested
+    }
+  }
+  return null
+}
+
 /**
  * Immutably update a request in the collection tree
  */

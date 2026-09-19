@@ -190,7 +190,9 @@ export const enUS: TranslationSchema = {
     catShortcuts: 'Shortcuts',
     catBackup: 'Backup & Data',
     multiTabsTitle: 'Multi-Tab Workspace',
-    multiTabsDesc: 'Enable browser-like multiple tabs on top to quickly switch and compare between related requests. Turn off to restore single workspace mode.'
+    multiTabsDesc: 'Enable browser-like multiple tabs on top to quickly switch and compare between related requests. Turn off to restore single workspace mode.',
+    showCollectionPathTitle: 'Show collection names in tabs',
+    showCollectionPathDesc: 'Show the collection and sub-collection path before the request name, for example: Users - Login.'
   },
   tabs: {
     newTab: 'New Tab',
