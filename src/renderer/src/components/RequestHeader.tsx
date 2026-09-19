@@ -38,6 +38,7 @@ interface Props {
   onOpenCommandPalette?: () => void
   onOpenHistoryWindow?: () => void
   historyCount?: number
+  collectionPath?: string
 }
 
 interface UrlSegment {
@@ -133,7 +134,8 @@ export const RequestHeader: React.FC<Props> = ({
   resolvedUrl: passedResolvedUrl,
   onOpenCommandPalette,
   onOpenHistoryWindow,
-  historyCount
+  historyCount,
+  collectionPath
 }) => {
   const { t } = useI18n()
   const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
@@ -412,6 +414,11 @@ export const RequestHeader: React.FC<Props> = ({
       {/* Top Request Name & Control Actions */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
+          {collectionPath && (
+            <span className="text-xs text-slate-500 font-medium truncate max-w-[260px]" title={collectionPath}>
+              {collectionPath} /
+            </span>
+          )}
           <input
             type="text"
             value={request.name}

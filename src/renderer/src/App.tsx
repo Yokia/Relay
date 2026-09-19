@@ -1641,6 +1641,7 @@ function MainApp({
         {/* Request Header Bar */}
         <RequestHeader
           request={currentRequest}
+          collectionPath={findRequestCollectionPath(collections, currentRequest.id)?.join(' / ')}
           onChange={handleRequestChange}
           onSend={handleSend}
           onSave={handleSave}
