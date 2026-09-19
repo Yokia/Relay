@@ -18,6 +18,8 @@ interface Props {
   placeholder?: string
   onOpenUrlInRelay?: (url: string) => void
   wrap?: boolean
+  searchTerm?: string
+  searchActiveIndex?: number
 }
 
 interface ContextMenuState {
@@ -93,6 +95,37 @@ const jsonCommentPlugin = ViewPlugin.fromClass(
     decorations: (v) => v.decorations
   }
 )
+
+function createSearchPlugin(term: string, activeIndex: number) {
+  return ViewPlugin.fromClass(
+    class {
+      decorations: DecorationSet
+      constructor(view: EditorView) {
+        this.decorations = this.build(view)
+      }
+      build(view: EditorView) {
+        const builder = new RangeSetBuilder<Decoration>()
+        if (!term.trim()) return builder.finish()
+        const source = view.state.doc.toString()
+        const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        const matcher = new RegExp(escaped, 'gi')
+        let match: RegExpExecArray | null
+        let index = 0
+        while ((match = matcher.exec(source))) {
+          const className = index === activeIndex ? 'cm-response-search-match cm-response-search-match-active' : 'cm-response-search-match'
+          builder.add(match.index, match.index + match[0].length, Decoration.mark({ class: className }))
+          index++
+          if (match[0].length === 0) matcher.lastIndex++
+        }
+        return builder.finish()
+      }
+      update(update: ViewUpdate) {
+        if (update.docChanged || update.viewportChanged) this.decorations = this.build(update.view)
+      }
+    },
+    { decorations: (v: any) => v.decorations }
+  )
+}
 
 // High-contrast, clear styling for comments and comment links
 const commentTheme = EditorView.baseTheme({
@@ -275,19 +308,41 @@ export const CodeEditor: React.FC<Props> = ({
   minHeight = '180px',
   placeholder = '{\n  "key": "value"\n}',
   onOpenUrlInRelay,
-  wrap = true
+  wrap = true,
+  searchTerm = '',
+  searchActiveIndex = 0
 }) => {
   const { theme } = useTheme()
+  const editorViewRef = useRef<EditorView | null>(null)
 
   const activeThemeExts = useMemo(() => {
     return theme === 'light' ? relayLight : relayDark
   }, [theme])
 
   const extensions = useMemo(() => {
-    const exts = [json(), clickableLinkPlugin, jsonCommentPlugin, commentTheme, ...activeThemeExts]
+    const exts = [json(), clickableLinkPlugin, jsonCommentPlugin, createSearchPlugin(searchTerm, searchActiveIndex), commentTheme, ...activeThemeExts]
     if (wrap) exts.push(EditorView.lineWrapping)
     return exts
-  }, [wrap, activeThemeExts])
+  }, [wrap, activeThemeExts, searchTerm, searchActiveIndex])
+
+  useEffect(() => {
+    const view = editorViewRef.current
+    if (!view || !searchTerm.trim()) return
+    const source = view.state.doc.toString()
+    const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const matcher = new RegExp(escaped, 'gi')
+    let match: RegExpExecArray | null
+    let index = 0
+    while ((match = matcher.exec(source))) {
+      if (index === searchActiveIndex) {
+        const from = match.index
+        const to = from + match[0].length
+        view.dispatch({ selection: { anchor: from, head: to }, effects: EditorView.scrollIntoView(from, { y: 'center' }) })
+        break
+      }
+      index++
+    }
+  }, [searchTerm, searchActiveIndex])
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [copied, setCopied] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -371,6 +426,7 @@ export const CodeEditor: React.FC<Props> = ({
           theme={theme === 'light' ? relayLightTheme : relayTheme}
           extensions={extensions}
           onChange={(val) => onChange && onChange(val)}
+          onCreateEditor={(view) => { editorViewRef.current = view }}
           readOnly={readOnly}
           placeholder={placeholder}
           basicSetup={{

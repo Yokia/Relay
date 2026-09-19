@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Copy,
   Check,
@@ -10,7 +10,11 @@ import {
   Download,
   WrapText,
   Calendar,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Search,
+  ChevronUp,
+  ChevronDown,
+  X
 } from 'lucide-react'
 import { ResponseData, ResponseRun } from '../types'
 import { CodeEditor } from './CodeEditor'
@@ -73,6 +77,9 @@ export const ResponseViewer: React.FC<Props> = ({
   const [savedNotice, setSavedNotice] = useState<string | null>(null)
   const [isDiffOpen, setIsDiffOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchActiveIndex, setSearchActiveIndex] = useState(0)
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [jsonPath, setJsonPath] = useState('')
   const [isJsonPathFocused, setIsJsonPathFocused] = useState(false)
 
@@ -84,6 +91,23 @@ export const ResponseViewer: React.FC<Props> = ({
     const query = jsonPath.trim().toLowerCase()
     return buildJsonPathSuggestions(displayResponse.data).filter((path) => !query || path.toLowerCase().includes(query)).slice(0, 12)
   }, [displayResponse, isJsonPathFocused, jsonPath])
+
+  const searchMatchCount = useMemo(() => {
+    if (!displayResponse || !searchTerm.trim()) return 0
+    const source = typeof displayResponse.data === 'object' ? JSON.stringify(displayResponse.data, null, 2) : String(displayResponse.data || '')
+    return Array.from(source.matchAll(new RegExp(searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'))).length
+  }, [displayResponse, searchTerm])
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      searchInputRef.current?.focus()
+      searchInputRef.current?.select()
+    }
+  }, [isSearchOpen])
+
+  useEffect(() => {
+    setSearchActiveIndex(0)
+  }, [searchTerm])
 
   if (isLoading) {
     return (
@@ -109,6 +133,12 @@ export const ResponseViewer: React.FC<Props> = ({
   const isSuccess = displayResponse.status >= 200 && displayResponse.status < 300
   const isRedirect = displayResponse.status >= 300 && displayResponse.status < 400
   const isError = displayResponse.status >= 400 || displayResponse.status === 0
+
+  const openSearch = () => setIsSearchOpen(true)
+  const closeSearch = () => {
+    setIsSearchOpen(false)
+    setSearchTerm('')
+  }
 
   let statusBadgeClass = 'bg-slate-800 text-slate-200 border border-slate-700 font-semibold'
   if (isSuccess) statusBadgeClass = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 font-semibold'
@@ -165,9 +195,7 @@ export const ResponseViewer: React.FC<Props> = ({
 
   const bodyString = getFormattedBody()
   const rawString = typeof displayResponse.data === 'object' ? JSON.stringify(displayResponse.data) : String(displayResponse.data || '')
-  const searchedBody = searchTerm.trim()
-    ? (bodyFormat === 'pretty' ? bodyString : rawString).split('\n').filter((line) => line.toLowerCase().includes(searchTerm.toLowerCase())).join('\n')
-    : (bodyFormat === 'pretty' ? bodyString : rawString)
+  const searchedBody = bodyFormat === 'pretty' ? bodyString : rawString
   const getJsonPathResult = () => {
     if (!jsonPath.trim()) return ''
     const value = queryJsonPath(displayResponse.data, jsonPath)
@@ -211,7 +239,16 @@ export const ResponseViewer: React.FC<Props> = ({
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-slate-950/60">
+    <div
+      className="relative flex flex-col h-full overflow-hidden bg-slate-950/60"
+      tabIndex={0}
+      onKeyDownCapture={(event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+          event.preventDefault()
+          openSearch()
+        }
+      }}
+    >
       {/* Response Status Bar */}
       <div className="px-3 py-2 border-b border-slate-800 flex items-center justify-between text-xs select-none gap-2 flex-wrap">
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -301,7 +338,9 @@ export const ResponseViewer: React.FC<Props> = ({
             <span className="hidden sm:inline">{t('common.save')}</span>
           </button>
 
-          <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Find in response" className="w-28 sm:w-40 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-sky-500" />
+          <button type="button" onClick={openSearch} className="p-1.5 text-slate-400 hover:text-sky-300 rounded hover:bg-slate-800/60 transition-colors" title="Find in response">
+            <Search className="w-4 h-4" />
+          </button>
 
           <button
             type="button"
@@ -418,7 +457,26 @@ export const ResponseViewer: React.FC<Props> = ({
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col p-2.5">
+      <div className="relative flex-1 min-h-0 flex flex-col p-2.5" style={{ overflow: 'clip' }}>
+        {isSearchOpen && (
+          <div className="absolute top-3 right-3 z-50 flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 shadow-2xl">
+            <input
+              ref={searchInputRef}
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') closeSearch()
+                if (event.key === 'Enter' && searchMatchCount > 0) setSearchActiveIndex((current) => (current + (event.shiftKey ? -1 : 1) + searchMatchCount) % searchMatchCount)
+              }}
+              placeholder="Find in response"
+              className="w-48 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+            />
+            <span className="min-w-12 text-center text-[11px] text-slate-400">{searchMatchCount ? `${searchActiveIndex + 1} / ${searchMatchCount}` : '0 / 0'}</span>
+            <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((current) => (current - 1 + searchMatchCount) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title="Previous"><ChevronUp className="w-4 h-4" /></button>
+            <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((current) => (current + 1) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title="Next"><ChevronDown className="w-4 h-4" /></button>
+            <button type="button" onClick={closeSearch} className="p-1 text-slate-400 hover:text-slate-100" title="Close"><X className="w-4 h-4" /></button>
+          </div>
+        )}
         {displayResponse.error && (
           <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded text-xs mb-3 font-mono select-text">
             {displayResponse.error}
@@ -461,6 +519,8 @@ export const ResponseViewer: React.FC<Props> = ({
               value={searchedBody}
               readOnly={true}
               wrap={wrapLines}
+              searchTerm={searchTerm}
+              searchActiveIndex={searchActiveIndex}
               onOpenUrlInRelay={onOpenUrlInRelay}
             />
           </div>
