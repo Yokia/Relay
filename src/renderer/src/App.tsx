@@ -112,7 +112,9 @@ function MainApp({
   const [settings, setSettings] = useState<AppSettings>(defaultSettings)
 
   // In-memory working drafts and dirty state tracking (Never lose changes upon switching APIs)
-  const [drafts, setDrafts] = useState<Record<string, RequestItem>>({})
+  const [drafts, setDrafts] = useState<Record<string, RequestItem>>({
+    [defaultNewRequest.id]: defaultNewRequest
+  })
   const [dirtyIds, setDirtyIds] = useState<Set<string>>(new Set())
 
   const [currentRequest, setCurrentRequest] = useState<RequestItem>(defaultNewRequest)
@@ -204,6 +206,7 @@ function MainApp({
           if (data.collections?.[0]?.requests?.[0]) {
             const initialReq = JSON.parse(JSON.stringify(data.collections[0].requests[0]))
             setCurrentRequest(initialReq)
+            setDrafts((prev) => ({ ...prev, [initialReq.id]: initialReq }))
             const initialTab: WorkspaceTab = {
               id: 'tab-' + initialReq.id,
               requestId: initialReq.id,
@@ -222,14 +225,13 @@ function MainApp({
     }
   }, [])
 
-  // Keep active tab in sync with currentRequest
+  // Keep tab metadata (name, method, dirty state) in sync when a request is edited
   useEffect(() => {
     setTabs((prev) =>
       prev.map((t) =>
-        t.id === activeTabId
+        t.requestId === currentRequest.id
           ? {
               ...t,
-              requestId: currentRequest.id,
               name: currentRequest.name,
               method: currentRequest.method,
               isDirty: dirtyIds.has(currentRequest.id)
@@ -237,7 +239,7 @@ function MainApp({
           : t
       )
     )
-  }, [currentRequest.id, currentRequest.name, currentRequest.method, dirtyIds, activeTabId])
+  }, [currentRequest.id, currentRequest.name, currentRequest.method, dirtyIds])
 
   // Persist helper
   const persist = (updates: any) => {
@@ -278,17 +280,24 @@ function MainApp({
 
   // Switching APIs from Sidebar or Command Palette (Preserves all unsaved modifications via drafts & retains response history)
   const handleSelectRequest = (targetReq: RequestItem) => {
-    // If there is an unsaved working draft for this request, load the draft!
-    const reqToLoad = drafts[targetReq.id] || targetReq
-    setCurrentRequest(JSON.parse(JSON.stringify(reqToLoad)))
+    // 1. Save currently active request into drafts before switching
+    if (currentRequest.id) {
+      setDrafts((prev) => ({ ...prev, [currentRequest.id]: JSON.parse(JSON.stringify(currentRequest)) }))
+    }
 
-    // Load active response for this request if any
+    // 2. If there is an unsaved working draft for this request, load the draft!
+    const reqToLoad = drafts[targetReq.id] || targetReq
+    const cloned = JSON.parse(JSON.stringify(reqToLoad))
+    setCurrentRequest(cloned)
+    setDrafts((prev) => ({ ...prev, [cloned.id]: cloned }))
+
+    // 3. Load active response for this request if any
     const existingRuns = responseHistoryMap[targetReq.id] || []
     const selectedRunId = selectedRunIdMap[targetReq.id]
     const activeRun = existingRuns.find((r) => r.id === selectedRunId) || existingRuns[0]
     setResponse(activeRun ? activeRun.response : null)
 
-    // Manage Multi-Tabs
+    // 4. Manage Multi-Tabs
     if (settings.enableMultiTabs !== false) {
       setTabs((prev) => {
         const existingTab = prev.find((t) => t.requestId === targetReq.id)
@@ -313,21 +322,48 @@ function MainApp({
   const handleSelectTab = (tabId: string) => {
     const targetTab = tabs.find((t) => t.id === tabId)
     if (!targetTab) return
+
+    // 1. Save currently active request into drafts before switching
+    if (currentRequest.id) {
+      setDrafts((prev) => ({ ...prev, [currentRequest.id]: JSON.parse(JSON.stringify(currentRequest)) }))
+    }
+
     setActiveTabId(tabId)
 
+    // 2. If present in drafts, load draft
     if (drafts[targetTab.requestId]) {
-      setCurrentRequest(JSON.parse(JSON.stringify(drafts[targetTab.requestId])))
+      const cloned = JSON.parse(JSON.stringify(drafts[targetTab.requestId]))
+      setCurrentRequest(cloned)
+      const existingRuns = responseHistoryMap[targetTab.requestId] || []
+      const selectedRunId = selectedRunIdMap[targetTab.requestId]
+      const activeRun = existingRuns.find((r) => r.id === selectedRunId) || existingRuns[0]
+      setResponse(activeRun ? activeRun.response : null)
       return
     }
 
+    // 3. Look up in collections tree
     const found = findRequestInTree(collections, targetTab.requestId)
     if (found) {
-      setCurrentRequest(JSON.parse(JSON.stringify(found.request)))
+      const cloned = JSON.parse(JSON.stringify(found.request))
+      setCurrentRequest(cloned)
+      setDrafts((prev) => ({ ...prev, [cloned.id]: cloned }))
       const existingRuns = responseHistoryMap[found.request.id] || []
       const selectedRunId = selectedRunIdMap[found.request.id]
       const activeRun = existingRuns.find((r) => r.id === selectedRunId) || existingRuns[0]
       setResponse(activeRun ? activeRun.response : null)
+      return
     }
+
+    // 4. Fallback if request is not found in tree or drafts (e.g. pristine new request tab)
+    const fallbackReq: RequestItem = {
+      ...defaultNewRequest,
+      id: targetTab.requestId,
+      name: targetTab.name,
+      method: targetTab.method
+    }
+    setDrafts((prev) => ({ ...prev, [targetTab.requestId]: fallbackReq }))
+    setCurrentRequest(fallbackReq)
+    setResponse(null)
   }
 
   const handleCloseTab = (tabId: string) => {
@@ -336,28 +372,13 @@ function MainApp({
 
     const remaining = tabs.filter((t) => t.id !== tabId)
     if (remaining.length === 0) {
-      const freshReq: RequestItem = {
-        ...defaultNewRequest,
-        id: 'req-' + Date.now(),
-        name: 'New Request'
-      }
-      const freshTab: WorkspaceTab = {
-        id: 'tab-' + freshReq.id,
-        requestId: freshReq.id,
-        name: freshReq.name,
-        method: freshReq.method
-      }
-      setTabs([freshTab])
-      setActiveTabId(freshTab.id)
-      setCurrentRequest(freshReq)
-      setResponse(null)
+      handleNewTab()
       return
     }
 
     setTabs(remaining)
     if (activeTabId === tabId) {
       const nextTab = remaining[Math.min(tabIndex, remaining.length - 1)]
-      setActiveTabId(nextTab.id)
       handleSelectTab(nextTab.id)
     }
   }
@@ -384,33 +405,41 @@ function MainApp({
   const handleCloseAllTabs = () => {
     const freshReq: RequestItem = {
       ...defaultNewRequest,
-      id: 'req-' + Date.now(),
+      id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       name: 'New Request'
     }
     const freshTab: WorkspaceTab = {
       id: 'tab-' + freshReq.id,
       requestId: freshReq.id,
       name: freshReq.name,
-      method: freshReq.method
+      method: freshReq.method,
+      isDirty: false
     }
+    setDrafts({ [freshReq.id]: freshReq })
     setTabs([freshTab])
     setActiveTabId(freshTab.id)
     setCurrentRequest(freshReq)
     setResponse(null)
   }
 
-  const handleNewTab = () => {
-    const newReq: RequestItem = {
+  const handleNewTab = (customReq?: RequestItem) => {
+    if (currentRequest.id) {
+      setDrafts((prev) => ({ ...prev, [currentRequest.id]: JSON.parse(JSON.stringify(currentRequest)) }))
+    }
+
+    const newReq: RequestItem = customReq || {
       ...defaultNewRequest,
-      id: 'req-' + Date.now(),
+      id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       name: 'New Request'
     }
     const newTab: WorkspaceTab = {
       id: 'tab-' + newReq.id,
       requestId: newReq.id,
       name: newReq.name,
-      method: newReq.method
+      method: newReq.method,
+      isDirty: false
     }
+    setDrafts((prev) => ({ ...prev, [newReq.id]: newReq }))
     setTabs((prev) => [...prev, newTab])
     setActiveTabId(newTab.id)
     setCurrentRequest(newReq)
@@ -758,14 +787,13 @@ function MainApp({
   const handleNewRequestInCollection = (colId: string, name = 'New Request') => {
     const newReq: RequestItem = {
       ...defaultNewRequest,
-      id: 'req-' + Date.now(),
+      id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       name
     }
     const next = addRequestToCollection(collections, colId, newReq)
     setCollections(next)
     persist({ collections: next })
-    setCurrentRequest(newReq)
-    setResponse(null)
+    handleSelectRequest(newReq)
     addToast(t('toast.requestAdded'), 'success')
   }
 
@@ -802,7 +830,7 @@ function MainApp({
     if (duplicatedReq) {
       setCollections(updated)
       persist({ collections: updated })
-      setCurrentRequest(duplicatedReq)
+      handleSelectRequest(duplicatedReq)
       addToast(t('toast.requestDuplicated'), 'success')
     }
   }
@@ -959,20 +987,10 @@ function MainApp({
         } else {
           const cloned: RequestItem = {
             ...currentRequest,
-            id: 'req-' + Date.now(),
+            id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
             name: currentRequest.name + ' (Copy)'
           }
-          setCurrentRequest(cloned)
-          if (settings.enableMultiTabs !== false) {
-            const newTab: WorkspaceTab = {
-              id: 'tab-' + cloned.id,
-              requestId: cloned.id,
-              name: cloned.name,
-              method: cloned.method
-            }
-            setTabs((prev) => [...prev, newTab])
-            setActiveTabId(newTab.id)
-          }
+          handleSelectRequest(cloned)
           addToast(t('toast.requestDuplicatedViaShortcut'), 'success')
         }
       }
@@ -1045,13 +1063,18 @@ function MainApp({
         dirtyIds={dirtyIds}
         onSelectRequest={handleSelectRequest}
         onNewRequest={() => {
-          const newReq = {
-            ...defaultNewRequest,
-            id: 'req-' + Date.now(),
-            name: 'New Request'
+          if (settings.enableMultiTabs !== false) {
+            handleNewTab()
+          } else {
+            const newReq = {
+              ...defaultNewRequest,
+              id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+              name: 'New Request'
+            }
+            setDrafts((prev) => ({ ...prev, [newReq.id]: newReq }))
+            setCurrentRequest(newReq)
+            setResponse(null)
           }
-          setCurrentRequest(newReq)
-          setResponse(null)
         }}
         onCreateCollection={(name, id) => {
           const newId = id || ('col-' + Date.now())
