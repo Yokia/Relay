@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog, screen } from 'electron'
 import { join } from 'path'
 import fs from 'fs'
 import { executeRequest, RequestPayload } from './httpService'
@@ -9,9 +9,37 @@ let mainWindow: BrowserWindow | null = null
 const popoutDataMap = new Map<number, any>()
 
 function createWindow(): void {
+  const savedBounds = storage?.getData()?.windowBounds
+  const isMaximized = savedBounds?.isMaximized || false
+
+  let x = savedBounds?.x
+  let y = savedBounds?.y
+  const width = savedBounds?.width && savedBounds.width >= 900 ? savedBounds.width : 1200
+  const height = savedBounds?.height && savedBounds.height >= 600 ? savedBounds.height : 800
+
+  // Verify bounds are within visible displays if x, y are provided
+  if (typeof x === 'number' && typeof y === 'number') {
+    const displays = screen.getAllDisplays()
+    const isVisible = displays.some((display) => {
+      const { bounds } = display
+      return (
+        x! >= bounds.x - 50 &&
+        x! <= bounds.x + bounds.width - 50 &&
+        y! >= bounds.y - 50 &&
+        y! <= bounds.y + bounds.height - 50
+      )
+    })
+    if (!isVisible) {
+      x = undefined
+      y = undefined
+    }
+  }
+
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width,
+    height,
+    x,
+    y,
     minWidth: 900,
     minHeight: 600,
     title: 'Relay - API Client',
@@ -22,6 +50,49 @@ function createWindow(): void {
       sandbox: false
     }
   })
+
+  if (isMaximized) {
+    mainWindow.maximize()
+  }
+
+  // Save window bounds changes
+  const saveWindowBounds = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    const max = mainWindow.isMaximized()
+    if (!max) {
+      const b = mainWindow.getBounds()
+      storage.saveData({
+        windowBounds: {
+          width: b.width,
+          height: b.height,
+          x: b.x,
+          y: b.y,
+          isMaximized: false
+        }
+      })
+    } else {
+      const current = storage.getData()?.windowBounds
+      storage.saveData({
+        windowBounds: {
+          width: current?.width || 1200,
+          height: current?.height || 800,
+          x: current?.x,
+          y: current?.y,
+          isMaximized: true
+        }
+      })
+    }
+  }
+
+  let boundsTimer: NodeJS.Timeout | null = null
+  const debouncedSaveBounds = () => {
+    if (boundsTimer) clearTimeout(boundsTimer)
+    boundsTimer = setTimeout(saveWindowBounds, 400)
+  }
+
+  mainWindow.on('resize', debouncedSaveBounds)
+  mainWindow.on('move', debouncedSaveBounds)
+  mainWindow.on('close', saveWindowBounds)
 
   mainWindow.on('ready-to-show', () => {
     if (mainWindow) {

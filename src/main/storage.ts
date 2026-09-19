@@ -14,6 +14,15 @@ export interface StorageData {
   activeTabId?: string
   drafts?: Record<string, any>
   dirtyIds?: string[]
+  windowBounds?: {
+    width: number
+    height: number
+    x?: number
+    y?: number
+    isMaximized?: boolean
+  }
+  sidebarWidth?: number
+  splitRatio?: number
 }
 
 const defaultData: StorageData = {

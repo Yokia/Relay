@@ -175,10 +175,28 @@ function MainApp({
     }, 2500)
   }
 
-  // Resizable split pane
-  const [splitRatio, setSplitRatio] = useState<number>(0.5)
-  const isDraggingRef = useRef(false)
+  // Resizable split pane & sidebar
+  const [splitRatio, setSplitRatio] = useState<number>(() => {
+    const saved = localStorage.getItem('relay_split_ratio')
+    return saved ? Math.max(0.2, Math.min(0.8, Number(saved))) : 0.5
+  })
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('relay_sidebar_width')
+    return saved ? Math.max(180, Math.min(600, Number(saved))) : 256
+  })
+  const splitRatioRef = useRef(splitRatio)
+  const sidebarWidthRef = useRef(sidebarWidth)
+  const isDraggingSplitRef = useRef(false)
+  const isDraggingSidebarRef = useRef(false)
   const isLoadedRef = useRef(false)
+
+  useEffect(() => {
+    splitRatioRef.current = splitRatio
+  }, [splitRatio])
+
+  useEffect(() => {
+    sidebarWidthRef.current = sidebarWidth
+  }, [sidebarWidth])
 
   // Load initial data from electron storage
   useEffect(() => {
@@ -208,6 +226,16 @@ function MainApp({
             }
             if (data.dirtyIds && Array.isArray(data.dirtyIds)) {
               setDirtyIds(new Set(data.dirtyIds))
+            }
+            if (typeof data.sidebarWidth === 'number' && data.sidebarWidth >= 180 && data.sidebarWidth <= 600) {
+              setSidebarWidth(data.sidebarWidth)
+              sidebarWidthRef.current = data.sidebarWidth
+              localStorage.setItem('relay_sidebar_width', String(data.sidebarWidth))
+            }
+            if (typeof data.splitRatio === 'number' && data.splitRatio >= 0.2 && data.splitRatio <= 0.8) {
+              setSplitRatio(data.splitRatio)
+              splitRatioRef.current = data.splitRatio
+              localStorage.setItem('relay_split_ratio', String(data.splitRatio))
             }
 
             const savedDrafts = data.drafts || {}
@@ -281,7 +309,7 @@ function MainApp({
     }
   }, [])
 
-  // Debounced auto-persistence for tabs, activeTabId, drafts, and dirty states
+  // Debounced auto-persistence for tabs, activeTabId, drafts, dirty states, and layout areas
   useEffect(() => {
     if (!isLoadedRef.current) return
 
@@ -290,12 +318,14 @@ function MainApp({
         tabs,
         activeTabId,
         drafts,
-        dirtyIds: Array.from(dirtyIds)
+        dirtyIds: Array.from(dirtyIds),
+        sidebarWidth,
+        splitRatio
       })
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [tabs, activeTabId, drafts, dirtyIds])
+  }, [tabs, activeTabId, drafts, dirtyIds, sidebarWidth, splitRatio])
 
   // Save on window unload
   useEffect(() => {
@@ -305,7 +335,9 @@ function MainApp({
           tabs,
           activeTabId,
           drafts,
-          dirtyIds: Array.from(dirtyIds)
+          dirtyIds: Array.from(dirtyIds),
+          sidebarWidth: sidebarWidthRef.current,
+          splitRatio: splitRatioRef.current
         })
       }
     }
@@ -1229,25 +1261,46 @@ function MainApp({
     return () => window.removeEventListener('keydown', onKey)
   }, [currentRequest, collections, activeTabId, settings.enableMultiTabs])
 
-  // Mouse drag handler for split
-  const handleMouseDown = () => {
-    isDraggingRef.current = true
+  // Mouse drag handlers for split & sidebar
+  const handleSplitMouseDown = () => {
+    isDraggingSplitRef.current = true
+  }
+
+  const handleSidebarMouseDown = () => {
+    isDraggingSidebarRef.current = true
   }
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDraggingRef.current) return
+      if (isDraggingSidebarRef.current) {
+        const newWidth = Math.max(180, Math.min(600, e.clientX))
+        setSidebarWidth(newWidth)
+        sidebarWidthRef.current = newWidth
+        return
+      }
+
+      if (!isDraggingSplitRef.current) return
       const container = document.getElementById('split-container')
       if (!container) return
       const rect = container.getBoundingClientRect()
       const ratio = (e.clientX - rect.left) / rect.width
-      if (ratio > 0.25 && ratio < 0.75) {
+      if (ratio > 0.2 && ratio < 0.8) {
         setSplitRatio(ratio)
+        splitRatioRef.current = ratio
       }
     }
 
     const handleMouseUp = () => {
-      isDraggingRef.current = false
+      if (isDraggingSidebarRef.current) {
+        isDraggingSidebarRef.current = false
+        localStorage.setItem('relay_sidebar_width', String(sidebarWidthRef.current))
+        persist({ sidebarWidth: sidebarWidthRef.current })
+      }
+      if (isDraggingSplitRef.current) {
+        isDraggingSplitRef.current = false
+        localStorage.setItem('relay_split_ratio', String(splitRatioRef.current))
+        persist({ splitRatio: splitRatioRef.current })
+      }
     }
 
     window.addEventListener('mousemove', handleMouseMove)
@@ -1291,6 +1344,7 @@ function MainApp({
 
       {/* Sidebar */}
       <Sidebar
+        width={sidebarWidth}
         collections={collections}
         history={history}
         environments={environments}
@@ -1366,6 +1420,15 @@ function MainApp({
         onRunRequests={handleRunSelectedRequests}
       />
 
+      {/* Sidebar Resizable Divider */}
+      <div
+        onMouseDown={handleSidebarMouseDown}
+        className="w-1 hover:w-1.5 bg-slate-800 hover:bg-sky-500 cursor-col-resize flex items-center justify-center transition-colors group select-none shrink-0 z-20"
+        title="拖动调整侧边栏宽度"
+      >
+        <div className="w-0.5 h-6 bg-slate-600 group-hover:bg-white rounded-full transition-colors opacity-0 group-hover:opacity-100" />
+      </div>
+
       {/* Main Workspace */}
       <main className="flex-1 flex flex-col min-w-0 bg-slate-900/50">
         {/* Workspace Top Bar (Multi-Tabs or Breadcrumb Status) */}
@@ -1435,7 +1498,7 @@ function MainApp({
 
           {/* Draggable Divider */}
           <div
-            onMouseDown={handleMouseDown}
+            onMouseDown={handleSplitMouseDown}
             className="w-1.5 hover:w-1.5 bg-slate-800 hover:bg-sky-500 cursor-col-resize flex items-center justify-center transition-colors group select-none shrink-0 z-10"
           >
             <div className="w-0.5 h-6 bg-slate-600 group-hover:bg-white rounded-full transition-colors" />

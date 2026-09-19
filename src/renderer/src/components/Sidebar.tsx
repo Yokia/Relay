@@ -43,6 +43,7 @@ import {
 import { useI18n } from '../i18n'
 
 interface Props {
+  width?: number
   collections: CollectionItem[]
   history: HistoryItem[]
   environments: Environment[]
@@ -116,6 +117,7 @@ function flattenAllCollections(cols: CollectionItem[], prefix = ''): { id: strin
 }
 
 export const Sidebar: React.FC<Props> = ({
+  width,
   collections,
   history,
   environments,
@@ -679,7 +681,10 @@ export const Sidebar: React.FC<Props> = ({
   }
 
   return (
-    <aside className="w-64 h-full flex flex-col bg-slate-900 border-r border-slate-800 shrink-0 select-none relative">
+    <aside
+      style={{ width: width ? `${width}px` : undefined }}
+      className="w-64 h-full flex flex-col bg-slate-900 border-r border-slate-800 shrink-0 select-none relative"
+    >
       {/* Top Brand / Actions */}
       <div className="p-3 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-2 font-bold text-sm text-slate-200 tracking-wide">

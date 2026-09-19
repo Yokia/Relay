@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { KeyValueEditor } from './KeyValueEditor'
 import { CodeEditor } from './CodeEditor'
 import { RequestItem } from '../types'
-import { Sparkles, WrapText } from 'lucide-react'
+import { Sparkles, WrapText, ChevronDown } from 'lucide-react'
 import { stripJsonComments } from '../utils/jsonUtils'
 import { useI18n } from '../i18n'
 
@@ -107,49 +107,22 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
 
         {activeTab === 'body' && (
           <div className="flex flex-col h-full p-2">
-            {/* Body Type Radio Selector */}
+            {/* Body Type Dropdown Selector */}
             <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80 text-xs text-slate-400">
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-200">
-                  <input
-                    type="radio"
-                    name="bodyType"
-                    checked={request.bodyType === 'none'}
-                    onChange={() => onChange({ bodyType: 'none' })}
-                    className="accent-sky-500 w-3 h-3"
-                  />
-                  <span>{t('editor.bodyNone')}</span>
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-200">
-                  <input
-                    type="radio"
-                    name="bodyType"
-                    checked={request.bodyType === 'json'}
-                    onChange={() => onChange({ bodyType: 'json' })}
-                    className="accent-sky-500 w-3 h-3"
-                  />
-                  <span>{t('editor.bodyJson')}</span>
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-200">
-                  <input
-                    type="radio"
-                    name="bodyType"
-                    checked={request.bodyType === 'x-www-form-urlencoded'}
-                    onChange={() => onChange({ bodyType: 'x-www-form-urlencoded' })}
-                    className="accent-sky-500 w-3 h-3"
-                  />
-                  <span>{t('editor.bodyUrlEncoded')}</span>
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer hover:text-slate-200">
-                  <input
-                    type="radio"
-                    name="bodyType"
-                    checked={request.bodyType === 'raw'}
-                    onChange={() => onChange({ bodyType: 'raw' })}
-                    className="accent-sky-500 w-3 h-3"
-                  />
-                  <span>{t('editor.bodyRaw')}</span>
-                </label>
+              <div className="flex items-center gap-2">
+                <div className="relative flex items-center">
+                  <select
+                    value={request.bodyType || 'none'}
+                    onChange={(e) => onChange({ bodyType: e.target.value as any })}
+                    className="bg-slate-800 hover:bg-slate-700/80 border border-slate-700/90 text-xs text-slate-200 rounded px-2.5 py-1 pr-7 appearance-none cursor-pointer focus:outline-none focus:border-sky-500 font-medium transition-colors shadow-sm"
+                  >
+                    <option value="none" className="bg-slate-900 text-slate-200">{t('editor.bodyNone')}</option>
+                    <option value="json" className="bg-slate-900 text-slate-200">{t('editor.bodyJson')}</option>
+                    <option value="x-www-form-urlencoded" className="bg-slate-900 text-slate-200">{t('editor.bodyUrlEncoded')}</option>
+                    <option value="raw" className="bg-slate-900 text-slate-200">{t('editor.bodyRaw')}</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
+                </div>
               </div>
 
               <div className="flex items-center gap-2">
