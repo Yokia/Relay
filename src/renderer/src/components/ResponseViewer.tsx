@@ -87,6 +87,7 @@ export const ResponseViewer: React.FC<Props> = ({
   const [jsonPath, setJsonPath] = useState('')
   const [isJsonPathFocused, setIsJsonPathFocused] = useState(false)
   const [jsonPathSuggestionIndex, setJsonPathSuggestionIndex] = useState(0)
+  const [mediaInfo, setMediaInfo] = useState<{ width?: number; height?: number; duration?: number }>({})
 
   // Determine active response: either from selected run or direct response prop
   const activeRun = runs.find((r) => r.id === selectedRunId) || runs[0]
@@ -123,6 +124,10 @@ export const ResponseViewer: React.FC<Props> = ({
   useEffect(() => {
     setSearchActiveIndex(0)
   }, [searchTerm, searchCaseSensitive, searchWholeWord, searchRegex])
+
+  useEffect(() => {
+    setMediaInfo({})
+  }, [displayResponse])
 
   if (isLoading) {
     return (
@@ -169,6 +174,13 @@ export const ResponseViewer: React.FC<Props> = ({
   const formatTime = (ms: number) => {
     if (ms < 1000) return ms + ' ms'
     return (ms / 1000).toFixed(2) + ' s'
+  }
+
+  const formatMediaDuration = (seconds?: number) => {
+    if (!seconds || !Number.isFinite(seconds)) return ''
+    const minutes = Math.floor(seconds / 60)
+    const remaining = Math.floor(seconds % 60).toString().padStart(2, '0')
+    return `${minutes}:${remaining}`
   }
 
   const formatTimestamp = (ts?: number) => {
@@ -253,10 +265,17 @@ export const ResponseViewer: React.FC<Props> = ({
 
   const handleSaveFile = async () => {
     if (!window.electronAPI?.saveFileDialog || !displayResponse) return
-    const defaultFilename = (requestName ? requestName.replace(/[^a-zA-Z0-9_-]/g, '_') : 'response') + (typeof displayResponse.data === 'object' ? '.json' : '.txt')
+    const safeName = requestName ? requestName.replace(/[^a-zA-Z0-9_-]/g, '_') : 'response'
+    const binaryPreview = activeTab === 'preview' && (previewType.startsWith('image/') || previewType.startsWith('video/') || previewType.startsWith('audio/') || previewType === 'application/pdf')
+    const extension = binaryPreview
+      ? ({ 'image/jpeg': '.jpg', 'image/svg+xml': '.svg', 'video/mp4': '.mp4', 'audio/mpeg': '.mp3', 'application/pdf': '.pdf' } as Record<string, string>)[previewType] || `.${previewType.split('/')[1] || 'bin'}`
+      : activeTab === 'preview' && previewType === 'text/html' ? '.html' : typeof displayResponse.data === 'object' ? '.json' : '.txt'
+    const previewBase64 = previewSource.match(/^data:[^;]+;base64,(.*)$/s)?.[1]
     const result = await window.electronAPI.saveFileDialog({
-      defaultPath: defaultFilename,
-      content: bodyFormat === 'pretty' ? bodyString : rawString
+      defaultPath: safeName + extension,
+      content: binaryPreview && previewBase64
+        ? { encoding: 'base64', data: previewBase64 }
+        : activeTab === 'preview' && previewType === 'text/html' ? previewSource : bodyFormat === 'pretty' ? bodyString : rawString
     })
     if (result && result.success) {
       setSavedNotice('Saved!')
@@ -526,14 +545,23 @@ export const ResponseViewer: React.FC<Props> = ({
         )}
 
         {activeTab === 'preview' && (
-          <div className="flex-1 min-h-0 rounded-lg border border-slate-800 bg-slate-950/60 overflow-auto flex items-center justify-center p-4">
+          <div className="flex-1 min-h-0 rounded-lg border border-slate-800 bg-slate-950/60 overflow-auto flex flex-col p-4">
+            {previewSupported && previewUrl && (
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mb-3 text-xs text-slate-400 font-mono shrink-0">
+                <span>{previewType || 'unknown'}</span>
+                <span>{formatSize(displayResponse.size)}</span>
+                {mediaInfo.width && mediaInfo.height && <span>{mediaInfo.width} × {mediaInfo.height}</span>}
+                {mediaInfo.duration && <span>{formatMediaDuration(mediaInfo.duration)}</span>}
+              </div>
+            )}
+            <div className="flex-1 min-h-0 flex items-center justify-center">
             {previewSupported && previewUrl ? (
               previewType.startsWith('image/') ? (
-                <img src={previewUrl} alt="Response preview" className="max-w-full max-h-full object-contain rounded" />
+                <img src={previewUrl} alt="Response preview" onLoad={(event) => setMediaInfo({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} className="max-w-full max-h-full object-contain rounded" />
               ) : previewType.startsWith('video/') ? (
-                <video src={previewUrl} controls className="max-w-full max-h-full rounded" />
+                <video src={previewUrl} controls onLoadedMetadata={(event) => setMediaInfo({ width: event.currentTarget.videoWidth, height: event.currentTarget.videoHeight, duration: event.currentTarget.duration })} className="max-w-full max-h-full rounded" />
               ) : previewType.startsWith('audio/') ? (
-                <audio src={previewUrl} controls className="w-full max-w-xl" />
+                <audio src={previewUrl} controls onLoadedMetadata={(event) => setMediaInfo({ duration: event.currentTarget.duration })} className="w-full max-w-xl" />
               ) : previewType === 'text/html' ? (
                 <iframe srcDoc={previewSource} title="HTML response preview" sandbox="allow-forms" className="w-full h-full rounded bg-white" />
               ) : (
@@ -546,6 +574,7 @@ export const ResponseViewer: React.FC<Props> = ({
                 <p className="mt-1 text-xs text-slate-600">{displayResponse.contentType || 'unknown type'}</p>
               </div>
             )}
+            </div>
           </div>
         )}
 

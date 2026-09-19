@@ -249,7 +249,7 @@ app.whenReady().then(() => {
     return popoutDataMap.get(event.sender.id) || null
   })
 
-  ipcMain.handle('relay:save-file-dialog', async (event, { defaultPath, content, filters }: { defaultPath?: string; content: string; filters?: Electron.FileFilter[] }) => {
+  ipcMain.handle('relay:save-file-dialog', async (event, { defaultPath, content, filters }: { defaultPath?: string; content: string | { encoding: 'base64'; data: string }; filters?: Electron.FileFilter[] }) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win) return { canceled: true }
     
@@ -283,7 +283,11 @@ app.whenReady().then(() => {
       filters: filters || defaultFilters
     })
     if (!result.canceled && result.filePath) {
-      fs.writeFileSync(result.filePath, content, 'utf-8')
+      if (typeof content === 'object' && content.encoding === 'base64') {
+        fs.writeFileSync(result.filePath, Buffer.from(content.data, 'base64'))
+      } else {
+        fs.writeFileSync(result.filePath, content, 'utf-8')
+      }
       return { success: true, filePath: result.filePath }
     }
     return { canceled: true }
