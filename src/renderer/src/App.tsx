@@ -7,9 +7,11 @@ import { EnvironmentModal } from './components/EnvironmentModal'
 import { CurlModal } from './components/CurlModal'
 import { ConstantManagerModal } from './components/ConstantManagerModal'
 import { SettingsModal, AppSettings } from './components/SettingsModal'
+import { DataTransferModal } from './components/DataTransferModal'
 import { ToastContainer, ToastMessage } from './components/Toast'
 import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme } from './types'
 import { stripJsonComments } from './utils/jsonUtils'
+import { mergeCollections, mergeConstants, mergeEnvironments, ParsedImportData } from './utils/dataTransferUtils'
 import { I18nProvider, useI18n } from './i18n'
 import { ThemeProvider } from './theme'
 import { Sun, Moon } from 'lucide-react'
@@ -122,6 +124,14 @@ function MainApp({
   const [curlModalState, setCurlModalState] = useState<{ isOpen: boolean; mode: 'import' | 'export' }>({
     isOpen: false,
     mode: 'import'
+  })
+  const [dataTransferState, setDataTransferState] = useState<{
+    isOpen: boolean
+    initialTab: 'export' | 'import'
+    targetColId?: string
+  }>({
+    isOpen: false,
+    initialTab: 'export'
   })
 
   // Toast Notification System
@@ -659,6 +669,67 @@ function MainApp({
     addToast(t('toast.urlCopied'), 'success')
   }
 
+  // Import Data Handler (Merge or Overwrite)
+  const handleImportData = (parsed: ParsedImportData, mode: 'merge' | 'overwrite') => {
+    if (mode === 'overwrite') {
+      const updates: any = {}
+      if (parsed.collections) {
+        setCollections(parsed.collections)
+        updates.collections = parsed.collections
+        if (parsed.collections[0]?.requests?.[0]) {
+          const req = JSON.parse(JSON.stringify(parsed.collections[0].requests[0]))
+          setCurrentRequest(req)
+          setResponse(null)
+        }
+      }
+      if (parsed.constants && parsed.constants.length > 0) {
+        setConstants(parsed.constants)
+        updates.constants = parsed.constants
+      }
+      if (parsed.environments) {
+        setEnvironments(parsed.environments)
+        updates.environments = parsed.environments
+      }
+      if (parsed.settings) {
+        setSettings((prev) => ({ ...prev, ...parsed.settings }))
+        updates.settings = parsed.settings
+        if (parsed.settings.language) {
+          onLanguageChange(parsed.settings.language)
+        }
+        if (parsed.settings.theme) {
+          onThemeChange(parsed.settings.theme)
+        }
+      }
+      persist(updates)
+      addToast(t('toast.dataImported'), 'success')
+      return
+    }
+
+    // Merge Mode
+    const updates: any = {}
+    if (parsed.collections && parsed.collections.length > 0) {
+      const nextCols = mergeCollections(collections, parsed.collections)
+      setCollections(nextCols)
+      updates.collections = nextCols
+      // If current request was empty, load the first imported request
+      if (!currentRequest.url && parsed.collections[0]?.requests?.[0]) {
+        setCurrentRequest(JSON.parse(JSON.stringify(parsed.collections[0].requests[0])))
+      }
+    }
+    if (parsed.constants && parsed.constants.length > 0) {
+      const nextConstants = mergeConstants(constants, parsed.constants)
+      setConstants(nextConstants)
+      updates.constants = nextConstants
+    }
+    if (parsed.environments && parsed.environments.length > 0) {
+      const nextEnvs = mergeEnvironments(environments, parsed.environments)
+      setEnvironments(nextEnvs)
+      updates.environments = nextEnvs
+    }
+    persist(updates)
+    addToast(t('toast.dataImported'), 'success')
+  }
+
   // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -759,6 +830,13 @@ function MainApp({
           persist({ activeEnvironmentId: id || undefined })
         }}
         onSwitchConstant={handleSwitchConstant}
+        onOpenDataTransfer={(tab, colId) =>
+          setDataTransferState({
+            isOpen: true,
+            initialTab: tab || 'export',
+            targetColId: colId
+          })
+        }
       />
 
       {/* Main Workspace */}
@@ -869,6 +947,12 @@ function MainApp({
           settings={settings}
           onClose={() => setIsSettingsModalOpen(false)}
           onUpdateSettings={handleUpdateSettings}
+          onOpenDataTransfer={() =>
+            setDataTransferState({
+              isOpen: true,
+              initialTab: 'export'
+            })
+          }
         />
       )}
 
@@ -905,6 +989,21 @@ function MainApp({
             handleRequestChange(next)
             addToast(t('toast.curlImported'), 'success')
           }}
+        />
+      )}
+
+      {dataTransferState.isOpen && (
+        <DataTransferModal
+          isOpen={dataTransferState.isOpen}
+          initialTab={dataTransferState.initialTab}
+          selectedCollectionId={dataTransferState.targetColId}
+          collections={collections}
+          constants={constants}
+          environments={environments}
+          settings={settings}
+          onClose={() => setDataTransferState((prev) => ({ ...prev, isOpen: false }))}
+          onImport={handleImportData}
+          onExportToast={(msg) => addToast(msg, 'success')}
         />
       )}
     </div>

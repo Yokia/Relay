@@ -7,7 +7,8 @@ export const api = {
   openExternal: (url: string) => ipcRenderer.invoke('relay:open-external', url),
   openResponseWindow: (payload: any) => ipcRenderer.invoke('relay:open-response-window', payload),
   getPopoutData: () => ipcRenderer.invoke('relay:get-popout-data'),
-  saveFileDialog: (opts: any) => ipcRenderer.invoke('relay:save-file-dialog', opts)
+  saveFileDialog: (opts: any) => ipcRenderer.invoke('relay:save-file-dialog', opts),
+  openFileDialog: (opts?: any) => ipcRenderer.invoke('relay:open-file-dialog', opts)
 }
 
 if (process.contextIsolated) {

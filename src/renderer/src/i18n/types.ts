@@ -44,7 +44,9 @@ export interface TranslationSchema {
     addRequest: string
     addSubCollection: string
     duplicateCollection: string
+    exportCollection: string
     deleteCollection: string
+    importExportData: string
     renameRequest: string
     duplicateRequest: string
     deleteRequest: string
@@ -162,6 +164,47 @@ export interface TranslationSchema {
     themeDesc: string
     themeDark: string
     themeLight: string
+    dataBackupTitle: string
+    dataBackupDesc: string
+    openTransferBtn: string
+  }
+  dataTransfer: {
+    title: string
+    tabExport: string
+    tabImport: string
+    exportScopeTitle: string
+    exportAll: string
+    exportAllDesc: string
+    exportCollectionsOnly: string
+    exportCollectionsOnlyDesc: string
+    exportEnvConstantsOnly: string
+    exportEnvConstantsOnlyDesc: string
+    exportSingleCol: string
+    exportSingleColDesc: string
+    chooseCollection: string
+    saveAsJsonFile: string
+    copyJson: string
+    summaryTitle: string
+    summaryCollections: string
+    summaryRequests: string
+    summaryConstants: string
+    summaryEnvironments: string
+    importSourceTitle: string
+    dragDropOrBrowse: string
+    clickToBrowse: string
+    orPasteJson: string
+    pasteJsonPlaceholder: string
+    parseSuccess: string
+    importStrategyTitle: string
+    strategyMerge: string
+    strategyMergeDesc: string
+    strategyOverwrite: string
+    strategyOverwriteDesc: string
+    btnExecuteImport: string
+    overwriteConfirmTitle: string
+    overwriteConfirmMsg: string
+    noDataToImport: string
+    invalidFormat: string
   }
   constantsModal: {
     title: string
@@ -236,5 +279,8 @@ export interface TranslationSchema {
     curlImported: string
     autoSaveOn: string
     autoSaveOff: string
+    dataExported: string
+    dataImported: string
+    dataCopied: string
   }
 }

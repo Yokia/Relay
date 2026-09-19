@@ -121,6 +121,24 @@ app.whenReady().then(() => {
     return { canceled: true }
   })
 
+  ipcMain.handle('relay:open-file-dialog', async (event, opts?: { filters?: Electron.FileFilter[] }) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return { canceled: true }
+    const result = await dialog.showOpenDialog(win, {
+      properties: ['openFile'],
+      filters: opts?.filters || [
+        { name: 'JSON', extensions: ['json'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    })
+    if (!result.canceled && result.filePaths.length > 0) {
+      const filePath = result.filePaths[0]
+      const content = fs.readFileSync(filePath, 'utf-8')
+      return { success: true, filePath, content }
+    }
+    return { canceled: true }
+  })
+
   createWindow()
 
   app.on('activate', function () {

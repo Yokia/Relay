@@ -25,7 +25,9 @@ import {
   MoreHorizontal,
   Check,
   AlertTriangle,
-  FolderTree
+  FolderTree,
+  ArrowUpDown,
+  FolderDown
 } from 'lucide-react'
 import { CollectionItem, HistoryItem, Environment, RequestItem, HttpMethod, ConstantItem } from '../types'
 import {
@@ -68,6 +70,7 @@ interface Props {
   onSwitchConstant: (name: string, value: string) => void
   dirtyIds?: Set<string>
   onOpenSettings: () => void
+  onOpenDataTransfer?: (tab?: 'export' | 'import', targetColId?: string) => void
 }
 
 const methodBadgeColor: Record<HttpMethod, string> = {
@@ -137,7 +140,8 @@ export const Sidebar: React.FC<Props> = ({
   onSelectEnv,
   onSwitchConstant,
   dirtyIds,
-  onOpenSettings
+  onOpenSettings,
+  onOpenDataTransfer
 }) => {
   const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<'collections' | 'history' | 'constants'>('collections')
@@ -616,6 +620,16 @@ export const Sidebar: React.FC<Props> = ({
           <span>Relay</span>
         </div>
         <div className="flex items-center gap-1">
+          {onOpenDataTransfer && (
+            <button
+              type="button"
+              onClick={() => onOpenDataTransfer('export')}
+              title={t('sidebar.importExportData')}
+              className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition-colors"
+            >
+              <ArrowUpDown className="w-4 h-4" />
+            </button>
+          )}
           <button
             type="button"
             onClick={onOpenCurlModal}
@@ -975,6 +989,20 @@ export const Sidebar: React.FC<Props> = ({
                 <Copy className="w-3.5 h-3.5 text-amber-400" />
                 <span>{t('sidebar.duplicateCollection')}</span>
               </button>
+
+              {onOpenDataTransfer && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOpenDataTransfer('export', contextMenu.colId)
+                    setContextMenu(null)
+                  }}
+                  className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center gap-2 transition-colors"
+                >
+                  <FolderDown className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>{t('sidebar.exportCollection')}</span>
+                </button>
+              )}
 
               <div className="h-px bg-slate-800 my-0.5" />
 
