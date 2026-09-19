@@ -1,5 +1,6 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios'
 import FormData from 'form-data'
+import fs from 'fs'
 
 export interface RequestPayload {
   id?: string
@@ -13,6 +14,15 @@ export interface RequestPayload {
   bodyUrlEncoded?: { key: string; value: string; enabled: boolean }[]
   timeout?: number
   rejectUnauthorized?: boolean
+  auth?: {
+    type: 'none' | 'bearer' | 'basic' | 'api-key'
+    token?: string
+    username?: string
+    password?: string
+    key?: string
+    value?: string
+    in?: 'header' | 'query'
+  }
 }
 
 export interface ResponseResult {
@@ -175,6 +185,15 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
     }
   }
 
+  const auth = req.auth
+  if (auth?.type === 'bearer' && auth.token) {
+    headers.Authorization = `Bearer ${auth.token}`
+  } else if (auth?.type === 'basic' && (auth.username || auth.password)) {
+    headers.Authorization = `Basic ${Buffer.from(`${auth.username || ''}:${auth.password || ''}`).toString('base64')}`
+  } else if (auth?.type === 'api-key' && auth.key && auth.value && auth.in !== 'query') {
+    headers[auth.key] = auth.value
+  }
+
   // 2. Prepare Params
   const params: Record<string, string> = {}
   if (req.params) {
@@ -212,7 +231,13 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
     const form = new FormData()
     for (const item of req.bodyFormData) {
       if (item.enabled && item.key.trim()) {
-        form.append(item.key.trim(), item.value)
+        if ((item as any).type === 'file' && (item as any).filePath) {
+          if (fs.existsSync((item as any).filePath)) {
+            form.append(item.key.trim(), fs.createReadStream((item as any).filePath))
+          }
+        } else {
+          form.append(item.key.trim(), item.value)
+        }
       }
     }
     data = form
@@ -230,6 +255,10 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
     timeout: req.timeout || 30000,
     validateStatus: () => true, // Don't throw for 4xx/5xx
     transformResponse: [(resData) => resData] // Keep raw string or stream to calculate accurate size
+  }
+
+  if (auth?.type === 'api-key' && auth.key && auth.value && auth.in === 'query') {
+    params[auth.key] = auth.value
   }
 
   try {

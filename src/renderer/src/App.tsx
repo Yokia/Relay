@@ -828,6 +828,16 @@ function MainApp({
       value: interpolate(p.value, effectiveRequest)
     }))
     const processedBodyRaw = interpolate(effectiveRequest.bodyRaw || '', effectiveRequest)
+    const processedAuth = effectiveRequest.auth
+      ? {
+          ...effectiveRequest.auth,
+          token: interpolate(effectiveRequest.auth.token || '', effectiveRequest),
+          username: interpolate(effectiveRequest.auth.username || '', effectiveRequest),
+          password: interpolate(effectiveRequest.auth.password || '', effectiveRequest),
+          key: interpolate(effectiveRequest.auth.key || '', effectiveRequest),
+          value: interpolate(effectiveRequest.auth.value || '', effectiveRequest)
+        }
+      : undefined
 
     const payload = {
       method: effectiveRequest.method,
@@ -838,6 +848,7 @@ function MainApp({
       bodyRaw: processedBodyRaw,
       bodyUrlEncoded: effectiveRequest.bodyUrlEncoded,
       bodyFormData: effectiveRequest.bodyFormData,
+      auth: processedAuth,
       timeout: settings.timeout || 30000,
       rejectUnauthorized: settings.sslVerify !== false
     }
@@ -851,6 +862,39 @@ function MainApp({
       let fullRes: ResponseData = {
         ...res,
         timestamp: reqTimestamp
+      }
+
+      // Extract response values into the active environment for subsequent requests.
+      if (effectiveRequest.responseExtractions?.length && activeEnv) {
+        const extracted: { key: string; value: string }[] = []
+        for (const rule of effectiveRequest.responseExtractions) {
+          let value: any
+          if (rule.source === 'header') {
+            value = fullRes.headers?.[rule.path] ?? fullRes.headers?.[rule.path.toLowerCase()]
+          } else {
+            value = String(rule.path || '')
+              .split('.')
+              .filter(Boolean)
+              .reduce((current: any, key: string) => current == null ? undefined : current[key], fullRes.data)
+          }
+          if (value !== undefined && value !== null) extracted.push({ key: rule.variable, value: typeof value === 'string' ? value : JSON.stringify(value) })
+        }
+        if (extracted.length) {
+          setEnvironments((prevEnvs) => {
+            const nextEnvs = prevEnvs.map((env) => {
+              if (env.id !== activeEnv.id) return env
+              const vars = [...env.variables]
+              for (const item of extracted) {
+                const existing = vars.find((v) => v.key === item.key)
+                if (existing) { existing.value = item.value; existing.enabled = true }
+                else vars.push({ key: item.key, value: item.value, enabled: true })
+              }
+              return { ...env, variables: vars }
+            })
+            persist({ environments: nextEnvs })
+            return nextEnvs
+          })
+        }
       }
 
       // 2. Run Test script if present

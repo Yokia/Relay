@@ -47,6 +47,8 @@ export const ResponseViewer: React.FC<Props> = ({
   const [wrapLines, setWrapLines] = useState(true)
   const [savedNotice, setSavedNotice] = useState<string | null>(null)
   const [isDiffOpen, setIsDiffOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [jsonPath, setJsonPath] = useState('')
 
   // Determine active response: either from selected run or direct response prop
   const activeRun = runs.find((r) => r.id === selectedRunId) || runs[0]
@@ -123,11 +125,23 @@ export const ResponseViewer: React.FC<Props> = ({
     if (typeof displayResponse.data === 'object') {
       return JSON.stringify(displayResponse.data, null, 2)
     }
-    return String(displayResponse.data)
+    const text = String(displayResponse.data)
+    if (displayResponse.contentType?.includes('xml') || displayResponse.contentType?.includes('html')) {
+      return text.replace(/>\s*</g, '>\n<')
+    }
+    return text
   }
 
   const bodyString = getFormattedBody()
   const rawString = typeof displayResponse.data === 'object' ? JSON.stringify(displayResponse.data) : String(displayResponse.data || '')
+  const searchedBody = searchTerm.trim()
+    ? (bodyFormat === 'pretty' ? bodyString : rawString).split('\n').filter((line) => line.toLowerCase().includes(searchTerm.toLowerCase())).join('\n')
+    : (bodyFormat === 'pretty' ? bodyString : rawString)
+  const queryJsonPath = () => {
+    if (!jsonPath.trim()) return ''
+    const value = jsonPath.replace(/^\$\.?/, '').split('.').filter(Boolean).reduce((current: any, key) => current == null ? undefined : current[key], displayResponse.data)
+    return value === undefined ? 'Not found' : typeof value === 'string' ? value : JSON.stringify(value, null, 2)
+  }
 
   const handleCopy = () => {
     navigator.clipboard.writeText(bodyFormat === 'pretty' ? bodyString : rawString)
@@ -257,6 +271,8 @@ export const ResponseViewer: React.FC<Props> = ({
             <span className="hidden sm:inline">{t('common.save')}</span>
           </button>
 
+          <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Find in response" className="w-28 sm:w-40 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-sky-500" />
+
           <button
             type="button"
             onClick={handleOpenPopout}
@@ -381,8 +397,12 @@ export const ResponseViewer: React.FC<Props> = ({
 
         {activeTab === 'body' && (
           <div className="flex-1 h-full min-h-0">
+            <div className="flex items-center gap-2 mb-2">
+              <input value={jsonPath} onChange={(e) => setJsonPath(e.target.value)} placeholder="JSONPath: data.token or $.data.token" className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-sky-500" />
+              {jsonPath && <div className="max-w-[45%] max-h-14 overflow-auto whitespace-pre-wrap rounded bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 text-[11px] text-emerald-300 font-mono">{queryJsonPath()}</div>}
+            </div>
             <CodeEditor
-              value={bodyFormat === 'pretty' ? bodyString : rawString}
+              value={searchedBody}
               readOnly={true}
               wrap={wrapLines}
               onOpenUrlInRelay={onOpenUrlInRelay}

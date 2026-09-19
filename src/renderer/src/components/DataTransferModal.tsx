@@ -984,6 +984,8 @@ export const DataTransferModal: React.FC<Props> = ({
                         {t('dataTransfer.parseSuccess')} (
                         {parsedData.kind === 'postman'
                           ? 'Postman Collection'
+                          : parsedData.kind === 'custom'
+                          ? 'OpenAPI / Swagger'
                           : parsedData.kind === 'backup'
                           ? t('dataTransfer.fullBackup')
                           : t('dataTransfer.collectionsConfig')}

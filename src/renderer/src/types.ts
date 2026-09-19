@@ -1,10 +1,30 @@
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS'
 
+export type AuthType = 'none' | 'bearer' | 'basic' | 'api-key'
+
+export interface AuthConfig {
+  type: AuthType
+  token?: string
+  username?: string
+  password?: string
+  key?: string
+  value?: string
+  in?: 'header' | 'query'
+}
+
+export interface ResponseExtraction {
+  variable: string
+  source: 'json' | 'header'
+  path: string
+}
+
 export interface KeyValueItem {
   key: string
   value: string
   enabled: boolean
   description?: string
+  type?: 'text' | 'file'
+  filePath?: string
 }
 
 export interface RequestItem {
@@ -21,6 +41,8 @@ export interface RequestItem {
   constantOverrides?: Record<string, string>
   preRequestScript?: string
   testScript?: string
+  auth?: AuthConfig
+  responseExtractions?: ResponseExtraction[]
 }
 
 export interface TestResultItem {

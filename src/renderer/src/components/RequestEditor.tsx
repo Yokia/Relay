@@ -3,7 +3,7 @@ import { KeyValueEditor } from './KeyValueEditor'
 import { CodeEditor } from './CodeEditor'
 import { ScriptEditor } from './ScriptEditor'
 import { RequestItem } from '../types'
-import { Sparkles, WrapText, ChevronDown } from 'lucide-react'
+import { Sparkles, WrapText, ChevronDown, KeyRound, Plus, Trash2, FileUp } from 'lucide-react'
 import { stripJsonComments } from '../utils/jsonUtils'
 import { useI18n } from '../i18n'
 
@@ -12,7 +12,7 @@ interface Props {
   onChange: (updates: Partial<RequestItem>) => void
 }
 
-type TabType = 'params' | 'headers' | 'body' | 'preRequest' | 'tests'
+type TabType = 'params' | 'headers' | 'body' | 'auth' | 'extract' | 'preRequest' | 'tests'
 
 export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
   const { t } = useI18n()
@@ -42,6 +42,24 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
     <div className="flex flex-col h-full overflow-hidden">
       {/* Tabs */}
       <div className="flex items-center gap-4 px-3 border-b border-slate-800 text-xs font-medium text-slate-400">
+        <button
+          onClick={() => setActiveTab('extract')}
+          className={"py-2.5 relative transition-colors " + (activeTab === 'extract' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+        >
+          <span>Extract</span>
+          {(request.responseExtractions || []).length > 0 && <span className="ml-1.5 text-[10px] text-emerald-400">{request.responseExtractions?.length}</span>}
+          {activeTab === 'extract' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('auth')}
+          className={"py-2.5 relative transition-colors " + (activeTab === 'auth' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
+        >
+          <span>Auth</span>
+          {request.auth && request.auth.type !== 'none' && <span className="ml-1.5 w-1.5 h-1.5 inline-block bg-emerald-400 rounded-full align-middle" />}
+          {activeTab === 'auth' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />}
+        </button>
+
         <button
           onClick={() => setActiveTab('params')}
           className={"py-2.5 relative transition-colors " + (activeTab === 'params' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
@@ -145,6 +163,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
                   >
                     <option value="none" className="bg-slate-900 text-slate-200">{t('editor.bodyNone')}</option>
                     <option value="json" className="bg-slate-900 text-slate-200">{t('editor.bodyJson')}</option>
+                    <option value="form-data" className="bg-slate-900 text-slate-200">Form Data</option>
                     <option value="x-www-form-urlencoded" className="bg-slate-900 text-slate-200">{t('editor.bodyUrlEncoded')}</option>
                     <option value="raw" className="bg-slate-900 text-slate-200">{t('editor.bodyRaw')}</option>
                   </select>
@@ -204,6 +223,52 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
                 placeholderValue="value"
               />
             )}
+
+            {request.bodyType === 'form-data' && (
+              <div className="flex flex-col gap-1.5 overflow-y-auto">
+                {(request.bodyFormData || []).map((item, index) => (
+                  <div key={index} className="flex items-center gap-1.5">
+                    <input type="checkbox" checked={item.enabled} onChange={(e) => {
+                      const next = [...(request.bodyFormData || [])]; next[index] = { ...item, enabled: e.target.checked }; onChange({ bodyFormData: next })
+                    }} />
+                    <input value={item.key} onChange={(e) => { const next = [...(request.bodyFormData || [])]; next[index] = { ...item, key: e.target.value }; onChange({ bodyFormData: next }) }} placeholder="field" className="w-1/3 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200" />
+                    <select value={item.type || 'text'} onChange={(e) => { const next = [...(request.bodyFormData || [])]; next[index] = { ...item, type: e.target.value as 'text' | 'file' }; onChange({ bodyFormData: next }) }} className="bg-slate-800 border border-slate-700 rounded px-1 py-1 text-xs text-slate-200">
+                      <option value="text">Text</option><option value="file">File</option>
+                    </select>
+                    {item.type === 'file' ? <button type="button" onClick={async () => { const result = await window.electronAPI?.openFileDialog({ filters: [{ name: 'All Files', extensions: ['*'] }] }); if (result?.success) { const next = [...(request.bodyFormData || [])]; next[index] = { ...item, filePath: result.filePath, value: result.filePath || '' }; onChange({ bodyFormData: next }) } }} className="flex-1 truncate text-left bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-400"><FileUp className="w-3 h-3 inline mr-1" />{item.filePath || 'Choose file'}</button> : <input value={item.value} onChange={(e) => { const next = [...(request.bodyFormData || [])]; next[index] = { ...item, value: e.target.value }; onChange({ bodyFormData: next }) }} placeholder="value" className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200" />}
+                    <button type="button" onClick={() => onChange({ bodyFormData: (request.bodyFormData || []).filter((_, i) => i !== index) })} className="p-1 text-slate-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+                  </div>
+                ))}
+                <button type="button" onClick={() => onChange({ bodyFormData: [...(request.bodyFormData || []), { key: '', value: '', enabled: true, type: 'text' }] })} className="self-start flex items-center gap-1 text-xs text-sky-400 hover:text-sky-300"><Plus className="w-3 h-3" />Add field</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'auth' && (
+          <div className="p-3 flex flex-col gap-3 text-xs max-w-xl">
+            <div className="flex items-center gap-2 text-slate-400"><KeyRound className="w-4 h-4 text-sky-400" />Request authentication</div>
+            <select value={request.auth?.type || 'none'} onChange={(e) => onChange({ auth: { ...(request.auth || {}), type: e.target.value as any } })} className="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200">
+              <option value="none">No Auth</option><option value="bearer">Bearer Token</option><option value="basic">Basic Auth</option><option value="api-key">API Key</option>
+            </select>
+            {request.auth?.type === 'bearer' && <input value={request.auth.token || ''} onChange={(e) => onChange({ auth: { ...request.auth!, token: e.target.value } })} placeholder="Token or {{token}}" className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200" />}
+            {request.auth?.type === 'basic' && <div className="grid grid-cols-2 gap-2"><input value={request.auth.username || ''} onChange={(e) => onChange({ auth: { ...request.auth!, username: e.target.value } })} placeholder="Username" className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200" /><input type="password" value={request.auth.password || ''} onChange={(e) => onChange({ auth: { ...request.auth!, password: e.target.value } })} placeholder="Password" className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200" /></div>}
+            {request.auth?.type === 'api-key' && <div className="grid grid-cols-2 gap-2"><input value={request.auth.key || ''} onChange={(e) => onChange({ auth: { ...request.auth!, key: e.target.value } })} placeholder="Header / query key" className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200" /><input value={request.auth.value || ''} onChange={(e) => onChange({ auth: { ...request.auth!, value: e.target.value } })} placeholder="Value or {{apiKey}}" className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200" /><select value={request.auth.in || 'header'} onChange={(e) => onChange({ auth: { ...request.auth!, in: e.target.value as any } })} className="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200"><option value="header">Header</option><option value="query">Query</option></select></div>}
+          </div>
+        )}
+
+        {activeTab === 'extract' && (
+          <div className="p-3 flex flex-col gap-2 text-xs">
+            <div className="text-slate-400">将响应中的值写入当前环境，供后续请求使用。</div>
+            {(request.responseExtractions || []).map((rule, index) => (
+              <div key={index} className="grid grid-cols-[1fr_90px_1.5fr_auto] gap-1.5 items-center">
+                <input value={rule.variable} onChange={(e) => { const next = [...(request.responseExtractions || [])]; next[index] = { ...rule, variable: e.target.value }; onChange({ responseExtractions: next }) }} placeholder="变量名" className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200" />
+                <select value={rule.source} onChange={(e) => { const next = [...(request.responseExtractions || [])]; next[index] = { ...rule, source: e.target.value as any }; onChange({ responseExtractions: next }) }} className="bg-slate-800 border border-slate-700 rounded px-1 py-1.5 text-slate-200"><option value="json">JSON</option><option value="header">Header</option></select>
+                <input value={rule.path} onChange={(e) => { const next = [...(request.responseExtractions || [])]; next[index] = { ...rule, path: e.target.value }; onChange({ responseExtractions: next }) }} placeholder={rule.source === 'json' ? 'data.token' : 'set-cookie'} className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200" />
+                <button type="button" onClick={() => onChange({ responseExtractions: (request.responseExtractions || []).filter((_, i) => i !== index) })} className="p-1 text-slate-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
+              </div>
+            ))}
+            <button type="button" onClick={() => onChange({ responseExtractions: [...(request.responseExtractions || []), { variable: '', source: 'json', path: '' }] })} className="self-start flex items-center gap-1 text-sky-400 hover:text-sky-300"><Plus className="w-3 h-3" />Add extraction</button>
           </div>
         )}
 

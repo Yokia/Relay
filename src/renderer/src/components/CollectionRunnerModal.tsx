@@ -224,6 +224,16 @@ export const CollectionRunnerModal: React.FC<Props> = ({
         value: interpolate(p.value, currentReq)
       }))
       const processedBodyRaw = interpolate(currentReq.bodyRaw || '', currentReq)
+      const processedAuth = currentReq.auth
+        ? {
+            ...currentReq.auth,
+            token: interpolate(currentReq.auth.token || '', currentReq),
+            username: interpolate(currentReq.auth.username || '', currentReq),
+            password: interpolate(currentReq.auth.password || '', currentReq),
+            key: interpolate(currentReq.auth.key || '', currentReq),
+            value: interpolate(currentReq.auth.value || '', currentReq)
+          }
+        : undefined
 
       const payload = {
         method: currentReq.method,
@@ -234,6 +244,7 @@ export const CollectionRunnerModal: React.FC<Props> = ({
         bodyRaw: processedBodyRaw,
         bodyUrlEncoded: currentReq.bodyUrlEncoded,
         bodyFormData: currentReq.bodyFormData,
+        auth: processedAuth,
         timeout: settings.timeout || 30000,
         rejectUnauthorized: settings.sslVerify !== false
       }
@@ -252,6 +263,21 @@ export const CollectionRunnerModal: React.FC<Props> = ({
 
       try {
         const res = await window.electronAPI.sendRequest(payload)
+
+        // Carry extracted response values into the next request in the same run.
+        if (currentReq.responseExtractions?.length && activeEnv) {
+          for (const rule of currentReq.responseExtractions) {
+            const value = rule.source === 'header'
+              ? res.headers?.[rule.path] ?? res.headers?.[rule.path.toLowerCase()]
+              : String(rule.path || '').split('.').filter(Boolean).reduce((current: any, key: string) => current == null ? undefined : current[key], res.data)
+            if (value !== undefined && value !== null && rule.variable) {
+              const text = typeof value === 'string' ? value : JSON.stringify(value)
+              const existing = activeEnv.variables.find((v) => v.key === rule.variable)
+              if (existing) { existing.value = text; existing.enabled = true }
+              else activeEnv.variables.push({ key: rule.variable, value: text, enabled: true })
+            }
+          }
+        }
 
         // 2. Run Test script in Runner
         let testResults: any = undefined

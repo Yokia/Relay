@@ -165,6 +165,59 @@ function parsePostmanItems(items: any[]): { requests: RequestItem[]; children: C
   return { requests, children }
 }
 
+function sampleFromSchema(schema: any): any {
+  if (!schema) return {}
+  if (schema.example !== undefined) return schema.example
+  if (schema.default !== undefined) return schema.default
+  if (schema.type === 'object' || schema.properties) {
+    const out: any = {}
+    for (const [key, value] of Object.entries(schema.properties || {})) out[key] = sampleFromSchema(value)
+    return out
+  }
+  if (schema.type === 'array') return [sampleFromSchema(schema.items)]
+  if (schema.enum?.length) return schema.enum[0]
+  if (schema.type === 'integer' || schema.type === 'number') return 0
+  if (schema.type === 'boolean') return true
+  return ''
+}
+
+function parseOpenApiDocument(doc: any): CollectionItem[] | null {
+  if (!doc || (!doc.openapi && !doc.swagger) || !doc.paths) return null
+  const rootUrl = doc.servers?.[0]?.url || (doc.host ? `${doc.schemes?.[0] || 'https'}://${doc.host}${doc.basePath || ''}` : '')
+  const grouped = new Map<string, RequestItem[]>()
+  const methods = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'options'])
+  for (const [path, pathItem] of Object.entries<any>(doc.paths || {})) {
+    const pathParams = Array.isArray(pathItem.parameters) ? pathItem.parameters : []
+    for (const [method, operation] of Object.entries<any>(pathItem)) {
+      if (!methods.has(method) || !operation || typeof operation !== 'object') continue
+      const allParams = [...pathParams, ...(Array.isArray(operation.parameters) ? operation.parameters : [])]
+      const params = allParams.filter((p) => p.in === 'query').map((p) => ({ key: p.name || '', value: p.example ?? p.schema?.example ?? p.schema?.default ?? '', enabled: p.required !== false, description: p.description }))
+      const headers = allParams.filter((p) => p.in === 'header').map((p) => ({ key: p.name || '', value: p.example ?? p.schema?.example ?? p.schema?.default ?? '', enabled: p.required !== false, description: p.description }))
+      let bodyType: RequestItem['bodyType'] = 'none'; let bodyRaw = ''
+      const content = operation.requestBody?.content || {}
+      const jsonContent = content['application/json'] || content[Object.keys(content)[0]]
+      if (jsonContent) { bodyType = 'json'; bodyRaw = JSON.stringify(jsonContent.example ?? sampleFromSchema(jsonContent.schema), null, 2) }
+      let auth: RequestItem['auth'] | undefined
+      const security = operation.security || doc.security
+      const securityName = security?.[0] ? Object.keys(security[0])[0] : undefined
+      const securityScheme = securityName ? doc.components?.securitySchemes?.[securityName] || doc.securityDefinitions?.[securityName] : undefined
+      if (securityScheme?.type === 'http' && securityScheme.scheme === 'bearer') auth = { type: 'bearer', token: '{{token}}' }
+      else if (securityScheme?.type === 'http' && securityScheme.scheme === 'basic') auth = { type: 'basic', username: '{{username}}', password: '{{password}}' }
+      else if (securityScheme?.type === 'apiKey') auth = { type: 'api-key', key: securityScheme.name || 'X-API-Key', value: '{{apiKey}}', in: securityScheme.in === 'query' ? 'query' : 'header' }
+      const request: RequestItem = {
+        id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+        name: operation.summary || operation.operationId || `${method.toUpperCase()} ${path}`,
+        method: method.toUpperCase() as HttpMethod,
+        url: `${rootUrl}${path}`,
+        params, headers, bodyType, bodyRaw, auth
+      }
+      const tags = operation.tags?.length ? operation.tags : ['OpenAPI']
+      for (const tag of tags) grouped.set(tag, [...(grouped.get(tag) || []), request])
+    }
+  }
+  return Array.from(grouped.entries()).map(([name, requests]) => ({ id: 'col-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), name, requests, children: [] }))
+}
+
 // Parse and validate imported content (supports Relay Backup, Relay Collections, Postman Collections, or raw data)
 export function parseImportData(raw: string): { success: true; data: ParsedImportData } | { success: false; error: string } {
   if (!raw || !raw.trim()) {
@@ -176,6 +229,11 @@ export function parseImportData(raw: string): { success: true; data: ParsedImpor
     parsed = JSON.parse(raw)
   } catch (e: any) {
     return { success: false, error: 'Invalid JSON: ' + e.message }
+  }
+
+  const openApiCollections = parseOpenApiDocument(parsed)
+  if (openApiCollections) {
+    return { success: true, data: { kind: 'custom', collections: openApiCollections, stats: { collectionsCount: countCollectionsInTree(openApiCollections), requestsCount: countRequestsInTree(openApiCollections), constantsCount: 0, environmentsCount: 0 } } }
   }
 
   // 1. Check Postman Collection v2 / v2.1
