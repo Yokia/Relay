@@ -9,10 +9,12 @@ import {
   ExternalLink,
   Download,
   WrapText,
-  Calendar
+  Calendar,
+  ArrowLeftRight
 } from 'lucide-react'
 import { ResponseData, ResponseRun } from '../types'
 import { CodeEditor } from './CodeEditor'
+import { ResponseDiffModal } from './ResponseDiffModal'
 import { useI18n } from '../i18n'
 
 interface Props {
@@ -44,6 +46,7 @@ export const ResponseViewer: React.FC<Props> = ({
   const [bodyFormat, setBodyFormat] = useState<'pretty' | 'raw'>('pretty')
   const [wrapLines, setWrapLines] = useState(true)
   const [savedNotice, setSavedNotice] = useState<string | null>(null)
+  const [isDiffOpen, setIsDiffOpen] = useState(false)
 
   // Determine active response: either from selected run or direct response prop
   const activeRun = runs.find((r) => r.id === selectedRunId) || runs[0]
@@ -232,6 +235,18 @@ export const ResponseViewer: React.FC<Props> = ({
             </span>
           )}
 
+          {runs.length >= 2 && (
+            <button
+              type="button"
+              onClick={() => setIsDiffOpen(true)}
+              className="flex items-center gap-1 text-slate-400 hover:text-amber-300 px-2 py-1 rounded hover:bg-slate-800/60 transition-colors"
+              title={t('diff.title')}
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">{t('diff.buttonText')}</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleSaveFile}
@@ -368,6 +383,16 @@ export const ResponseViewer: React.FC<Props> = ({
           </div>
         )}
       </div>
+
+      {isDiffOpen && (
+        <ResponseDiffModal
+          isOpen={isDiffOpen}
+          runs={runs}
+          initialLeftRunId={runs.length > 1 ? runs[1].id : runs[0]?.id}
+          initialRightRunId={activeRun?.id || runs[0]?.id}
+          onClose={() => setIsDiffOpen(false)}
+        />
+      )}
     </div>
   )
 }

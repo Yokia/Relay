@@ -450,5 +450,32 @@ export const enUS: TranslationSchema = {
     codeCopied: 'Code snippet copied to clipboard',
     requestDuplicatedViaShortcut: 'Request duplicated via shortcut',
     runnerReportExported: 'Test report exported successfully'
+  },
+  diff: {
+    title: 'Response Diff Viewer',
+    buttonText: 'Diff',
+    selectRunA: 'Baseline (Run A)',
+    selectRunB: 'Target (Run B)',
+    swap: 'Swap Left / Right',
+    splitView: 'Split View',
+    unifiedView: 'Unified View',
+    diffOnly: 'Diff Only',
+    showAll: 'Show All',
+    copyDiff: 'Copy Diff',
+    diffCopied: 'Diff copied to clipboard',
+    statusDiff: 'Status Code',
+    timeDiff: 'Duration Delta',
+    sizeDiff: 'Size Delta',
+    identical: 'Responses are identical',
+    identicalDesc: 'No line differences detected between the selected response bodies.',
+    additions: '+{count} added',
+    deletions: '-{count} removed',
+    leftBaseline: 'Baseline (Left)',
+    rightCurrent: 'Target (Right)',
+    noRunsForDiff: 'At least 2 historical runs are required to compare differences',
+    line: 'Line',
+    prevDiff: 'Previous Difference',
+    nextDiff: 'Next Difference',
+    diffCount: 'Diff {current} of {total}'
   }
 }

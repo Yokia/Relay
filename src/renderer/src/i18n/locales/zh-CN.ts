@@ -450,5 +450,32 @@ export const zhCN: TranslationSchema = {
     codeCopied: '代码片段已复制到剪贴板',
     requestDuplicatedViaShortcut: '已通过快捷键快速复制请求',
     runnerReportExported: '测试报告已成功导出'
+  },
+  diff: {
+    title: '响应差异比对 (Diff Viewer)',
+    buttonText: '比对',
+    selectRunA: '对照版本 (Run A)',
+    selectRunB: '目标版本 (Run B)',
+    swap: '交换左右对比',
+    splitView: '左右分栏 (Split)',
+    unifiedView: '统一单栏 (Unified)',
+    diffOnly: '仅看差异',
+    showAll: '展开全部',
+    copyDiff: '复制比对内容',
+    diffCopied: '比对内容已复制',
+    statusDiff: '状态码变化',
+    timeDiff: '耗时变化',
+    sizeDiff: '体积变化',
+    identical: '响应内容完全一致',
+    identicalDesc: '两个运行版本的响应体内容没有任何差异。',
+    additions: '新增 {count} 行',
+    deletions: '删除 {count} 行',
+    leftBaseline: '左侧基准 (Old)',
+    rightCurrent: '右侧新版 (New)',
+    noRunsForDiff: '需要至少 2 次历史运行记录才能进行比对',
+    line: '行',
+    prevDiff: '上一处差异',
+    nextDiff: '下一处差异',
+    diffCount: '第 {current}/{total} 处差异'
   }
 }

@@ -451,4 +451,31 @@ export interface TranslationSchema {
     requestDuplicatedViaShortcut: string
     runnerReportExported: string
   }
+  diff: {
+    title: string
+    buttonText: string
+    selectRunA: string
+    selectRunB: string
+    swap: string
+    splitView: string
+    unifiedView: string
+    diffOnly: string
+    showAll: string
+    copyDiff: string
+    diffCopied: string
+    statusDiff: string
+    timeDiff: string
+    sizeDiff: string
+    identical: string
+    identicalDesc: string
+    additions: string
+    deletions: string
+    leftBaseline: string
+    rightCurrent: string
+    noRunsForDiff: string
+    line: string
+    prevDiff: string
+    nextDiff: string
+    diffCount: string
+  }
 }
