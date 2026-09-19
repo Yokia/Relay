@@ -1411,7 +1411,7 @@ function MainApp({
       <button
         type="button"
         onClick={() => setIsDevToysOpen(true)}
-        className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-emerald-300 border border-slate-800/80 transition-colors cursor-pointer"
+        className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-300 border border-slate-800/80 transition-colors cursor-pointer"
         title={`${t('devtoys.title')} (Ctrl+Shift+T)`}
       >
         <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
