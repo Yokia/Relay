@@ -129,6 +129,24 @@ const defaultData: StorageData = {
   activeEnvironmentId: 'env-default'
 }
 
+function compactLargeMediaRuns(data: StorageData): { data: StorageData; changed: boolean } {
+  if (!data.responseHistoryMap || typeof data.responseHistoryMap !== 'object') return { data, changed: false }
+  let changed = false
+  const responseHistoryMap: Record<string, any[]> = {}
+  Object.entries(data.responseHistoryMap).forEach(([requestId, runs]) => {
+    const safeRuns = Array.isArray(runs) ? runs : []
+    responseHistoryMap[requestId] = safeRuns.map((run: any) => {
+      const contentType = String(run?.response?.contentType || '').toLowerCase().split(';')[0]
+      const isMedia = contentType.startsWith('image/') || contentType.startsWith('video/') || contentType.startsWith('audio/') || contentType === 'application/pdf'
+      const isLarge = isMedia && typeof run?.response?.data === 'string' && run.response.data.length > 1024 * 1024
+      if (!isLarge) return run
+      changed = true
+      return { ...run, response: { ...run.response, data: null } }
+    })
+  })
+  return { data: { ...data, responseHistoryMap }, changed }
+}
+
 export class StorageService {
   private filePath: string
   private cache: StorageData
@@ -143,7 +161,12 @@ export class StorageService {
     try {
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, 'utf-8')
-        return { ...defaultData, ...JSON.parse(raw) }
+        const loaded = { ...defaultData, ...JSON.parse(raw) }
+        const compacted = compactLargeMediaRuns(loaded)
+        if (compacted.changed) {
+          fs.writeFileSync(this.filePath, JSON.stringify(compacted.data, null, 2), 'utf-8')
+        }
+        return compacted.data
       }
     } catch (e) {
       console.error('Failed to load storage data:', e)

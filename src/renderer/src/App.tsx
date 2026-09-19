@@ -101,6 +101,21 @@ const defaultSettings: AppSettings = {
   enableMultiTabs: true
 }
 
+const stripLargeMediaFromResponseRuns = (runsMap: Record<string, ResponseRun[]>): Record<string, ResponseRun[]> => {
+  const result: Record<string, ResponseRun[]> = {}
+  if (!runsMap || typeof runsMap !== 'object') return result
+  Object.entries(runsMap).forEach(([requestId, runs]) => {
+    const safeRuns = Array.isArray(runs) ? runs : []
+    result[requestId] = safeRuns.map((run) => {
+      const contentType = (run?.response?.contentType || '').toLowerCase().split(';')[0]
+      const isMedia = contentType.startsWith('image/') || contentType.startsWith('video/') || contentType.startsWith('audio/') || contentType === 'application/pdf'
+      const isLarge = isMedia && typeof run?.response?.data === 'string' && run.response.data.length > 1024 * 1024
+      return isLarge ? { ...run, response: { ...run.response, data: null } } : run
+    })
+  })
+  return result
+}
+
 function MainApp({
   onLanguageChange,
   onThemeChange
@@ -125,6 +140,7 @@ function MainApp({
   const [currentRequest, setCurrentRequest] = useState<RequestItem>(defaultNewRequest)
   const [response, setResponse] = useState<ResponseData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isDataLoaded, setIsDataLoaded] = useState(false)
 
   // Multi-Tabs State
   const [tabs, setTabs] = useState<WorkspaceTab[]>([
@@ -218,6 +234,9 @@ function MainApp({
         .getData()
         .then((data: any) => {
           if (data) {
+            const normalizedResponseHistoryMap = data.responseHistoryMap
+              ? stripLargeMediaFromResponseRuns(data.responseHistoryMap)
+              : undefined
             if (data.collections) setCollections(data.collections)
             if (data.history) setHistory(data.history)
             if (data.environments) setEnvironments(data.environments)
@@ -234,8 +253,8 @@ function MainApp({
               }
             }
             if (data.activeEnvironmentId) setActiveEnvId(data.activeEnvironmentId)
-            if (data.responseHistoryMap) {
-              setResponseHistoryMap(data.responseHistoryMap)
+            if (normalizedResponseHistoryMap) {
+              setResponseHistoryMap(normalizedResponseHistoryMap)
             }
             if (data.dirtyIds && Array.isArray(data.dirtyIds)) {
               setDirtyIds(new Set(data.dirtyIds))
@@ -288,8 +307,8 @@ function MainApp({
               setCurrentRequest(cloned)
               setDrafts((prev) => ({ ...prev, [cloned.id]: cloned }))
 
-              if (data.responseHistoryMap?.[cloned.id]?.[0]) {
-                setResponse(data.responseHistoryMap[cloned.id][0].response)
+              if (normalizedResponseHistoryMap?.[cloned.id]?.[0]) {
+                setResponse(normalizedResponseHistoryMap[cloned.id][0].response)
               } else {
                 setResponse(null)
               }
@@ -312,13 +331,16 @@ function MainApp({
             }
           }
           isLoadedRef.current = true
+          setIsDataLoaded(true)
         })
         .catch((err: any) => {
           console.error('Failed to load initial data:', err)
           isLoadedRef.current = true
+          setIsDataLoaded(true)
         })
     } else {
       isLoadedRef.current = true
+      setIsDataLoaded(true)
     }
   }, [])
 
@@ -948,12 +970,19 @@ function MainApp({
       setResponse(fullRes)
 
       // Add to per-request response runs
+      const storedResponse = (() => {
+        const contentType = (fullRes.contentType || '').toLowerCase().split(';')[0]
+        const isMedia = contentType.startsWith('image/') || contentType.startsWith('video/') || contentType.startsWith('audio/') || contentType === 'application/pdf'
+        return isMedia && typeof fullRes.data === 'string' && fullRes.data.length > 1024 * 1024
+          ? { ...fullRes, data: null }
+          : fullRes
+      })()
       const newRun: ResponseRun = {
         id: 'run-' + reqTimestamp,
         timestamp: reqTimestamp,
         method: effectiveRequest.method,
         url: processedUrl,
-        response: fullRes
+        response: storedResponse
       }
       setResponseHistoryMap((prev) => {
         const currentRuns = prev[reqId] || []
@@ -1514,6 +1543,17 @@ function MainApp({
       </button>
     </div>
   )
+
+  if (!isDataLoaded) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-slate-400">
+        <div className="flex flex-col items-center gap-3 text-xs">
+          <div className="h-7 w-7 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+          <span>{t('common.loading')}</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-950 font-sans text-slate-100">
