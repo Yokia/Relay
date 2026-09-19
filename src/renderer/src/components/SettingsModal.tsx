@@ -282,6 +282,25 @@ export const SettingsModal: React.FC<Props> = ({
                     </select>
                   </div>
                 </div>
+
+                {/* Response Blob Storage Limit */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-slate-950/50 border border-slate-800">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-semibold text-slate-200">{t('settings.responseStorageTitle')}</span>
+                    <span className="text-slate-400 text-[11px]">{t('settings.responseStorageDesc')}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min="10"
+                      max="2048"
+                      value={settings.responseStorageLimitMB || 100}
+                      onChange={(e) => onUpdateSettings({ responseStorageLimitMB: Math.max(10, Math.min(2048, parseInt(e.target.value, 10) || 100)) })}
+                      className="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-center font-mono text-slate-200 focus:outline-none focus:border-sky-500"
+                    />
+                    <span className="text-slate-400">{t('settings.responseStorageUnit')}</span>
+                  </div>
+                </div>
               </div>
             )}
 

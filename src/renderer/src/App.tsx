@@ -98,7 +98,8 @@ const defaultSettings: AppSettings = {
   maxResponsesPerRequest: 5,
   language: 'zh-CN',
   theme: 'dark',
-  enableMultiTabs: true
+  enableMultiTabs: true,
+  responseStorageLimitMB: 100
 }
 
 const stripLargeMediaFromResponseRuns = (runsMap: Record<string, ResponseRun[]>): Record<string, ResponseRun[]> => {
@@ -142,6 +143,17 @@ function MainApp({
   const [isLoading, setIsLoading] = useState(false)
   const [isDataLoaded, setIsDataLoaded] = useState(false)
 
+  const restoreStoredResponse = (storedResponse: ResponseData | null) => {
+    setResponse(storedResponse)
+    const blobId = storedResponse?.blobId
+    if (!blobId || !window.electronAPI?.getResponseBlob) return
+    window.electronAPI.getResponseBlob(blobId).then((data: any) => {
+      setResponse((current) => current?.blobId === blobId ? { ...current, data, blobId: undefined } : current)
+    }).catch((err: any) => {
+      console.error('Failed to load response blob:', err)
+    })
+  }
+
   // Multi-Tabs State
   const [tabs, setTabs] = useState<WorkspaceTab[]>([
     {
@@ -157,6 +169,24 @@ function MainApp({
   // Per-request response runs history (Preserves responses across switching APIs and app restarts)
   const [responseHistoryMap, setResponseHistoryMap] = useState<Record<string, ResponseRun[]>>({})
   const [selectedRunIdMap, setSelectedRunIdMap] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const runs = responseHistoryMap[currentRequest.id] || []
+    const selectedRunId = selectedRunIdMap[currentRequest.id]
+    const activeRun = runs.find((run) => run.id === selectedRunId) || runs[0]
+    const blobId = activeRun?.response?.blobId
+    if (!blobId || !window.electronAPI?.getResponseBlob) return
+    window.electronAPI.getResponseBlob(blobId).then((data: any) => {
+      setResponseHistoryMap((prev) => ({
+        ...prev,
+        [currentRequest.id]: (prev[currentRequest.id] || []).map((run) =>
+          run.id === activeRun.id ? { ...run, response: { ...run.response, data, blobId: undefined } } : run
+        )
+      }))
+    }).catch((err: any) => {
+      console.error('Failed to load response history blob:', err)
+    })
+  }, [currentRequest.id, responseHistoryMap, selectedRunIdMap])
 
   const getTabDisplayName = (requestId: string, fallbackName: string) => {
     if (!settings.showCollectionPath) return fallbackName
@@ -308,7 +338,7 @@ function MainApp({
               setDrafts((prev) => ({ ...prev, [cloned.id]: cloned }))
 
               if (normalizedResponseHistoryMap?.[cloned.id]?.[0]) {
-                setResponse(normalizedResponseHistoryMap[cloned.id][0].response)
+                restoreStoredResponse(normalizedResponseHistoryMap[cloned.id][0].response)
               } else {
                 setResponse(null)
               }
@@ -326,7 +356,7 @@ function MainApp({
               setTabs([initialTab])
               setActiveTabId(initialTab.id)
               if (data.responseHistoryMap?.[initialReq.id]?.[0]) {
-                setResponse(data.responseHistoryMap[initialReq.id][0].response)
+                restoreStoredResponse(data.responseHistoryMap[initialReq.id][0].response)
               }
             }
           }
@@ -454,7 +484,7 @@ function MainApp({
     const existingRuns = responseHistoryMap[targetReq.id] || []
     const selectedRunId = selectedRunIdMap[targetReq.id]
     const activeRun = existingRuns.find((r) => r.id === selectedRunId) || existingRuns[0]
-    setResponse(activeRun ? activeRun.response : null)
+    restoreStoredResponse(activeRun ? activeRun.response : null)
 
     // 4. Manage Multi-Tabs
     if (settings.enableMultiTabs !== false) {
@@ -536,7 +566,7 @@ function MainApp({
       const existingRuns = responseHistoryMap[targetTab.requestId] || []
       const selectedRunId = selectedRunIdMap[targetTab.requestId]
       const activeRun = existingRuns.find((r) => r.id === selectedRunId) || existingRuns[0]
-      setResponse(activeRun ? activeRun.response : null)
+      restoreStoredResponse(activeRun ? activeRun.response : null)
       return
     }
 
@@ -549,7 +579,7 @@ function MainApp({
       const existingRuns = responseHistoryMap[found.request.id] || []
       const selectedRunId = selectedRunIdMap[found.request.id]
       const activeRun = existingRuns.find((r) => r.id === selectedRunId) || existingRuns[0]
-      setResponse(activeRun ? activeRun.response : null)
+      restoreStoredResponse(activeRun ? activeRun.response : null)
       return
     }
 
@@ -970,13 +1000,10 @@ function MainApp({
       setResponse(fullRes)
 
       // Add to per-request response runs
-      const storedResponse = (() => {
-        const contentType = (fullRes.contentType || '').toLowerCase().split(';')[0]
-        const isMedia = contentType.startsWith('image/') || contentType.startsWith('video/') || contentType.startsWith('audio/') || contentType === 'application/pdf'
-        return isMedia && typeof fullRes.data === 'string' && fullRes.data.length > 1024 * 1024
-          ? { ...fullRes, data: null }
-          : fullRes
-      })()
+      // Large response bodies are moved to response-blobs by the main process.
+      // Keep the full response in memory for the current request and let storage
+      // decide whether it should be externalized.
+      const storedResponse = fullRes
       const newRun: ResponseRun = {
         id: 'run-' + reqTimestamp,
         timestamp: reqTimestamp,

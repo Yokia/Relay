@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 export const api = {
   sendRequest: (payload: any) => ipcRenderer.invoke('relay:send-request', payload),
   getData: () => ipcRenderer.invoke('relay:get-data'),
+  getResponseBlob: (blobId: string) => ipcRenderer.invoke('relay:get-response-blob', blobId),
   saveData: (data: any) => ipcRenderer.invoke('relay:save-data', data),
   openExternal: (url: string) => ipcRenderer.invoke('relay:open-external', url),
   openResponseWindow: (payload: any) => ipcRenderer.invoke('relay:open-response-window', payload),

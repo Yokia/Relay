@@ -134,6 +134,10 @@ app.whenReady().then(() => {
     return storage.getData()
   })
 
+  ipcMain.handle('relay:get-response-blob', (_, blobId: string) => {
+    return storage.getResponseBlob(blobId)
+  })
+
   ipcMain.handle('relay:save-data', (_, data) => {
     return storage.saveData(data)
   })

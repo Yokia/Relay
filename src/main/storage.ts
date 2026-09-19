@@ -25,6 +25,12 @@ export interface StorageData {
   splitRatio?: number
 }
 
+type StorageBucket = 'collections' | 'settings' | 'responses'
+
+const STORAGE_VERSION = 1
+const INLINE_RESPONSE_LIMIT = 256 * 1024
+const DEFAULT_RESPONSE_STORAGE_LIMIT_MB = 100
+
 const defaultData: StorageData = {
   history: [],
   settings: {
@@ -32,7 +38,8 @@ const defaultData: StorageData = {
     timeout: 30000,
     sslVerify: true,
     language: 'zh-CN',
-    theme: 'dark'
+    theme: 'dark',
+    responseStorageLimitMB: DEFAULT_RESPONSE_STORAGE_LIMIT_MB
   },
   constants: [
     {
@@ -147,26 +154,193 @@ function compactLargeMediaRuns(data: StorageData): { data: StorageData; changed:
   return { data: { ...data, responseHistoryMap }, changed }
 }
 
+function getResponseDataSize(data: any): number {
+  if (typeof data === 'string') return Buffer.byteLength(data, 'utf8')
+  if (data === undefined || data === null) return 0
+  try {
+    return Buffer.byteLength(JSON.stringify(data), 'utf8')
+  } catch {
+    return 0
+  }
+}
+
 export class StorageService {
-  private filePath: string
+  private legacyFilePath: string
+  private filePaths: Record<StorageBucket, string>
+  private blobDir: string
   private cache: StorageData
 
   constructor() {
     const userDataPath = app.getPath('userData')
-    this.filePath = path.join(userDataPath, 'relay-data.json')
+    this.legacyFilePath = path.join(userDataPath, 'relay-data.json')
+    this.filePaths = {
+      collections: path.join(userDataPath, 'relay-collections.json'),
+      settings: path.join(userDataPath, 'relay-settings.json'),
+      responses: path.join(userDataPath, 'relay-responses.json')
+    }
+    this.blobDir = path.join(userDataPath, 'response-blobs')
     this.cache = this.load()
+  }
+
+  private readJson(filePath: string): Record<string, any> | null {
+    try {
+      if (!fs.existsSync(filePath)) return null
+      const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+      return parsed && typeof parsed === 'object' ? parsed : null
+    } catch (e) {
+      console.error(`Failed to read storage file ${filePath}:`, e)
+      return null
+    }
+  }
+
+  private writeJson(bucket: StorageBucket, data: Record<string, any>): void {
+    const filePath = this.filePaths[bucket]
+    const tempPath = `${filePath}.tmp`
+    fs.writeFileSync(tempPath, JSON.stringify({ version: STORAGE_VERSION, ...data }, null, 2), 'utf-8')
+    fs.renameSync(tempPath, filePath)
+  }
+
+  private writeResponseBlob(blobId: string, data: any): void {
+    fs.mkdirSync(this.blobDir, { recursive: true })
+    const filePath = path.join(this.blobDir, `${blobId}.json`)
+    const tempPath = `${filePath}.tmp`
+    fs.writeFileSync(tempPath, JSON.stringify({ data }), 'utf-8')
+    fs.renameSync(tempPath, filePath)
+  }
+
+  private externalizeResponseMap(responseHistoryMap: Record<string, any>): Record<string, any[]> {
+    const result: Record<string, any[]> = {}
+    Object.entries(responseHistoryMap || {}).forEach(([requestId, runs]) => {
+      result[requestId] = (Array.isArray(runs) ? runs : []).map((run: any) => {
+        const response = run?.response
+        if (!response || response.data === undefined || response.data === null || response.blobId || getResponseDataSize(response.data) <= INLINE_RESPONSE_LIMIT) {
+          return run
+        }
+        const blobId = `response-${run.id || `${requestId}-${run.timestamp || Date.now()}`}`
+        this.writeResponseBlob(blobId, response.data)
+        return { ...run, response: { ...response, data: null, blobId } }
+      })
+    })
+    return result
+  }
+
+  private enforceResponseStorageLimit(responseHistoryMap: Record<string, any[]>): Record<string, any[]> {
+    const limitMB = Number(this.cache.settings?.responseStorageLimitMB) || DEFAULT_RESPONSE_STORAGE_LIMIT_MB
+    const maxBytes = Math.max(1, limitMB) * 1024 * 1024
+    const referencedBlobIds = new Set<string>()
+    const entries: Array<{ blobId: string; timestamp: number; size: number; requestId: string; runId: string }> = []
+    Object.entries(responseHistoryMap).forEach(([requestId, runs]) => {
+      runs.forEach((run: any) => {
+        const blobId = run?.response?.blobId
+        if (!blobId) return
+        referencedBlobIds.add(blobId)
+        const filePath = path.join(this.blobDir, `${blobId}.json`)
+        if (!fs.existsSync(filePath)) return
+        entries.push({ blobId, timestamp: Number(run.timestamp) || 0, size: fs.statSync(filePath).size, requestId, runId: run.id })
+      })
+    })
+    if (fs.existsSync(this.blobDir)) {
+      for (const fileName of fs.readdirSync(this.blobDir)) {
+        if (fileName.endsWith('.json') && !referencedBlobIds.has(fileName.slice(0, -5))) {
+          fs.rmSync(path.join(this.blobDir, fileName), { force: true })
+        }
+      }
+    }
+    let totalBytes = entries.reduce((total, entry) => total + entry.size, 0)
+    if (totalBytes <= maxBytes) return responseHistoryMap
+    const nextMap = { ...responseHistoryMap }
+    entries.sort((a, b) => a.timestamp - b.timestamp)
+    for (const entry of entries) {
+      if (totalBytes <= maxBytes) break
+      try {
+        fs.rmSync(path.join(this.blobDir, `${entry.blobId}.json`), { force: true })
+      } catch {
+        continue
+      }
+      totalBytes -= entry.size
+      nextMap[entry.requestId] = (nextMap[entry.requestId] || []).map((run: any) =>
+        run.id === entry.runId ? { ...run, response: { ...run.response, data: null, blobId: undefined } } : run
+      )
+    }
+    return nextMap
+  }
+
+  public getResponseBlob(blobId: string): any {
+    if (!blobId || !/^[a-zA-Z0-9_-]+$/.test(blobId)) return null
+    const filePath = path.join(this.blobDir, `${blobId}.json`)
+    try {
+      if (!fs.existsSync(filePath)) return null
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8')).data ?? null
+    } catch (e) {
+      console.error('Failed to read response blob:', e)
+      return null
+    }
+  }
+
+  private writeAll(data: StorageData): void {
+    this.writeJson('collections', { collections: data.collections })
+    this.writeJson('settings', {
+      settings: data.settings,
+      environments: data.environments,
+      constants: data.constants,
+      activeEnvironmentId: data.activeEnvironmentId,
+      tabs: data.tabs,
+      activeTabId: data.activeTabId,
+      drafts: data.drafts,
+      dirtyIds: data.dirtyIds,
+      windowBounds: data.windowBounds,
+      sidebarWidth: data.sidebarWidth,
+      splitRatio: data.splitRatio
+    })
+    this.writeJson('responses', {
+      history: data.history,
+      responseHistoryMap: data.responseHistoryMap
+    })
   }
 
   private load(): StorageData {
     try {
-      if (fs.existsSync(this.filePath)) {
-        const raw = fs.readFileSync(this.filePath, 'utf-8')
-        const loaded = { ...defaultData, ...JSON.parse(raw) }
-        const compacted = compactLargeMediaRuns(loaded)
-        if (compacted.changed) {
-          fs.writeFileSync(this.filePath, JSON.stringify(compacted.data, null, 2), 'utf-8')
+      const collectionsData = this.readJson(this.filePaths.collections)
+      const settingsData = this.readJson(this.filePaths.settings)
+      const responsesData = this.readJson(this.filePaths.responses)
+      const hasLegacyData = fs.existsSync(this.legacyFilePath)
+      const hasCompleteSplitStorage = Object.values(this.filePaths).every((filePath) => fs.existsSync(filePath))
+
+      if (hasCompleteSplitStorage && collectionsData && settingsData && responsesData) {
+        const loaded: StorageData = {
+          ...defaultData,
+          ...(collectionsData || {}),
+          ...(settingsData || {}),
+          ...(responsesData || {})
         }
-        return compacted.data
+        const compacted = compactLargeMediaRuns(loaded)
+        this.cache = compacted.data
+        const externalized = this.externalizeResponseMap(compacted.data.responseHistoryMap || {})
+        const limited = this.enforceResponseStorageLimit(externalized)
+        const normalized = { ...compacted.data, responseHistoryMap: limited }
+        if (compacted.changed || JSON.stringify(externalized) !== JSON.stringify(compacted.data.responseHistoryMap) || JSON.stringify(limited) !== JSON.stringify(externalized)) {
+          this.writeJson('responses', { history: normalized.history, responseHistoryMap: normalized.responseHistoryMap })
+        }
+        return normalized
+      }
+
+      if (hasLegacyData) {
+        const loaded = { ...defaultData, ...JSON.parse(fs.readFileSync(this.legacyFilePath, 'utf-8')) }
+        const compacted = compactLargeMediaRuns(loaded)
+        this.cache = compacted.data
+        const responseHistoryMap = this.enforceResponseStorageLimit(this.externalizeResponseMap(compacted.data.responseHistoryMap || {}))
+        const normalized = { ...compacted.data, responseHistoryMap }
+        this.writeAll(normalized)
+        return normalized
+      }
+
+      if (collectionsData || settingsData || responsesData) {
+        return {
+          ...defaultData,
+          ...(collectionsData || {}),
+          ...(settingsData || {}),
+          ...(responsesData || {})
+        }
       }
     } catch (e) {
       console.error('Failed to load storage data:', e)
@@ -181,7 +355,50 @@ export class StorageService {
   public saveData(data: Partial<StorageData>): StorageData {
     this.cache = { ...this.cache, ...data }
     try {
-      fs.writeFileSync(this.filePath, JSON.stringify(this.cache, null, 2), 'utf-8')
+      if (Object.prototype.hasOwnProperty.call(data, 'collections')) {
+        this.writeJson('collections', { collections: this.cache.collections })
+      }
+      const settingsKeys: Array<keyof StorageData> = [
+        'settings',
+        'environments',
+        'constants',
+        'activeEnvironmentId',
+        'tabs',
+        'activeTabId',
+        'drafts',
+        'dirtyIds',
+        'windowBounds',
+        'sidebarWidth',
+        'splitRatio'
+      ]
+      if (settingsKeys.some((key) => Object.prototype.hasOwnProperty.call(data, key))) {
+        this.writeJson('settings', {
+          settings: this.cache.settings,
+          environments: this.cache.environments,
+          constants: this.cache.constants,
+          activeEnvironmentId: this.cache.activeEnvironmentId,
+          tabs: this.cache.tabs,
+          activeTabId: this.cache.activeTabId,
+          drafts: this.cache.drafts,
+          dirtyIds: this.cache.dirtyIds,
+          windowBounds: this.cache.windowBounds,
+          sidebarWidth: this.cache.sidebarWidth,
+          splitRatio: this.cache.splitRatio
+        })
+        if (Object.prototype.hasOwnProperty.call(data, 'settings') && this.cache.responseHistoryMap) {
+          const limited = this.enforceResponseStorageLimit(this.cache.responseHistoryMap)
+          this.cache = { ...this.cache, responseHistoryMap: limited }
+          this.writeJson('responses', { history: this.cache.history, responseHistoryMap: limited })
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(data, 'history') || Object.prototype.hasOwnProperty.call(data, 'responseHistoryMap')) {
+        const responseHistoryMap = this.externalizeResponseMap(this.cache.responseHistoryMap || {})
+        this.cache = { ...this.cache, responseHistoryMap: this.enforceResponseStorageLimit(responseHistoryMap) }
+        this.writeJson('responses', {
+          history: this.cache.history,
+          responseHistoryMap: this.cache.responseHistoryMap
+        })
+      }
     } catch (e) {
       console.error('Failed to save storage data:', e)
     }

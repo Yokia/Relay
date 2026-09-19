@@ -178,6 +178,9 @@ export interface TranslationSchema {
     maxHistoryTitle: string
     maxHistoryDesc: string
     historyRunOption: string
+    responseStorageTitle: string
+    responseStorageDesc: string
+    responseStorageUnit: string
     sslTitle: string
     sslDesc: string
     languageTitle: string

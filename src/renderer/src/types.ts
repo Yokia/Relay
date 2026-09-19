@@ -106,6 +106,7 @@ export interface ResponseData {
   error?: string
   timestamp?: number
   testResults?: TestResultItem[]
+  blobId?: string
 }
 
 export interface ResponseRun {
@@ -129,6 +130,7 @@ export interface AppSettings {
   theme?: Theme
   enableMultiTabs?: boolean
   showCollectionPath?: boolean
+  responseStorageLimitMB?: number
 }
 
 export interface WorkspaceTab {
