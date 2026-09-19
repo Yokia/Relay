@@ -723,8 +723,7 @@ function MainApp({
       bodyType: 'none',
       bodyRaw: ''
     }
-    setCurrentRequest(newReq)
-    setResponse(null)
+    handleNewTab(newReq)
     addToast('Created new request from link', 'info')
   }
 

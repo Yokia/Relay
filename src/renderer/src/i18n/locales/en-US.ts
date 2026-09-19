@@ -26,7 +26,11 @@ export const enUS: TranslationSchema = {
     toggleTheme: 'Toggle Light/Dark Theme',
     refresh: 'Refresh',
     resizeSidebar: 'Drag to resize sidebar width',
-    all: 'All'
+    all: 'All',
+    openInBrowser: 'Open in Browser',
+    openInRelayAsRequest: 'Open in Relay as Request',
+    copyLinkUrl: 'Copy Link URL',
+    copiedToClipboard: 'Copied to clipboard!'
   },
   sidebar: {
     collections: 'Collections',

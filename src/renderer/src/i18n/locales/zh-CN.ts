@@ -26,7 +26,11 @@ export const zhCN: TranslationSchema = {
     toggleTheme: '切换浅色/深色主题',
     refresh: '刷新',
     resizeSidebar: '拖动调整侧边栏宽度',
-    all: '全部'
+    all: '全部',
+    openInBrowser: '在浏览器中打开',
+    openInRelayAsRequest: '在 Relay 中作为请求打开',
+    copyLinkUrl: '复制链接地址',
+    copiedToClipboard: '已复制到剪贴板！'
   },
   sidebar: {
     collections: '集合',

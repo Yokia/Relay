@@ -8,6 +8,7 @@ import { MatchDecorator, ViewPlugin, Decoration, EditorView, DecorationSet, View
 import { ExternalLink, Plus, Copy, Check } from 'lucide-react'
 import { findCommentRanges } from '../utils/jsonUtils'
 import { useTheme } from '../theme'
+import { useI18n } from '../i18n'
 
 interface Props {
   value: string
@@ -325,6 +326,7 @@ export const CodeEditor: React.FC<Props> = ({
   searchRegex = false
 }) => {
   const { theme } = useTheme()
+  const { t } = useI18n()
   const editorViewRef = useRef<EditorView | null>(null)
 
   const activeThemeExts = useMemo(() => {
@@ -503,7 +505,7 @@ export const CodeEditor: React.FC<Props> = ({
             className="flex items-center gap-2 px-3 py-1.5 text-left text-slate-200 hover:bg-sky-500/20 hover:text-sky-300 transition-colors"
           >
             <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
-            <span>Open in Browser</span>
+            <span>{t('common.openInBrowser')}</span>
           </button>
 
           {/* Option 2: Open as new request in Relay */}
@@ -514,10 +516,10 @@ export const CodeEditor: React.FC<Props> = ({
                 onOpenUrlInRelay(contextMenu.url)
                 setContextMenu(null)
               }}
-              className="flex items-center gap-2 px-3 py-1.5 text-left text-slate-200 hover:bg-emerald-500/20 hover:text-emerald-300 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 text-left text-slate-200 hover:bg-emerald-500/20 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
             >
-              <Plus className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Open in Relay as Request</span>
+            <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>{t('common.openInRelayAsRequest')}</span>
             </button>
           )}
 
@@ -530,12 +532,12 @@ export const CodeEditor: React.FC<Props> = ({
             {copied ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400">Copied to clipboard!</span>
+                <span className="text-emerald-400">{t('common.copiedToClipboard')}</span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5 text-slate-400" />
-                <span>Copy Link URL</span>
+                <span>{t('common.copyLinkUrl')}</span>
               </>
             )}
           </button>

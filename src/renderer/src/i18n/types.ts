@@ -27,6 +27,10 @@ export interface TranslationSchema {
     refresh: string
     resizeSidebar: string
     all: string
+    openInBrowser: string
+    openInRelayAsRequest: string
+    copyLinkUrl: string
+    copiedToClipboard: string
   }
   sidebar: {
     collections: string
