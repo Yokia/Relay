@@ -23,6 +23,7 @@ interface Props {
   onSend: () => void
   onSave: () => void
   onExportCurl: () => void
+  onOpenCodeSnippet?: () => void
   isLoading: boolean
   constants: ConstantItem[]
   onSwitchConstant?: (name: string, value: string) => void
@@ -116,6 +117,7 @@ export const RequestHeader: React.FC<Props> = ({
   onSend,
   onSave,
   onExportCurl,
+  onOpenCodeSnippet,
   isLoading,
   constants,
   onRequestSwitchConstant,
@@ -451,6 +453,19 @@ export const RequestHeader: React.FC<Props> = ({
             <Code className="w-3.5 h-3.5" />
             <span>cURL</span>
           </button>
+
+          {/* Code Snippets */}
+          {onOpenCodeSnippet && (
+            <button
+              type="button"
+              onClick={onOpenCodeSnippet}
+              title={t('codeSnippet.title')}
+              className="flex items-center gap-1 text-xs text-slate-200 hover:text-slate-100 bg-slate-800 hover:bg-slate-700 border border-slate-700/80 px-2.5 py-1 rounded transition-colors shadow-sm"
+            >
+              <Code className="w-3.5 h-3.5 text-sky-400" />
+              <span>{t('codeSnippet.openBtn')}</span>
+            </button>
+          )}
 
           {/* Save Request */}
           <button

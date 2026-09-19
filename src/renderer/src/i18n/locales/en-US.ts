@@ -166,7 +166,63 @@ export const enUS: TranslationSchema = {
     themeLight: 'Light Theme',
     dataBackupTitle: 'Data Backup & Sync',
     dataBackupDesc: 'Export all workspace configurations, request collections, or constants, or quickly import backup data to sync testing setups across devices',
-    openTransferBtn: 'Import / Export Data...'
+    openTransferBtn: 'Import / Export Data...',
+    catGeneral: 'General',
+    catWorkspace: 'Workspace & Tabs',
+    catNetwork: 'Network & SSL',
+    catShortcuts: 'Shortcuts',
+    catBackup: 'Backup & Data',
+    multiTabsTitle: 'Multi-Tab Workspace',
+    multiTabsDesc: 'Enable browser-like multiple tabs on top to quickly switch and compare between related requests. Turn off to restore single workspace mode.'
+  },
+  tabs: {
+    newTab: 'New Tab',
+    closeTab: 'Close Tab',
+    closeOthers: 'Close Other Tabs',
+    closeAll: 'Close All Tabs',
+    closeToRight: 'Close Tabs to the Right',
+    untitledTab: 'Untitled Request'
+  },
+  codeSnippet: {
+    title: 'Generate Client Code (Code Snippets)',
+    selectLanguage: 'Programming Language & Client',
+    copyCode: 'Copy Code',
+    copied: 'Code copied',
+    curl: 'cURL (CLI)',
+    fetch: 'JavaScript (Fetch)',
+    axios: 'JavaScript (Axios)',
+    python: 'Python (Requests)',
+    go: 'Go (net/http)',
+    java: 'Java (OkHttp)',
+    openBtn: 'Code'
+  },
+  commandPalette: {
+    placeholder: 'Type a name, URL or collection to quickly open (Ctrl+P)...',
+    noResults: 'No matching requests or collections found',
+    navigateTip: 'Navigate',
+    selectTip: 'Open',
+    closeTip: 'Close',
+    inCollection: 'Folder'
+  },
+  shortcuts: {
+    title: 'Global & Common Shortcuts',
+    desc: 'Master these keyboard shortcuts to supercharge your daily API development and testing workflow:',
+    sendRequest: 'Send Request',
+    sendRequestDesc: 'Immediately trigger network execution for the active request',
+    saveRequest: 'Save Request',
+    saveRequestDesc: 'Persist modifications of the active request to its collection',
+    quickOpen: 'Quick Open (Command Palette)',
+    quickOpenDesc: 'Open the floating search box to fuzzy search any request or collection',
+    duplicate: 'Duplicate Request / Collection',
+    duplicateDesc: 'Duplicate the active request or selected collection instantly',
+    newTab: 'New Request Tab',
+    newTabDesc: 'Open a blank new request in a separate tab',
+    closeTab: 'Close Active Tab',
+    closeTabDesc: 'Close the tab currently being viewed',
+    settings: 'Preferences & Settings',
+    settingsDesc: 'Quickly open application settings modal',
+    toggleTheme: 'Toggle Dark / Light Theme',
+    toggleThemeDesc: 'Switch between Dark and Light color themes'
   },
   dataTransfer: {
     title: 'Configuration & Data Transfer',
@@ -281,6 +337,8 @@ export const enUS: TranslationSchema = {
     autoSaveOff: 'Auto Save disabled (manual save mode)',
     dataExported: 'Data exported successfully',
     dataImported: 'Data imported successfully',
-    dataCopied: 'JSON data copied to clipboard'
+    dataCopied: 'JSON data copied to clipboard',
+    codeCopied: 'Code snippet copied to clipboard',
+    requestDuplicatedViaShortcut: 'Request duplicated via shortcut'
   }
 }

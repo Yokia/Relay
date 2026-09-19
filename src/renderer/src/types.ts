@@ -88,4 +88,13 @@ export interface AppSettings {
   maxResponsesPerRequest?: number
   language?: Language
   theme?: Theme
+  enableMultiTabs?: boolean
+}
+
+export interface WorkspaceTab {
+  id: string
+  requestId: string
+  name: string
+  method: HttpMethod
+  isDirty?: boolean
 }

@@ -167,6 +167,62 @@ export interface TranslationSchema {
     dataBackupTitle: string
     dataBackupDesc: string
     openTransferBtn: string
+    catGeneral: string
+    catWorkspace: string
+    catNetwork: string
+    catShortcuts: string
+    catBackup: string
+    multiTabsTitle: string
+    multiTabsDesc: string
+  }
+  tabs: {
+    newTab: string
+    closeTab: string
+    closeOthers: string
+    closeAll: string
+    closeToRight: string
+    untitledTab: string
+  }
+  codeSnippet: {
+    title: string
+    selectLanguage: string
+    copyCode: string
+    copied: string
+    curl: string
+    fetch: string
+    axios: string
+    python: string
+    go: string
+    java: string
+    openBtn: string
+  }
+  commandPalette: {
+    placeholder: string
+    noResults: string
+    navigateTip: string
+    selectTip: string
+    closeTip: string
+    inCollection: string
+  }
+  shortcuts: {
+    title: string
+    desc: string
+    sendRequest: string
+    sendRequestDesc: string
+    saveRequest: string
+    saveRequestDesc: string
+    quickOpen: string
+    quickOpenDesc: string
+    duplicate: string
+    duplicateDesc: string
+    newTab: string
+    newTabDesc: string
+    closeTab: string
+    closeTabDesc: string
+    settings: string
+    settingsDesc: string
+    toggleTheme: string
+    toggleThemeDesc: string
   }
   dataTransfer: {
     title: string
@@ -282,5 +338,7 @@ export interface TranslationSchema {
     dataExported: string
     dataImported: string
     dataCopied: string
+    codeCopied: string
+    requestDuplicatedViaShortcut: string
   }
 }

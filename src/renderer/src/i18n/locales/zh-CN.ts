@@ -166,7 +166,63 @@ export const zhCN: TranslationSchema = {
     themeLight: '浅色主题 (Light)',
     dataBackupTitle: '数据备份与迁移 (Backup & Sync)',
     dataBackupDesc: '导出当前全部工作区配置、接口集合或常量，或从备份文件快速导入同步测试环境',
-    openTransferBtn: '导入 / 导出数据...'
+    openTransferBtn: '导入 / 导出数据...',
+    catGeneral: '通用外观',
+    catWorkspace: '工作区与标签',
+    catNetwork: '网络与安全',
+    catShortcuts: '快捷键一览',
+    catBackup: '备份与数据',
+    multiTabsTitle: '多标签页工作区 (Multi-Tabs)',
+    multiTabsDesc: '在顶部开启多标签页，方便在多个关联接口之间快速来回切换对比。关闭后将恢复单工作区模式。'
+  },
+  tabs: {
+    newTab: '新建标签页',
+    closeTab: '关闭标签页',
+    closeOthers: '关闭其他标签页',
+    closeAll: '关闭所有标签页',
+    closeToRight: '关闭右侧标签页',
+    untitledTab: '未命名请求'
+  },
+  codeSnippet: {
+    title: '生成客户端代码 (Code Snippets)',
+    selectLanguage: '选择编程语言与框架',
+    copyCode: '复制代码',
+    copied: '代码已复制',
+    curl: 'cURL (命令行)',
+    fetch: 'JavaScript (Fetch)',
+    axios: 'JavaScript (Axios)',
+    python: 'Python (Requests)',
+    go: 'Go (net/http)',
+    java: 'Java (OkHttp)',
+    openBtn: '代码'
+  },
+  commandPalette: {
+    placeholder: '输入关键词快速搜索接口、URL或集合 (Ctrl+P)...',
+    noResults: '未找到匹配的接口或集合',
+    navigateTip: '移动光标',
+    selectTip: '打开接口',
+    closeTip: '关闭面板',
+    inCollection: '所属目录'
+  },
+  shortcuts: {
+    title: '全局与常用快捷键',
+    desc: '熟练使用快捷键可显著提升日常 API 调试与联调测试效率：',
+    sendRequest: '发送当前请求',
+    sendRequestDesc: '立即触发当前接口的网络请求',
+    saveRequest: '保存当前请求',
+    saveRequestDesc: '将当前请求的修改保存到集合树中',
+    quickOpen: '全局快速搜索 (Quick Open)',
+    quickOpenDesc: '呼出命令面板，模糊检索任意接口或集合',
+    duplicate: '快速复制请求 / 集合',
+    duplicateDesc: '复制当前激活的接口请求或选中的集合',
+    newTab: '新建请求标签',
+    newTabDesc: '开启一个空白的全新请求标签页',
+    closeTab: '关闭当前标签',
+    closeTabDesc: '关闭当前正在浏览的标签页',
+    settings: '首选项与设置',
+    settingsDesc: '快速打开应用设置中心',
+    toggleTheme: '切换界面深/浅主题',
+    toggleThemeDesc: '在深色暗夜模式与浅色清爽模式间切换'
   },
   dataTransfer: {
     title: '配置与数据迁移',
@@ -281,6 +337,8 @@ export const zhCN: TranslationSchema = {
     autoSaveOff: '自动保存已关闭 (手动保存模式)',
     dataExported: '数据已成功导出',
     dataImported: '数据已成功导入',
-    dataCopied: 'JSON 数据已复制到剪贴板'
+    dataCopied: 'JSON 数据已复制到剪贴板',
+    codeCopied: '代码片段已复制到剪贴板',
+    requestDuplicatedViaShortcut: '已通过快捷键快速复制请求'
   }
 }

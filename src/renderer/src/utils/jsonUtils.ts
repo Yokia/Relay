@@ -72,8 +72,63 @@ export function stripJsonComments(jsonStr: string): string {
     i++
   }
 
-  // Remove trailing commas before } or ]
-  return removeTrailingCommas(result)
+  // Remove trailing commas before } or ] and collapse excess blank lines from removed comments
+  return collapseExcessBlankLines(removeTrailingCommas(result))
+}
+
+function collapseExcessBlankLines(jsonStr: string): string {
+  let result = ''
+  let inString = false
+  let isEscaped = false
+  let stringChar = '"'
+  let consecutiveNewlines = 0
+
+  for (let i = 0; i < jsonStr.length; i++) {
+    const char = jsonStr[i]
+
+    if (inString) {
+      result += char
+      if (isEscaped) {
+        isEscaped = false
+      } else if (char === '\\') {
+        isEscaped = true
+      } else if (char === stringChar) {
+        inString = false
+      }
+      consecutiveNewlines = 0
+      continue
+    }
+
+    if (char === '"' || char === "'") {
+      inString = true
+      stringChar = char
+      isEscaped = false
+      result += char
+      consecutiveNewlines = 0
+      continue
+    }
+
+    if (char === '\r') {
+      continue
+    }
+
+    if (char === '\n') {
+      consecutiveNewlines++
+      // Allow at most 1 consecutive newline outside strings
+      if (consecutiveNewlines <= 1) {
+        result += '\n'
+      }
+      continue
+    }
+
+    if (!/\s/.test(char)) {
+      consecutiveNewlines = 0
+    }
+
+    result += char
+  }
+
+  return result
 }
 
 function removeTrailingCommas(jsonStr: string): string {

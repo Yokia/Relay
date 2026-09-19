@@ -8,8 +8,11 @@ import { CurlModal } from './components/CurlModal'
 import { ConstantManagerModal } from './components/ConstantManagerModal'
 import { SettingsModal, AppSettings } from './components/SettingsModal'
 import { DataTransferModal } from './components/DataTransferModal'
+import { TabBar } from './components/TabBar'
+import { CommandPaletteModal } from './components/CommandPaletteModal'
+import { CodeSnippetModal } from './components/CodeSnippetModal'
 import { ToastContainer, ToastMessage } from './components/Toast'
-import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme } from './types'
+import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme, WorkspaceTab } from './types'
 import { stripJsonComments } from './utils/jsonUtils'
 import { mergeCollections, mergeConstants, mergeEnvironments, ParsedImportData } from './utils/dataTransferUtils'
 import { I18nProvider, useI18n } from './i18n'
@@ -87,7 +90,8 @@ const defaultSettings: AppSettings = {
   sslVerify: true,
   maxResponsesPerRequest: 5,
   language: 'zh-CN',
-  theme: 'dark'
+  theme: 'dark',
+  enableMultiTabs: true
 }
 
 function MainApp({
@@ -113,6 +117,18 @@ function MainApp({
   const [response, setResponse] = useState<ResponseData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Multi-Tabs State
+  const [tabs, setTabs] = useState<WorkspaceTab[]>([
+    {
+      id: 'tab-' + defaultNewRequest.id,
+      requestId: defaultNewRequest.id,
+      name: defaultNewRequest.name,
+      method: defaultNewRequest.method,
+      isDirty: false
+    }
+  ])
+  const [activeTabId, setActiveTabId] = useState<string>('tab-' + defaultNewRequest.id)
+
   // Per-request response runs history (Preserves responses across switching APIs and app restarts)
   const [responseHistoryMap, setResponseHistoryMap] = useState<Record<string, ResponseRun[]>>({})
   const [selectedRunIdMap, setSelectedRunIdMap] = useState<Record<string, string>>({})
@@ -121,6 +137,8 @@ function MainApp({
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false)
   const [isConstantModalOpen, setIsConstantModalOpen] = useState(false)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
+  const [isCodeSnippetOpen, setIsCodeSnippetOpen] = useState(false)
   const [curlModalState, setCurlModalState] = useState<{ isOpen: boolean; mode: 'import' | 'export' }>({
     isOpen: false,
     mode: 'import'
@@ -175,6 +193,15 @@ function MainApp({
           if (data.collections?.[0]?.requests?.[0]) {
             const initialReq = JSON.parse(JSON.stringify(data.collections[0].requests[0]))
             setCurrentRequest(initialReq)
+            const initialTab: WorkspaceTab = {
+              id: 'tab-' + initialReq.id,
+              requestId: initialReq.id,
+              name: initialReq.name,
+              method: initialReq.method,
+              isDirty: false
+            }
+            setTabs([initialTab])
+            setActiveTabId(initialTab.id)
             if (data.responseHistoryMap?.[initialReq.id]?.[0]) {
               setResponse(data.responseHistoryMap[initialReq.id][0].response)
             }
@@ -183,6 +210,23 @@ function MainApp({
       })
     }
   }, [])
+
+  // Keep active tab in sync with currentRequest
+  useEffect(() => {
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.id === activeTabId
+          ? {
+              ...t,
+              requestId: currentRequest.id,
+              name: currentRequest.name,
+              method: currentRequest.method,
+              isDirty: dirtyIds.has(currentRequest.id)
+            }
+          : t
+      )
+    )
+  }, [currentRequest.id, currentRequest.name, currentRequest.method, dirtyIds, activeTabId])
 
   // Persist helper
   const persist = (updates: any) => {
@@ -221,7 +265,7 @@ function MainApp({
     })
   }
 
-  // Switching APIs from Sidebar (Preserves all unsaved modifications via drafts & retains response history)
+  // Switching APIs from Sidebar or Command Palette (Preserves all unsaved modifications via drafts & retains response history)
   const handleSelectRequest = (targetReq: RequestItem) => {
     // If there is an unsaved working draft for this request, load the draft!
     const reqToLoad = drafts[targetReq.id] || targetReq
@@ -232,6 +276,134 @@ function MainApp({
     const selectedRunId = selectedRunIdMap[targetReq.id]
     const activeRun = existingRuns.find((r) => r.id === selectedRunId) || existingRuns[0]
     setResponse(activeRun ? activeRun.response : null)
+
+    // Manage Multi-Tabs
+    if (settings.enableMultiTabs !== false) {
+      setTabs((prev) => {
+        const existingTab = prev.find((t) => t.requestId === targetReq.id)
+        if (existingTab) {
+          setActiveTabId(existingTab.id)
+          return prev
+        }
+        const newTab: WorkspaceTab = {
+          id: 'tab-' + targetReq.id + '-' + Date.now(),
+          requestId: targetReq.id,
+          name: targetReq.name,
+          method: targetReq.method,
+          isDirty: dirtyIds.has(targetReq.id)
+        }
+        setActiveTabId(newTab.id)
+        return [...prev, newTab]
+      })
+    }
+  }
+
+  // Multi-Tab Handlers
+  const handleSelectTab = (tabId: string) => {
+    const targetTab = tabs.find((t) => t.id === tabId)
+    if (!targetTab) return
+    setActiveTabId(tabId)
+
+    if (drafts[targetTab.requestId]) {
+      setCurrentRequest(JSON.parse(JSON.stringify(drafts[targetTab.requestId])))
+      return
+    }
+
+    const found = findRequestInTree(collections, targetTab.requestId)
+    if (found) {
+      setCurrentRequest(JSON.parse(JSON.stringify(found.request)))
+      const existingRuns = responseHistoryMap[found.request.id] || []
+      const selectedRunId = selectedRunIdMap[found.request.id]
+      const activeRun = existingRuns.find((r) => r.id === selectedRunId) || existingRuns[0]
+      setResponse(activeRun ? activeRun.response : null)
+    }
+  }
+
+  const handleCloseTab = (tabId: string) => {
+    const tabIndex = tabs.findIndex((t) => t.id === tabId)
+    if (tabIndex === -1) return
+
+    const remaining = tabs.filter((t) => t.id !== tabId)
+    if (remaining.length === 0) {
+      const freshReq: RequestItem = {
+        ...defaultNewRequest,
+        id: 'req-' + Date.now(),
+        name: 'New Request'
+      }
+      const freshTab: WorkspaceTab = {
+        id: 'tab-' + freshReq.id,
+        requestId: freshReq.id,
+        name: freshReq.name,
+        method: freshReq.method
+      }
+      setTabs([freshTab])
+      setActiveTabId(freshTab.id)
+      setCurrentRequest(freshReq)
+      setResponse(null)
+      return
+    }
+
+    setTabs(remaining)
+    if (activeTabId === tabId) {
+      const nextTab = remaining[Math.min(tabIndex, remaining.length - 1)]
+      setActiveTabId(nextTab.id)
+      handleSelectTab(nextTab.id)
+    }
+  }
+
+  const handleCloseOtherTabs = (tabId: string) => {
+    const current = tabs.find((t) => t.id === tabId)
+    if (!current) return
+    setTabs([current])
+    setActiveTabId(current.id)
+    handleSelectTab(current.id)
+  }
+
+  const handleCloseTabsToRight = (tabId: string) => {
+    const idx = tabs.findIndex((t) => t.id === tabId)
+    if (idx === -1) return
+    const remaining = tabs.slice(0, idx + 1)
+    setTabs(remaining)
+    if (!remaining.some((t) => t.id === activeTabId)) {
+      setActiveTabId(tabId)
+      handleSelectTab(tabId)
+    }
+  }
+
+  const handleCloseAllTabs = () => {
+    const freshReq: RequestItem = {
+      ...defaultNewRequest,
+      id: 'req-' + Date.now(),
+      name: 'New Request'
+    }
+    const freshTab: WorkspaceTab = {
+      id: 'tab-' + freshReq.id,
+      requestId: freshReq.id,
+      name: freshReq.name,
+      method: freshReq.method
+    }
+    setTabs([freshTab])
+    setActiveTabId(freshTab.id)
+    setCurrentRequest(freshReq)
+    setResponse(null)
+  }
+
+  const handleNewTab = () => {
+    const newReq: RequestItem = {
+      ...defaultNewRequest,
+      id: 'req-' + Date.now(),
+      name: 'New Request'
+    }
+    const newTab: WorkspaceTab = {
+      id: 'tab-' + newReq.id,
+      requestId: newReq.id,
+      name: newReq.name,
+      method: newReq.method
+    }
+    setTabs((prev) => [...prev, newTab])
+    setActiveTabId(newTab.id)
+    setCurrentRequest(newReq)
+    setResponse(null)
   }
 
   // Switch constant current value directly (Global)
@@ -733,14 +905,63 @@ function MainApp({
   // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Ctrl+S: Save
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
         handleSave()
       }
+      // Ctrl+P: Quick Open Command Palette
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault()
+        setIsCommandPaletteOpen(true)
+      }
+      // Ctrl+D: Duplicate current request
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault()
+        const found = findRequestInTree(collections, currentRequest.id)
+        if (found) {
+          handleDuplicateRequest(found.col.id, currentRequest.id)
+        } else {
+          const cloned: RequestItem = {
+            ...currentRequest,
+            id: 'req-' + Date.now(),
+            name: currentRequest.name + ' (Copy)'
+          }
+          setCurrentRequest(cloned)
+          if (settings.enableMultiTabs !== false) {
+            const newTab: WorkspaceTab = {
+              id: 'tab-' + cloned.id,
+              requestId: cloned.id,
+              name: cloned.name,
+              method: cloned.method
+            }
+            setTabs((prev) => [...prev, newTab])
+            setActiveTabId(newTab.id)
+          }
+          addToast(t('toast.requestDuplicatedViaShortcut'), 'success')
+        }
+      }
+      // Ctrl+T: New Tab
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 't') {
+        e.preventDefault()
+        handleNewTab()
+      }
+      // Ctrl+W: Close Active Tab
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'w') {
+        e.preventDefault()
+        if (settings.enableMultiTabs !== false) {
+          handleCloseTab(activeTabId)
+        }
+      }
+      // Ctrl+,: Open Settings Modal
+      else if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault()
+        setIsSettingsModalOpen(true)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [currentRequest, collections])
+  }, [currentRequest, collections, activeTabId, settings.enableMultiTabs])
 
   // Mouse drag handler for split
   const handleMouseDown = () => {
@@ -841,42 +1062,94 @@ function MainApp({
 
       {/* Main Workspace */}
       <main className="flex-1 flex flex-col min-w-0 bg-slate-900/50">
-        {/* Workspace Top Status Bar */}
-        <div className="h-8 border-b border-slate-800/80 flex items-center justify-between px-3 text-xs text-slate-500 bg-slate-950/30">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-sky-400">Relay</span>
-            <span className="text-slate-600">/</span>
-            <span className="truncate max-w-xs text-slate-300 font-medium">{currentRequest.name}</span>
-            {isCurrentDirty && !settings.autoSave && (
-              <span className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px]">
-                Draft / Unsaved
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-[11px] text-slate-500">
-            <button
-              type="button"
-              onClick={() => handleUpdateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 transition-colors"
-              title={t('common.toggleTheme')}
-            >
-              {settings.theme === 'light' ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="text-[10px] font-medium">{t('settings.themeLight')}</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-sky-400" />
-                  <span className="text-[10px] font-medium">{t('settings.themeDark')}</span>
-                </>
+        {/* Workspace Top Bar (Multi-Tabs or Breadcrumb Status) */}
+        {settings.enableMultiTabs !== false ? (
+          <TabBar
+            tabs={tabs}
+            activeTabId={activeTabId}
+            onSelectTab={handleSelectTab}
+            onCloseTab={handleCloseTab}
+            onCloseOtherTabs={handleCloseOtherTabs}
+            onCloseTabsToRight={handleCloseTabsToRight}
+            onCloseAllTabs={handleCloseAllTabs}
+            onNewTab={handleNewTab}
+            extraRight={
+              <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                <button
+                  type="button"
+                  onClick={() => handleUpdateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
+                  className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 transition-colors"
+                  title={t('common.toggleTheme')}
+                >
+                  {settings.theme === 'light' ? (
+                    <>
+                      <Sun className="w-3.5 h-3.5 text-amber-500" />
+                      <span className="text-[10px] font-medium">{t('settings.themeLight')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="w-3.5 h-3.5 text-sky-400" />
+                      <span className="text-[10px] font-medium">{t('settings.themeDark')}</span>
+                    </>
+                  )}
+                </button>
+                <span className="text-slate-700">|</span>
+                <kbd
+                  onClick={() => setIsCommandPaletteOpen(true)}
+                  className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 hover:text-sky-300 cursor-pointer rounded border border-slate-700 font-mono text-slate-400 transition-colors"
+                  title={t('shortcuts.quickOpen')}
+                >
+                  Ctrl+P
+                </kbd>
+                <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400">Ctrl+Enter</kbd>
+                <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400">Ctrl+S</kbd>
+              </div>
+            }
+          />
+        ) : (
+          <div className="h-8 border-b border-slate-800/80 flex items-center justify-between px-3 text-xs text-slate-500 bg-slate-950/30">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-sky-400">Relay</span>
+              <span className="text-slate-600">/</span>
+              <span className="truncate max-w-xs text-slate-300 font-medium">{currentRequest.name}</span>
+              {isCurrentDirty && !settings.autoSave && (
+                <span className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[10px]">
+                  Draft / Unsaved
+                </span>
               )}
-            </button>
-            <span className="text-slate-700">|</span>
-            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400">Ctrl+Enter</kbd> {t('header.send')}
-            <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400 ml-1">Ctrl+S</kbd> {t('header.save')}
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-slate-500">
+              <button
+                type="button"
+                onClick={() => handleUpdateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
+                className="flex items-center gap-1.5 px-2 py-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 transition-colors"
+                title={t('common.toggleTheme')}
+              >
+                {settings.theme === 'light' ? (
+                  <>
+                    <Sun className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="text-[10px] font-medium">{t('settings.themeLight')}</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-3.5 h-3.5 text-sky-400" />
+                    <span className="text-[10px] font-medium">{t('settings.themeDark')}</span>
+                  </>
+                )}
+              </button>
+              <span className="text-slate-700">|</span>
+              <kbd
+                onClick={() => setIsCommandPaletteOpen(true)}
+                className="px-1.5 py-0.5 bg-slate-800 hover:bg-slate-700 hover:text-sky-300 cursor-pointer rounded border border-slate-700 font-mono text-slate-400 transition-colors"
+                title={t('shortcuts.quickOpen')}
+              >
+                Ctrl+P
+              </kbd>
+              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400">Ctrl+Enter</kbd>
+              <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 font-mono text-slate-400 ml-1">Ctrl+S</kbd>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Request Header Bar */}
         <RequestHeader
@@ -885,6 +1158,7 @@ function MainApp({
           onSend={handleSend}
           onSave={handleSave}
           onExportCurl={() => setCurlModalState({ isOpen: true, mode: 'export' })}
+          onOpenCodeSnippet={() => setIsCodeSnippetOpen(true)}
           isLoading={isLoading}
           constants={constants}
           onSwitchConstant={handleSwitchConstant}
@@ -1004,6 +1278,25 @@ function MainApp({
           onClose={() => setDataTransferState((prev) => ({ ...prev, isOpen: false }))}
           onImport={handleImportData}
           onExportToast={(msg) => addToast(msg, 'success')}
+        />
+      )}
+
+      {isCommandPaletteOpen && (
+        <CommandPaletteModal
+          isOpen={isCommandPaletteOpen}
+          collections={collections}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          onSelectRequest={handleSelectRequest}
+        />
+      )}
+
+      {isCodeSnippetOpen && (
+        <CodeSnippetModal
+          isOpen={isCodeSnippetOpen}
+          request={currentRequest}
+          resolvedUrl={interpolate(currentRequest.url, currentRequest)}
+          onClose={() => setIsCodeSnippetOpen(false)}
+          onToast={(msg) => addToast(msg, 'success')}
         />
       )}
     </div>
