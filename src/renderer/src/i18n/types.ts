@@ -363,6 +363,10 @@ export interface TranslationSchema {
     allStatuses: string
     statusSuccess: string
     statusError: string
+    status: string
+    time: string
+    size: string
+    date: string
     clearAll: string
     clearConfirmTitle: string
     clearConfirmMsg: string

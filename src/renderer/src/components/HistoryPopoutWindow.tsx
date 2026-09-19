@@ -505,7 +505,7 @@ function HistoryPopoutContent() {
                 {/* Status & Timing Bar */}
                 <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-slate-500">{t('historyWindow.status') || 'Status'}:</span>
+                    <span className="text-slate-500">{t('historyWindow.status')}:</span>
                     <span className={`font-bold px-1.5 py-0.2 rounded text-[11px] ${
                       selectedItem.status >= 200 && selectedItem.status < 300
                         ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
@@ -517,17 +517,17 @@ function HistoryPopoutContent() {
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-slate-500">{t('historyWindow.time') || 'Time'}:</span>
+                    <span className="text-slate-500">{t('historyWindow.time')}:</span>
                     <span className="text-slate-200 font-semibold">{selectedItem.time || 0} ms</span>
                   </div>
                   {selectedItem.response?.size !== undefined && selectedItem.response?.size > 0 && (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-slate-500">{t('historyWindow.size') || 'Size'}:</span>
+                      <span className="text-slate-500">{t('historyWindow.size')}:</span>
                       <span className="text-slate-200">{formatSize(selectedItem.response.size)}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-1.5">
-                    <span className="text-slate-500">Date:</span>
+                    <span className="text-slate-500">{t('historyWindow.date')}:</span>
                     <span className="text-slate-300">{formatTime(selectedItem.timestamp)}</span>
                   </div>
                 </div>

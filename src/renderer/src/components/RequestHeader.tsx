@@ -24,7 +24,7 @@ interface Props {
   onChange: (updates: Partial<RequestItem>) => void
   onSend: () => void
   onSave: () => void
-  onExportCurl: () => void
+  onExportCurl?: () => void
   onOpenCodeSnippet?: () => void
   isLoading: boolean
   constants: ConstantItem[]
@@ -476,17 +476,6 @@ export const RequestHeader: React.FC<Props> = ({
           </button>
 
           <span className="text-slate-700">|</span>
-
-          {/* Export cURL */}
-          <button
-            type="button"
-            onClick={onExportCurl}
-            title={t('header.copyCurl')}
-            className="flex items-center gap-1 text-xs text-slate-200 hover:text-slate-100 bg-slate-800 hover:bg-slate-700 border border-slate-700/80 px-2.5 py-1 rounded transition-colors shadow-sm"
-          >
-            <Code className="w-3.5 h-3.5" />
-            <span>cURL</span>
-          </button>
 
           {/* Code Snippets */}
           {onOpenCodeSnippet && (
