@@ -82,6 +82,7 @@ export const ResponseViewer: React.FC<Props> = ({
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [jsonPath, setJsonPath] = useState('')
   const [isJsonPathFocused, setIsJsonPathFocused] = useState(false)
+  const [jsonPathSuggestionIndex, setJsonPathSuggestionIndex] = useState(0)
 
   // Determine active response: either from selected run or direct response prop
   const activeRun = runs.find((r) => r.id === selectedRunId) || runs[0]
@@ -91,6 +92,10 @@ export const ResponseViewer: React.FC<Props> = ({
     const query = jsonPath.trim().toLowerCase()
     return buildJsonPathSuggestions(displayResponse.data).filter((path) => !query || path.toLowerCase().includes(query)).slice(0, 12)
   }, [displayResponse, isJsonPathFocused, jsonPath])
+
+  useEffect(() => {
+    setJsonPathSuggestionIndex(0)
+  }, [jsonPath])
 
   const searchMatchCount = useMemo(() => {
     if (!displayResponse || !searchTerm.trim()) return 0
@@ -201,6 +206,7 @@ export const ResponseViewer: React.FC<Props> = ({
     const value = queryJsonPath(displayResponse.data, jsonPath)
     return value === undefined ? 'Not found' : typeof value === 'string' ? value : JSON.stringify(value, null, 2)
   }
+  const displayedBody = jsonPath.trim() ? getJsonPathResult() : searchedBody
   const handleCopy = () => {
     navigator.clipboard.writeText(bodyFormat === 'pretty' ? bodyString : rawString)
     setCopied(true)
@@ -488,35 +494,62 @@ export const ResponseViewer: React.FC<Props> = ({
             <div className="relative flex items-center gap-2 mb-2 z-20">
               <input
                 value={jsonPath}
-                onChange={(e) => setJsonPath(e.target.value)}
+                onChange={(e) => {
+                  setJsonPath(e.target.value)
+                  setIsJsonPathFocused(Boolean(e.target.value.trim()))
+                }}
                 onFocus={() => setIsJsonPathFocused(true)}
                 onBlur={() => window.setTimeout(() => setIsJsonPathFocused(false), 150)}
+                onKeyDown={(e) => {
+                  if (!jsonPath.trim()) return
+                  if (e.key === 'ArrowDown' && jsonPathSuggestions.length > 0) {
+                    e.preventDefault()
+                    setJsonPathSuggestionIndex((current) => (current + 1) % jsonPathSuggestions.length)
+                  } else if (e.key === 'ArrowUp' && jsonPathSuggestions.length > 0) {
+                    e.preventDefault()
+                    setJsonPathSuggestionIndex((current) => (current - 1 + jsonPathSuggestions.length) % jsonPathSuggestions.length)
+                  } else if ((e.key === 'Enter' || e.key === 'Tab') && jsonPathSuggestions.length > 0) {
+                    e.preventDefault()
+                    setJsonPath(jsonPathSuggestions[jsonPathSuggestionIndex])
+                    setIsJsonPathFocused(false)
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault()
+                    setIsJsonPathFocused(false)
+                  }
+                }}
                 placeholder="JSONPath: data.token or $.data.token"
-                className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-slate-200 focus:outline-none focus:border-sky-500"
+                className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 pr-7 text-[11px] text-slate-200 focus:outline-none focus:border-sky-500"
               />
-              {(isJsonPathFocused && jsonPathSuggestions.length > 0) || jsonPath ? (
+              {jsonPath && (
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setJsonPath('')
+                    setIsJsonPathFocused(false)
+                  }}
+                  className="absolute right-2 p-0.5 text-slate-500 hover:text-slate-200 rounded transition-colors"
+                  title="清除 JSONPath"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {isJsonPathFocused && jsonPath.trim() ? (
                 <div className="absolute top-full left-0 right-0 mt-1 max-h-56 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 shadow-2xl text-[11px] font-mono">
-                  {isJsonPathFocused && jsonPathSuggestions.length > 0 && (
-                    <div className="p-1 border-b border-slate-800">
-                      <div className="px-2 py-1 text-[10px] text-slate-500 font-sans">可选字段</div>
-                      {jsonPathSuggestions.map((path) => (
-                        <button key={path} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { setJsonPath(path); setIsJsonPathFocused(false) }} className="block w-full text-left px-2 py-1.5 rounded text-slate-300 hover:bg-sky-500/15 hover:text-sky-300 truncate">
-                          {path}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {jsonPath && (
-                    <div className="p-2 whitespace-pre-wrap break-all select-text cursor-text text-emerald-700 dark:text-emerald-300">
-                      <div className="mb-1 text-[10px] text-slate-500 font-sans">查询结果</div>
-                      {getJsonPathResult()}
-                    </div>
-                  )}
+                  <div className="p-1">
+                    <div className="px-2 py-1 text-[10px] text-slate-500 font-sans">可选字段</div>
+                    {jsonPathSuggestions.length === 0 && <div className="px-2 py-1.5 text-slate-500 font-sans">无匹配字段</div>}
+                    {jsonPathSuggestions.map((path, index) => (
+                      <button key={path} type="button" onMouseDown={(e) => e.preventDefault()} onMouseEnter={() => setJsonPathSuggestionIndex(index)} onClick={() => { setJsonPath(path); setIsJsonPathFocused(false) }} className={`block w-full text-left px-2 py-1.5 rounded truncate ${index === jsonPathSuggestionIndex ? 'bg-sky-500/15 text-sky-300' : 'text-slate-300 hover:bg-sky-500/15 hover:text-sky-300'}`}>
+                        {path}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : null}
             </div>
             <CodeEditor
-              value={searchedBody}
+              value={displayedBody}
               readOnly={true}
               wrap={wrapLines}
               searchTerm={searchTerm}
