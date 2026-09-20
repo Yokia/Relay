@@ -27,7 +27,11 @@ function DevToysPopoutBody() {
       <button
         type="button"
         onClick={toggleTheme}
-        className="fixed bottom-4 right-5 z-40 p-2 rounded-xl bg-slate-900/90 border border-slate-700/80 shadow-xl hover:bg-slate-800 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs backdrop-blur-sm"
+        className={`fixed bottom-4 right-5 z-40 p-2 rounded-xl bg-slate-900/90 border border-slate-700/80 shadow-xl hover:bg-slate-800 text-slate-300 ${
+          theme === 'light'
+            ? 'hover:text-amber-600 dark:hover:text-amber-400'
+            : 'hover:text-sky-500 dark:hover:text-sky-400'
+        } transition-all cursor-pointer flex items-center gap-1.5 text-xs backdrop-blur-sm`}
         title={t('common.toggleTheme')}
       >
         {theme === 'light' ? (

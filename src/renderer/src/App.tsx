@@ -1534,12 +1534,16 @@ function MainApp({
       <button
         type="button"
         onClick={() => handleUpdateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
-        className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 border border-slate-800/80 transition-colors cursor-pointer"
+        className={`flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 ${
+          settings.theme === 'light'
+            ? 'hover:text-amber-600 dark:hover:text-amber-400'
+            : 'hover:text-sky-500 dark:hover:text-sky-400'
+        } border border-slate-800/80 hover:border-slate-700/80 transition-colors cursor-pointer`}
         title={t('common.toggleTheme')}
       >
         {settings.theme === 'light' ? (
           <>
-            <Sun className="w-3.5 h-3.5 text-amber-500" />
+            <Sun className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
             <span className="text-[11px] font-medium">{t('settings.themeLight')}</span>
           </>
         ) : (
