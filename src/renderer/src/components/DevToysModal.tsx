@@ -22,9 +22,12 @@ import {
   Binary,
   Languages,
   Settings,
-  Loader2
+  Loader2,
+  Sun,
+  Moon
 } from 'lucide-react'
 import { useI18n } from '../i18n'
+import { useTheme } from '../theme'
 import {
   computeMD5,
   computeHash,
@@ -305,6 +308,7 @@ const FormattedCodeOutput: React.FC<{
 
 export const DevToysContent: React.FC<DevToysContentProps> = ({ onClose, onToast, isPopout }) => {
   const { t, language } = useI18n()
+  const { theme, toggleTheme } = useTheme()
 
   const [activeTab, setActiveTab] = useState<ToolTab>(() => {
     return (localStorage.getItem('relay_devtoys_active_tab') as ToolTab) || 'scratchpad'
@@ -337,16 +341,33 @@ export const DevToysContent: React.FC<DevToysContentProps> = ({ onClose, onToast
             </p>
           </div>
         </div>
-        {onClose && (
+
+        {/* Header Right Actions */}
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-            title={t('common.closeEsc')}
+            onClick={toggleTheme}
+            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 transition-colors cursor-pointer"
+            title={t('common.toggleTheme')}
           >
-            <X className="w-4 h-4" />
+            {theme === 'light' ? (
+              <Sun className="w-4 h-4 text-amber-500" />
+            ) : (
+              <Moon className="w-4 h-4 text-sky-400" />
+            )}
           </button>
-        )}
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              title={t('common.closeEsc')}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main Body */}
@@ -1975,110 +1996,112 @@ const TranslateTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'erro
   }
 
   return (
-    <div className="flex flex-col h-full gap-3 select-text">
+    <div className="flex flex-col gap-3 h-full min-h-0 select-text">
       {/* Top Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-slate-800 shrink-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Source Lang Select */}
-          <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 rounded-lg px-2.5 py-1 text-xs">
-            <span className="text-slate-400 font-medium text-[11px]">{t('devtoys.sourceLang')}:</span>
-            <select
-              value={sourceLang}
-              onChange={(e) => setSourceLang(e.target.value)}
-              className="bg-transparent text-sky-400 font-medium focus:outline-none cursor-pointer"
+      <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 flex flex-col gap-2 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Source Lang Select */}
+            <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800/90 rounded-lg px-2.5 py-1 text-xs">
+              <span className="text-slate-400 font-medium text-[11px]">{t('devtoys.sourceLang')}:</span>
+              <select
+                value={sourceLang}
+                onChange={(e) => setSourceLang(e.target.value)}
+                className="bg-transparent text-sky-400 font-medium focus:outline-none cursor-pointer"
+              >
+                {SUPPORTED_LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code} className="bg-slate-900 text-slate-200">
+                    {language === 'zh-CN' ? l.nameZh : l.nameEn}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Swap Button */}
+            <button
+              type="button"
+              onClick={handleSwap}
+              title={t('devtoys.swapLang')}
+              className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-sky-300 transition-colors border border-slate-800/80 cursor-pointer"
             >
-              {SUPPORTED_LANGUAGES.map((l) => (
-                <option key={l.code} value={l.code} className="bg-slate-900 text-slate-200">
-                  {language === 'zh-CN' ? l.nameZh : l.nameEn}
-                </option>
-              ))}
-            </select>
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Target Lang Select */}
+            <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800/90 rounded-lg px-2.5 py-1 text-xs">
+              <span className="text-slate-400 font-medium text-[11px]">{t('devtoys.targetLang')}:</span>
+              <select
+                value={targetLang}
+                onChange={(e) => setTargetLang(e.target.value)}
+                className="bg-transparent text-emerald-400 font-medium focus:outline-none cursor-pointer"
+              >
+                {SUPPORTED_LANGUAGES.filter((l) => l.code !== 'auto').map((l) => (
+                  <option key={l.code} value={l.code} className="bg-slate-900 text-slate-200">
+                    {language === 'zh-CN' ? l.nameZh : l.nameEn}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Manual Translate Button */}
+            <button
+              type="button"
+              disabled={loading || !input.trim()}
+              onClick={() => doTranslate()}
+              className="px-3.5 py-1 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm shadow-sky-500/20"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>{t('devtoys.translating')}</span>
+                </>
+              ) : (
+                <>
+                  <Languages className="w-3.5 h-3.5" />
+                  <span>{t('devtoys.translateBtn')}</span>
+                </>
+              )}
+            </button>
+
+            {/* Auto Translate Toggle */}
+            <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none ml-1">
+              <input
+                type="checkbox"
+                checked={autoTranslate}
+                onChange={(e) => setAutoTranslate(e.target.checked)}
+                className="rounded text-sky-500 focus:ring-sky-500 bg-slate-900 border-slate-700"
+              />
+              <span className="text-[11px]">{t('devtoys.autoTranslateOnType')}</span>
+            </label>
           </div>
 
-          {/* Swap Button */}
-          <button
-            type="button"
-            onClick={handleSwap}
-            title={t('devtoys.swapLang')}
-            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-sky-300 transition-colors border border-slate-800 cursor-pointer"
-          >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Target Lang Select */}
-          <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 rounded-lg px-2.5 py-1 text-xs">
-            <span className="text-slate-400 font-medium text-[11px]">{t('devtoys.targetLang')}:</span>
-            <select
-              value={targetLang}
-              onChange={(e) => setTargetLang(e.target.value)}
-              className="bg-transparent text-emerald-400 font-medium focus:outline-none cursor-pointer"
-            >
-              {SUPPORTED_LANGUAGES.filter((l) => l.code !== 'auto').map((l) => (
-                <option key={l.code} value={l.code} className="bg-slate-900 text-slate-200">
-                  {language === 'zh-CN' ? l.nameZh : l.nameEn}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Manual Translate Button */}
-          <button
-            type="button"
-            disabled={loading || !input.trim()}
-            onClick={() => doTranslate()}
-            className="px-3.5 py-1 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm shadow-sky-500/20"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>{t('devtoys.translating')}</span>
-              </>
-            ) : (
-              <>
-                <Languages className="w-3.5 h-3.5" />
-                <span>{t('devtoys.translateBtn')}</span>
-              </>
+          {/* Engine Settings Toggle */}
+          <div className="flex items-center gap-2">
+            {usedEngine && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800/80 border border-slate-700 text-slate-400 font-mono">
+                {usedEngine}
+              </span>
             )}
-          </button>
-
-          {/* Auto Translate Toggle */}
-          <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none ml-1">
-            <input
-              type="checkbox"
-              checked={autoTranslate}
-              onChange={(e) => setAutoTranslate(e.target.checked)}
-              className="rounded text-sky-500 focus:ring-sky-500 bg-slate-900 border-slate-700"
-            />
-            <span className="text-[11px]">{t('devtoys.autoTranslateOnType')}</span>
-          </label>
-        </div>
-
-        {/* Engine Settings Toggle */}
-        <div className="flex items-center gap-2">
-          {usedEngine && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 font-mono">
-              {usedEngine}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={() => setShowConfig(!showConfig)}
-            title={t('devtoys.engineConfig')}
-            className={`p-1.5 rounded-lg border transition-colors flex items-center gap-1 text-xs cursor-pointer ${
-              showConfig || engineType !== 'free'
-                ? 'bg-sky-500/15 border-sky-500/40 text-sky-300 font-medium'
-                : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-            }`}
-          >
-            <Settings className="w-3.5 h-3.5" />
-            <span className="text-[11px]">{t('devtoys.engineConfig')}</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setShowConfig(!showConfig)}
+              title={t('devtoys.engineConfig')}
+              className={`p-1.5 rounded-lg border transition-colors flex items-center gap-1 text-xs cursor-pointer ${
+                showConfig || engineType !== 'free'
+                  ? 'bg-sky-500/15 border-sky-500/40 text-sky-300 font-medium'
+                  : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span className="text-[11px]">{t('devtoys.engineConfig')}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Engine Config Collapsible Panel */}
       {showConfig && (
-        <div className="p-3.5 rounded-xl bg-slate-950/80 border border-sky-500/30 shadow-inner flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-100">
+        <div className="p-3.5 rounded-xl bg-slate-950/80 border border-sky-500/30 shadow-inner flex flex-col gap-3 shrink-0 animate-in fade-in zoom-in-95 duration-100">
           <div className="flex items-center justify-between">
             <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-sky-400" />
@@ -2183,56 +2206,49 @@ const TranslateTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'erro
         </div>
       )}
 
-      {/* Main Translation Dual Panels */}
-      <div className="flex-1 min-h-[220px]">
-        <ResizableDualPanels
-          ratioKey="relay_devtoys_translate_split"
-          left={
-            <div className="flex flex-col h-full gap-2">
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span className="font-semibold text-slate-300">{t('devtoys.input')}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono text-slate-500">
-                    {input.length} {t('devtoys.characters')}
-                  </span>
-                  {input && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setInput('')
-                        setOutput('')
-                      }}
-                      className="hover:text-rose-400 text-slate-500 transition-colors cursor-pointer"
-                      title={t('devtoys.clear')}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="flex-1 min-h-[160px] border border-slate-800 rounded-xl overflow-hidden bg-slate-950/80 focus-within:border-sky-500/80 transition-colors">
-                <CodeEditor
-                  value={input}
-                  onChange={setInput}
-                  wrap={true}
-                  placeholder={t('devtoys.translateInputPlaceholder')}
-                  height="100%"
-                  minHeight="100%"
-                />
+      {/* Main Translation Dual Panels matching EscapeTool full height */}
+      <ResizableDualPanels
+        storageKey="relay_devtoys_translate_split"
+        left={
+          <div className="flex flex-col gap-1.5 h-full min-h-0">
+            <div className="flex items-center justify-between px-1 text-xs shrink-0">
+              <span className="text-[11px] font-semibold text-slate-400">{t('devtoys.input')}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-slate-500">
+                  {input.length} {t('devtoys.characters')}
+                </span>
+                {input && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInput('')
+                      setOutput('')
+                    }}
+                    className="hover:text-rose-400 text-slate-500 transition-colors cursor-pointer"
+                    title={t('devtoys.clear')}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
-          }
-          right={
-            <div className="flex flex-col h-full gap-2">
-              <FormattedCodeOutput
-                value={output}
-                title={detectedLang ? `${t('devtoys.output')} (检测源语言: ${detectedLang})` : t('devtoys.output')}
-                onToast={onToast}
-              />
-            </div>
-          }
-        />
-      </div>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={t('devtoys.translateInputPlaceholder')}
+              className="flex-1 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none leading-relaxed"
+            />
+          </div>
+        }
+        right={
+          <FormattedCodeOutput
+            value={output}
+            title={detectedLang ? `${t('devtoys.output')} (检测源语言: ${detectedLang})` : t('devtoys.output')}
+            onToast={onToast}
+            onChange={setOutput}
+          />
+        }
+      />
 
       {/* Developer Naming Conventions Bar (Click to copy directly into code) */}
       {namingStyles && (
