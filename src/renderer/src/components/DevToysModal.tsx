@@ -19,7 +19,10 @@ import {
   WrapText,
   AlertCircle,
   CheckCircle2,
-  Binary
+  Binary,
+  Languages,
+  Settings,
+  Loader2
 } from 'lucide-react'
 import { useI18n } from '../i18n'
 import {
@@ -46,7 +49,7 @@ import {
 } from '../utils/escapeUtils'
 import { CodeEditor } from './CodeEditor'
 
-export type ToolTab = 'scratchpad' | 'timestamp' | 'url' | 'escape' | 'base64' | 'jwt' | 'hash' | 'uuid'
+export type ToolTab = 'scratchpad' | 'timestamp' | 'url' | 'escape' | 'base64' | 'jwt' | 'hash' | 'uuid' | 'translate'
 
 interface DevToysContentProps {
   onClose?: () => void
@@ -330,6 +333,7 @@ export const DevToysContent: React.FC<DevToysContentProps> = ({ onClose, onToast
               {activeTab === 'jwt' && t('devtoys.jwtDesc')}
               {activeTab === 'hash' && t('devtoys.hashDesc')}
               {activeTab === 'uuid' && t('devtoys.uuidDesc')}
+              {activeTab === 'translate' && t('devtoys.translateDesc')}
             </p>
           </div>
         </div>
@@ -374,6 +378,12 @@ export const DevToysContent: React.FC<DevToysContentProps> = ({ onClose, onToast
             label={t('devtoys.escape')}
           />
           <NavItem
+            active={activeTab === 'translate'}
+            onClick={() => setActiveTab('translate')}
+            icon={<Languages className="w-4 h-4 text-sky-400" />}
+            label={t('devtoys.translate')}
+          />
+          <NavItem
             active={activeTab === 'base64'}
             onClick={() => setActiveTab('base64')}
             icon={<FileCode className="w-4 h-4 text-purple-400" />}
@@ -405,6 +415,7 @@ export const DevToysContent: React.FC<DevToysContentProps> = ({ onClose, onToast
           {activeTab === 'timestamp' && <TimestampTool language={language} onToast={onToast} />}
           {activeTab === 'url' && <UrlTool onToast={onToast} />}
           {activeTab === 'escape' && <EscapeTool onToast={onToast} />}
+          {activeTab === 'translate' && <TranslateTool onToast={onToast} />}
           {activeTab === 'base64' && <Base64Tool onToast={onToast} />}
           {activeTab === 'jwt' && <JwtTool onToast={onToast} />}
           {activeTab === 'hash' && <HashTool onToast={onToast} />}
@@ -1777,3 +1788,516 @@ const UuidTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error') =
     </div>
   )
 }
+
+/**
+ * Helper to convert text into coding naming conventions (camelCase, PascalCase, snake_case, CONSTANT_CASE, kebab-case)
+ */
+function toNamingConventions(text: string) {
+  if (!text || !text.trim()) return null
+  // Match letters, numbers
+  const words = text
+    .replace(/[^\w\s-]/g, ' ')
+    .trim()
+    .split(/[\s-_]+/)
+    .filter(Boolean)
+
+  if (words.length === 0) return null
+
+  const cleanWords = words.map((w) => w.toLowerCase())
+
+  const camel = cleanWords
+    .map((w, idx) => (idx === 0 ? w : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join('')
+
+  const pascal = cleanWords
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join('')
+
+  const snake = cleanWords.join('_')
+  const constant = cleanWords.map((w) => w.toUpperCase()).join('_')
+  const kebab = cleanWords.join('-')
+
+  return { camel, pascal, snake, constant, kebab }
+}
+
+const SUPPORTED_LANGUAGES = [
+  { code: 'auto', nameZh: '自动检测', nameEn: 'Auto Detect' },
+  { code: 'zh-CN', nameZh: '中文 (简体)', nameEn: 'Chinese (Simplified)' },
+  { code: 'zh-TW', nameZh: '中文 (繁體)', nameEn: 'Chinese (Traditional)' },
+  { code: 'en', nameZh: '英语 (English)', nameEn: 'English' },
+  { code: 'ja', nameZh: '日语 (日本語)', nameEn: 'Japanese' },
+  { code: 'ko', nameZh: '韩语 (한국어)', nameEn: 'Korean' },
+  { code: 'vi', nameZh: '越南语 (Tiếng Việt)', nameEn: 'Vietnamese' },
+  { code: 'th', nameZh: '泰语 (ไทย)', nameEn: 'Thai' },
+  { code: 'id', nameZh: '印尼语 (Bahasa Indonesia)', nameEn: 'Indonesian' },
+  { code: 'fr', nameZh: '法语 (Français)', nameEn: 'French' },
+  { code: 'de', nameZh: '德语 (Deutsch)', nameEn: 'German' },
+  { code: 'es', nameZh: '西班牙语 (Español)', nameEn: 'Spanish' },
+  { code: 'pt', nameZh: '葡萄牙语 (Português)', nameEn: 'Portuguese' },
+  { code: 'ru', nameZh: '俄语 (Русский)', nameEn: 'Russian' },
+  { code: 'it', nameZh: '意大利语 (Italiano)', nameEn: 'Italian' },
+  { code: 'ar', nameZh: '阿拉伯语 (العربية)', nameEn: 'Arabic' },
+  { code: 'hi', nameZh: '印地语 (हिन्दी)', nameEn: 'Hindi' }
+]
+
+/**
+ * 9. TRANSLATION TOOL
+ */
+const TranslateTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error' | 'info') => void }> = ({ onToast }) => {
+  const { t, language } = useI18n()
+  const [input, setInput] = useState(() => localStorage.getItem('relay_devtoys_translate_input') || '')
+  const [output, setOutput] = useState('')
+  const [sourceLang, setSourceLang] = useState(() => localStorage.getItem('relay_devtoys_translate_source') || 'auto')
+  const [targetLang, setTargetLang] = useState(() => localStorage.getItem('relay_devtoys_translate_target') || 'en')
+  const [loading, setLoading] = useState(false)
+  const [detectedLang, setDetectedLang] = useState<string | null>(null)
+  const [usedEngine, setUsedEngine] = useState<string>('')
+  const [autoTranslate, setAutoTranslate] = useState<boolean>(() => {
+    return localStorage.getItem('relay_devtoys_translate_autotype') !== 'false'
+  })
+
+  // Advanced Engine Settings
+  const [showConfig, setShowConfig] = useState(false)
+  const [engineType, setEngineType] = useState<'free' | 'deepl' | 'openai'>(() => {
+    return (localStorage.getItem('relay_devtoys_translate_engine') as any) || 'free'
+  })
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('relay_devtoys_translate_key') || '')
+  const [apiEndpoint, setApiEndpoint] = useState(() => localStorage.getItem('relay_devtoys_translate_endpoint') || '')
+
+  useEffect(() => {
+    localStorage.setItem('relay_devtoys_translate_input', input)
+  }, [input])
+
+  useEffect(() => {
+    localStorage.setItem('relay_devtoys_translate_source', sourceLang)
+  }, [sourceLang])
+
+  useEffect(() => {
+    localStorage.setItem('relay_devtoys_translate_target', targetLang)
+  }, [targetLang])
+
+  useEffect(() => {
+    localStorage.setItem('relay_devtoys_translate_autotype', String(autoTranslate))
+  }, [autoTranslate])
+
+  const handleSaveConfig = () => {
+    localStorage.setItem('relay_devtoys_translate_engine', engineType)
+    localStorage.setItem('relay_devtoys_translate_key', apiKey)
+    localStorage.setItem('relay_devtoys_translate_endpoint', apiEndpoint)
+    setShowConfig(false)
+    onToast?.(t('devtoys.engineConfigSaved'), 'success')
+  }
+
+  const doTranslate = async (textToTranslate = input, sl = sourceLang, tl = targetLang) => {
+    if (!textToTranslate || !textToTranslate.trim()) {
+      setOutput('')
+      setDetectedLang(null)
+      return
+    }
+
+    setLoading(true)
+    try {
+      if (window.electronAPI?.translate) {
+        const res = await window.electronAPI.translate({
+          text: textToTranslate,
+          from: sl,
+          to: tl,
+          engine: engineType,
+          apiKey: apiKey || undefined,
+          apiEndpoint: apiEndpoint || undefined
+        })
+        setOutput(res.text || '')
+        setDetectedLang(res.detectedLang || null)
+        setUsedEngine(res.engine || '')
+      } else {
+        // Web fallback (direct Google GTX)
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(textToTranslate)}`
+        const res = await fetch(url)
+        const data = await res.json()
+        if (Array.isArray(data) && Array.isArray(data[0])) {
+          const text = data[0].map((item: any) => item[0]).filter(Boolean).join('')
+          setOutput(text)
+          setDetectedLang(data[2] || null)
+          setUsedEngine('Google (Web)')
+        }
+      }
+    } catch (err: any) {
+      onToast?.(err.message || '翻译失败', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Debounced auto-translation on input typing
+  useEffect(() => {
+    if (!autoTranslate) return
+    if (!input || !input.trim()) {
+      setOutput('')
+      return
+    }
+    const timer = setTimeout(() => {
+      doTranslate(input)
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [input, sourceLang, targetLang, engineType, autoTranslate])
+
+  // Swap Languages
+  const handleSwap = () => {
+    if (sourceLang === 'auto') {
+      const newSource = targetLang === 'zh-CN' ? 'en' : 'zh-CN'
+      const newTarget = 'zh-CN'
+      setSourceLang(newSource)
+      setTargetLang(newTarget)
+      if (output) {
+        setInput(output)
+        doTranslate(output, newSource, newTarget)
+      }
+    } else {
+      const prevSource = sourceLang
+      const prevTarget = targetLang
+      setSourceLang(prevTarget)
+      setTargetLang(prevSource)
+      if (output) {
+        setInput(output)
+        doTranslate(output, prevTarget, prevSource)
+      }
+    }
+  }
+
+  // Naming conventions for developer code
+  const namingStyles = useMemo(() => {
+    return toNamingConventions(output)
+  }, [output])
+
+  const copyNaming = (value: string, label: string) => {
+    navigator.clipboard.writeText(value)
+    onToast?.(t('devtoys.copiedVariable', { name: `${label} (${value})` }), 'success')
+  }
+
+  return (
+    <div className="flex flex-col h-full gap-3 select-text">
+      {/* Top Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-slate-800 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Source Lang Select */}
+          <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 rounded-lg px-2.5 py-1 text-xs">
+            <span className="text-slate-400 font-medium text-[11px]">{t('devtoys.sourceLang')}:</span>
+            <select
+              value={sourceLang}
+              onChange={(e) => setSourceLang(e.target.value)}
+              className="bg-transparent text-sky-400 font-medium focus:outline-none cursor-pointer"
+            >
+              {SUPPORTED_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code} className="bg-slate-900 text-slate-200">
+                  {language === 'zh-CN' ? l.nameZh : l.nameEn}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Swap Button */}
+          <button
+            type="button"
+            onClick={handleSwap}
+            title={t('devtoys.swapLang')}
+            className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-sky-300 transition-colors border border-slate-800 cursor-pointer"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Target Lang Select */}
+          <div className="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 rounded-lg px-2.5 py-1 text-xs">
+            <span className="text-slate-400 font-medium text-[11px]">{t('devtoys.targetLang')}:</span>
+            <select
+              value={targetLang}
+              onChange={(e) => setTargetLang(e.target.value)}
+              className="bg-transparent text-emerald-400 font-medium focus:outline-none cursor-pointer"
+            >
+              {SUPPORTED_LANGUAGES.filter((l) => l.code !== 'auto').map((l) => (
+                <option key={l.code} value={l.code} className="bg-slate-900 text-slate-200">
+                  {language === 'zh-CN' ? l.nameZh : l.nameEn}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Manual Translate Button */}
+          <button
+            type="button"
+            disabled={loading || !input.trim()}
+            onClick={() => doTranslate()}
+            className="px-3.5 py-1 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm shadow-sky-500/20"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>{t('devtoys.translating')}</span>
+              </>
+            ) : (
+              <>
+                <Languages className="w-3.5 h-3.5" />
+                <span>{t('devtoys.translateBtn')}</span>
+              </>
+            )}
+          </button>
+
+          {/* Auto Translate Toggle */}
+          <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none ml-1">
+            <input
+              type="checkbox"
+              checked={autoTranslate}
+              onChange={(e) => setAutoTranslate(e.target.checked)}
+              className="rounded text-sky-500 focus:ring-sky-500 bg-slate-900 border-slate-700"
+            />
+            <span className="text-[11px]">{t('devtoys.autoTranslateOnType')}</span>
+          </label>
+        </div>
+
+        {/* Engine Settings Toggle */}
+        <div className="flex items-center gap-2">
+          {usedEngine && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-400 font-mono">
+              {usedEngine}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowConfig(!showConfig)}
+            title={t('devtoys.engineConfig')}
+            className={`p-1.5 rounded-lg border transition-colors flex items-center gap-1 text-xs cursor-pointer ${
+              showConfig || engineType !== 'free'
+                ? 'bg-sky-500/15 border-sky-500/40 text-sky-300 font-medium'
+                : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+            }`}
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span className="text-[11px]">{t('devtoys.engineConfig')}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Engine Config Collapsible Panel */}
+      {showConfig && (
+        <div className="p-3.5 rounded-xl bg-slate-950/80 border border-sky-500/30 shadow-inner flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-100">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+              <span>{t('devtoys.engineConfig')}</span>
+            </h4>
+            <span className="text-[11px] text-slate-500">{t('devtoys.configTip')}</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <label className={`p-2 rounded-lg border flex items-start gap-2 cursor-pointer transition-all ${
+              engineType === 'free'
+                ? 'bg-sky-500/10 border-sky-500 text-sky-200'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+            }`}>
+              <input
+                type="radio"
+                name="engineType"
+                checked={engineType === 'free'}
+                onChange={() => setEngineType('free')}
+                className="mt-0.5 text-sky-500"
+              />
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-slate-200">Google / MyMemory</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">{t('devtoys.engineFree')}</span>
+              </div>
+            </label>
+
+            <label className={`p-2 rounded-lg border flex items-start gap-2 cursor-pointer transition-all ${
+              engineType === 'deepl'
+                ? 'bg-sky-500/10 border-sky-500 text-sky-200'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+            }`}>
+              <input
+                type="radio"
+                name="engineType"
+                checked={engineType === 'deepl'}
+                onChange={() => setEngineType('deepl')}
+                className="mt-0.5 text-sky-500"
+              />
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-slate-200">DeepL API</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">{t('devtoys.engineDeepL')}</span>
+              </div>
+            </label>
+
+            <label className={`p-2 rounded-lg border flex items-start gap-2 cursor-pointer transition-all ${
+              engineType === 'openai'
+                ? 'bg-sky-500/10 border-sky-500 text-sky-200'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'
+            }`}>
+              <input
+                type="radio"
+                name="engineType"
+                checked={engineType === 'openai'}
+                onChange={() => setEngineType('openai')}
+                className="mt-0.5 text-sky-500"
+              />
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-slate-200">AI LLM (OpenAI / DeepSeek)</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">{t('devtoys.engineOpenAI')}</span>
+              </div>
+            </label>
+          </div>
+
+          {engineType !== 'free' && (
+            <div className="flex flex-col gap-2 pt-1">
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={t('devtoys.apiKeyPlaceholder')}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono"
+              />
+              {engineType === 'openai' && (
+                <input
+                  type="text"
+                  value={apiEndpoint}
+                  onChange={(e) => setApiEndpoint(e.target.value)}
+                  placeholder={t('devtoys.apiEndpointPlaceholder')}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono"
+                />
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-1 border-t border-slate-800/80">
+            <button
+              type="button"
+              onClick={() => setShowConfig(false)}
+              className="px-3 py-1 text-xs rounded bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveConfig}
+              className="px-3 py-1 text-xs rounded bg-sky-500 hover:bg-sky-600 text-white font-medium cursor-pointer"
+            >
+              {t('devtoys.saveEngineConfig')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Translation Dual Panels */}
+      <div className="flex-1 min-h-[220px]">
+        <ResizableDualPanels
+          ratioKey="relay_devtoys_translate_split"
+          left={
+            <div className="flex flex-col h-full gap-2">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span className="font-semibold text-slate-300">{t('devtoys.input')}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-slate-500">
+                    {input.length} {t('devtoys.characters')}
+                  </span>
+                  {input && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setInput('')
+                        setOutput('')
+                      }}
+                      className="hover:text-rose-400 text-slate-500 transition-colors cursor-pointer"
+                      title={t('devtoys.clear')}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="flex-1 min-h-[160px] border border-slate-800 rounded-xl overflow-hidden bg-slate-950/80 focus-within:border-sky-500/80 transition-colors">
+                <CodeEditor
+                  value={input}
+                  onChange={setInput}
+                  wrap={true}
+                  placeholder={t('devtoys.translateInputPlaceholder')}
+                  height="100%"
+                  minHeight="100%"
+                />
+              </div>
+            </div>
+          }
+          right={
+            <div className="flex flex-col h-full gap-2">
+              <FormattedCodeOutput
+                value={output}
+                title={detectedLang ? `${t('devtoys.output')} (检测源语言: ${detectedLang})` : t('devtoys.output')}
+                onToast={onToast}
+              />
+            </div>
+          }
+        />
+      </div>
+
+      {/* Developer Naming Conventions Bar (Click to copy directly into code) */}
+      {namingStyles && (
+        <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 shrink-0 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-sky-300 flex items-center gap-1.5">
+              <Code2 className="w-3.5 h-3.5 text-sky-400" />
+              <span>{t('devtoys.devNamingConventions')}</span>
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => copyNaming(namingStyles.camel, 'camelCase')}
+              className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-sky-500/50 text-xs text-slate-200 hover:text-sky-300 flex items-center gap-1.5 transition-colors cursor-pointer group"
+            >
+              <span className="text-slate-500 text-[10px] font-mono">camelCase:</span>
+              <span className="font-mono text-sky-400 font-semibold">{namingStyles.camel}</span>
+              <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => copyNaming(namingStyles.pascal, 'PascalCase')}
+              className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/50 text-xs text-slate-200 hover:text-emerald-300 flex items-center gap-1.5 transition-colors cursor-pointer group"
+            >
+              <span className="text-slate-500 text-[10px] font-mono">PascalCase:</span>
+              <span className="font-mono text-emerald-400 font-semibold">{namingStyles.pascal}</span>
+              <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => copyNaming(namingStyles.snake, 'snake_case')}
+              className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 text-xs text-slate-200 hover:text-amber-300 flex items-center gap-1.5 transition-colors cursor-pointer group"
+            >
+              <span className="text-slate-500 text-[10px] font-mono">snake_case:</span>
+              <span className="font-mono text-amber-400 font-semibold">{namingStyles.snake}</span>
+              <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => copyNaming(namingStyles.constant, 'CONSTANT_CASE')}
+              className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-purple-500/50 text-xs text-slate-200 hover:text-purple-300 flex items-center gap-1.5 transition-colors cursor-pointer group"
+            >
+              <span className="text-slate-500 text-[10px] font-mono">CONSTANT:</span>
+              <span className="font-mono text-purple-400 font-semibold">{namingStyles.constant}</span>
+              <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => copyNaming(namingStyles.kebab, 'kebab-case')}
+              className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-rose-500/50 text-xs text-slate-200 hover:text-rose-300 flex items-center gap-1.5 transition-colors cursor-pointer group"
+            >
+              <span className="text-slate-500 text-[10px] font-mono">kebab-case:</span>
+              <span className="font-mono text-rose-400 font-semibold">{namingStyles.kebab}</span>
+              <Copy className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+

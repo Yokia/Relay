@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, dialog, screen } from 'electron'
 import { join } from 'path'
 import fs from 'fs'
 import { executeRequest, RequestPayload } from './httpService'
+import { executeTranslation, TranslateParams } from './translateService'
 import { StorageService } from './storage'
 
 let storage: StorageService
@@ -161,6 +162,10 @@ app.whenReady().then(() => {
     if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
       return await shell.openExternal(url)
     }
+  })
+
+  ipcMain.handle('relay:translate', async (_, params: TranslateParams) => {
+    return await executeTranslation(params)
   })
 
   ipcMain.handle('relay:open-response-window', async (_, responsePayload: any) => {

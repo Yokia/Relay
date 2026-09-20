@@ -593,6 +593,7 @@ export interface TranslationSchema {
     jwt: string
     hash: string
     uuid: string
+    translate: string
     scratchpadDesc: string
     timestampDesc: string
     urlDesc: string
@@ -601,6 +602,7 @@ export interface TranslationSchema {
     jwtDesc: string
     hashDesc: string
     uuidDesc: string
+    translateDesc: string
     inputPlaceholder: string
     outputPlaceholder: string
     encode: string
@@ -686,6 +688,32 @@ export interface TranslationSchema {
     expandEscapesTip: string
     escapeInputPlaceholder: string
     timestampPlaceholder: string
+    translateInputPlaceholder: string
+    translateOutputPlaceholder: string
+    sourceLang: string
+    targetLang: string
+    autoDetect: string
+    translateBtn: string
+    translating: string
+    autoTranslateOnType: string
+    devNamingConventions: string
+    camelCase: string
+    pascalCase: string
+    snakeCase: string
+    constantCase: string
+    kebabCase: string
+    copiedVariable: string
+    engineConfig: string
+    engineFree: string
+    engineDeepL: string
+    engineOpenAI: string
+    engineSelect: string
+    apiKeyPlaceholder: string
+    apiEndpointPlaceholder: string
+    configTip: string
+    saveEngineConfig: string
+    engineConfigSaved: string
+    swapLang: string
   }
   helpDoc: HelpDocSchema
 }

@@ -24,7 +24,8 @@ export const api = {
   notifyHistoryUpdated: (hist: any[]) => ipcRenderer.invoke('relay:notify-history-updated', hist),
   getPopoutData: () => ipcRenderer.invoke('relay:get-popout-data'),
   saveFileDialog: (opts: any) => ipcRenderer.invoke('relay:save-file-dialog', opts),
-  openFileDialog: (opts?: any) => ipcRenderer.invoke('relay:open-file-dialog', opts)
+  openFileDialog: (opts?: any) => ipcRenderer.invoke('relay:open-file-dialog', opts),
+  translate: (params: any) => ipcRenderer.invoke('relay:translate', params)
 }
 
 if (process.contextIsolated) {
