@@ -40,7 +40,9 @@ import {
   decodeUnicode,
   encodeUnicode,
   smartFormatText,
-  smartUnescape
+  smartUnescape,
+  expandStringEscapes,
+  collapseStringEscapes
 } from '../utils/escapeUtils'
 import { CodeEditor } from './CodeEditor'
 
@@ -134,6 +136,9 @@ const FormattedCodeOutput: React.FC<{
   const { t } = useI18n()
   const [wrap, setWrap] = useState(true)
   const [copied, setCopied] = useState(false)
+  const [expandEscapes, setExpandEscapes] = useState<boolean>(() => {
+    return localStorage.getItem('relay_devtoys_expand_escapes') === 'true'
+  })
 
   // Detect if current value is valid JSON
   const isJson = useMemo(() => {
@@ -159,13 +164,33 @@ const FormattedCodeOutput: React.FC<{
   const handleFormat = () => {
     if (!value || !value.trim()) return
     try {
-      const formatted = smartFormatText(value)
+      let formatted = smartFormatText(value)
+      if (expandEscapes) {
+        formatted = expandStringEscapes(formatted)
+      }
       if (onChange) {
         onChange(formatted)
       }
       onToast?.(t('devtoys.prettify'), 'success')
     } catch (err: any) {
       onToast?.(err.message, 'error')
+    }
+  }
+
+  const handleToggleExpandEscapes = () => {
+    const next = !expandEscapes
+    setExpandEscapes(next)
+    localStorage.setItem('relay_devtoys_expand_escapes', String(next))
+    if (value && onChange) {
+      if (next) {
+        const expanded = expandStringEscapes(value)
+        onChange(expanded)
+        onToast?.(t('devtoys.escapesExpanded'), 'success')
+      } else {
+        const collapsed = collapseStringEscapes(value)
+        onChange(collapsed)
+        onToast?.(t('devtoys.escapesCollapsed'), 'success')
+      }
     }
   }
 
@@ -194,6 +219,25 @@ const FormattedCodeOutput: React.FC<{
           )}
         </div>
         <div className="flex items-center gap-1">
+          {value && (
+            <button
+              type="button"
+              onClick={handleToggleExpandEscapes}
+              className={`flex items-center gap-1 px-2 py-0.5 text-[11px] rounded transition-colors cursor-pointer ${
+                expandEscapes
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+              title={
+                expandEscapes
+                  ? '已解析展开字符串内部 \\n 和 \\t 为真实换行（点击折叠）'
+                  : '解析展开字符串内部 \\n 和 \\t 为真实换行与缩进'
+              }
+            >
+              <span className="font-mono text-[10px] font-bold">\n\t</span>
+              <span>{expandEscapes ? t('devtoys.expandedEscapes') : t('devtoys.expandEscapes')}</span>
+            </button>
+          )}
           {value && (
             <button
               type="button"
@@ -945,10 +989,16 @@ const EscapeTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error')
   const [mode, setMode] = useState<EscapeMode>('smart')
   const [input, setInput] = useState('')
   const [output, setOutput] = useState('')
+  const [expandEscapes, setExpandEscapes] = useState<boolean>(() => {
+    return localStorage.getItem('relay_devtoys_expand_escapes') === 'true'
+  })
 
   const handleSmartUnescape = () => {
     try {
-      const res = smartUnescape(input)
+      let res = smartUnescape(input)
+      if (expandEscapes) {
+        res = expandStringEscapes(res)
+      }
       setOutput(res)
       onToast?.(t('devtoys.smartUnescapeBtn'), 'success')
     } catch (err: any) {
@@ -959,7 +1009,10 @@ const EscapeTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error')
   const handleUnescapeJson = () => {
     try {
       const res = unescapeJsonString(input)
-      const formatted = smartFormatText(res)
+      let formatted = smartFormatText(res)
+      if (expandEscapes) {
+        formatted = expandStringEscapes(formatted)
+      }
       setOutput(formatted)
       onToast?.(t('devtoys.unescapeJsonString'), 'success')
     } catch (err: any) {
@@ -1147,6 +1200,27 @@ const EscapeTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error')
             )}
 
             <div className="h-4 w-[1px] bg-slate-800 mx-1" />
+
+            <label
+              className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300 hover:text-slate-100 select-none px-2 py-1 rounded-lg hover:bg-slate-800/60 transition-colors"
+              title="解析字符串内部 \n 和 \t 为真实换行与制表符（保留字符串内多行文字与原有空格）"
+            >
+              <input
+                type="checkbox"
+                checked={expandEscapes}
+                onChange={(e) => {
+                  const checked = e.target.checked
+                  setExpandEscapes(checked)
+                  localStorage.setItem('relay_devtoys_expand_escapes', String(checked))
+                  if (output) {
+                    setOutput(checked ? expandStringEscapes(output) : collapseStringEscapes(output))
+                  }
+                }}
+                className="rounded text-sky-500 focus:ring-sky-500 cursor-pointer"
+              />
+              <span className="font-mono text-[11px] text-sky-400 font-bold">\n\t</span>
+              <span className="text-[11px]">{t('devtoys.expandStringEscapesOption')}</span>
+            </label>
 
             <button
               type="button"

@@ -358,3 +358,96 @@ export function smartUnescape(input: string): string {
   // 4. Smart format to clean up excessive spaces and pretty-print JSON/fragments or any other code
   return smartFormatText(res)
 }
+
+/**
+ * Expands \n, \r, \t inside string literals (or raw text) to real newlines and tabs
+ * Preserves the natural newlines, indentation, and spaces inside the string.
+ */
+export function expandStringEscapes(text: string): string {
+  if (!text) return ''
+  let inString = false
+  let quote = ''
+  let result = ''
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    const prev = i > 0 ? text[i - 1] : ''
+
+    if (inString) {
+      if (ch === quote && prev !== '\\') {
+        inString = false
+        result += ch
+      } else if (ch === '\\' && i + 1 < text.length) {
+        const next = text[i + 1]
+        if (next === 'n') {
+          result += '\n'
+          i++
+        } else if (next === 't') {
+          result += '\t'
+          i++
+        } else if (next === 'r') {
+          i++ // ignore carriage return
+        } else if (next === '\\') {
+          result += '\\\\'
+          i++
+        } else {
+          result += ch
+        }
+      } else {
+        result += ch
+      }
+    } else {
+      if ((ch === '"' || ch === "'") && prev !== '\\') {
+        inString = true
+        quote = ch
+      }
+      result += ch
+    }
+  }
+
+  // If no quotes exist in the text, expand globally on the plain string
+  if (!text.includes('"') && !text.includes("'")) {
+    return text.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '')
+  }
+
+  return result
+}
+
+/**
+ * Collapses physical newlines and tabs inside string literals back to \n and \t
+ * Returns standard JSON string representation.
+ */
+export function collapseStringEscapes(text: string): string {
+  if (!text) return ''
+  let inString = false
+  let quote = ''
+  let result = ''
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    const prev = i > 0 ? text[i - 1] : ''
+
+    if (inString) {
+      if (ch === quote && prev !== '\\') {
+        inString = false
+        result += ch
+      } else if (ch === '\n') {
+        result += '\\n'
+      } else if (ch === '\t') {
+        result += '\\t'
+      } else if (ch === '\r') {
+        // ignore carriage return
+      } else {
+        result += ch
+      }
+    } else {
+      if ((ch === '"' || ch === "'") && prev !== '\\') {
+        inString = true
+        quote = ch
+      }
+      result += ch
+    }
+  }
+
+  return result
+}

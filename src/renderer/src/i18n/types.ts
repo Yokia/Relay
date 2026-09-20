@@ -578,6 +578,11 @@ export interface TranslationSchema {
     unicodeMode: string
     unicodeModeTip: string
     smartUnescapeBtn: string
+    expandEscapes: string
+    expandedEscapes: string
+    escapesExpanded: string
+    escapesCollapsed: string
+    expandStringEscapesOption: string
     swap: string
     clear: string
     copy: string
