@@ -21,6 +21,7 @@ import { ResponseData, ResponseRun } from '../types'
 import { CodeEditor } from './CodeEditor'
 import { ResponseDiffModal } from './ResponseDiffModal'
 import { useI18n } from '../i18n'
+import { useTheme } from '../theme'
 import { queryJsonPath } from '../utils/jsonPath'
 
 interface Props {
@@ -70,7 +71,8 @@ export const ResponseViewer: React.FC<Props> = ({
   requestMethod = 'GET',
   requestName
 }) => {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
+  const { theme } = useTheme()
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState<'body' | 'preview' | 'headers' | 'tests'>('body')
   const [bodyFormat, setBodyFormat] = useState<'pretty' | 'raw'>('pretty')
@@ -262,7 +264,9 @@ export const ResponseViewer: React.FC<Props> = ({
         url: resolvedUrl,
         method: activeRun?.method || requestMethod,
         name: requestName,
-        timestamp: activeTimestamp
+        timestamp: activeTimestamp,
+        language,
+        theme
       })
     }
   }
@@ -387,7 +391,7 @@ export const ResponseViewer: React.FC<Props> = ({
             <span className="hidden sm:inline">{t('common.save')}</span>
           </button>
 
-          <button type="button" onClick={openSearch} className="p-1.5 text-slate-400 hover:text-sky-300 rounded hover:bg-slate-800/60 transition-colors" title="Find in response">
+          <button type="button" onClick={openSearch} className="p-1.5 text-slate-400 hover:text-sky-300 rounded hover:bg-slate-800/60 transition-colors" title={t('response.searchTooltip')}>
             <Search className="w-4 h-4" />
           </button>
 
@@ -527,19 +531,19 @@ export const ResponseViewer: React.FC<Props> = ({
                   if (event.key === 'Escape') closeSearch()
                   if (event.key === 'Enter' && searchMatchCount > 0) setSearchActiveIndex((current) => (current + (event.shiftKey ? -1 : 1) + searchMatchCount) % searchMatchCount)
                 }}
-                placeholder="Find in response"
+                placeholder={t('response.searchPlaceholder')}
                 className="w-72 bg-slate-800 border border-slate-700 rounded px-2 py-1 pr-24 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
               />
               <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-                <button type="button" onClick={() => setSearchCaseSensitive((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${searchCaseSensitive ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title="区分大小写">Aa</button>
-                <button type="button" onClick={() => setSearchWholeWord((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${searchWholeWord ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title="全字匹配">ab</button>
-                <button type="button" onClick={() => setSearchRegex((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs font-mono ${searchRegex ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title="正则表达式">.*</button>
+                <button type="button" onClick={() => setSearchCaseSensitive((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${searchCaseSensitive ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title={t('response.caseSensitive')}>Aa</button>
+                <button type="button" onClick={() => setSearchWholeWord((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${searchWholeWord ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title={t('response.wholeWord')}>ab</button>
+                <button type="button" onClick={() => setSearchRegex((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs font-mono ${searchRegex ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title={t('response.regex')}>.*</button>
               </div>
             </div>
             <span className="min-w-12 text-center text-[11px] text-slate-400">{searchMatchCount ? `${searchActiveIndex + 1} / ${searchMatchCount}` : '0 / 0'}</span>
-            <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((current) => (current - 1 + searchMatchCount) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title="Previous"><ChevronUp className="w-4 h-4" /></button>
-            <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((current) => (current + 1) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title="Next"><ChevronDown className="w-4 h-4" /></button>
-            <button type="button" onClick={closeSearch} className="p-1 text-slate-400 hover:text-slate-100" title="Close"><X className="w-4 h-4" /></button>
+            <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((current) => (current - 1 + searchMatchCount) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title={t('response.prevMatch')}><ChevronUp className="w-4 h-4" /></button>
+            <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((current) => (current + 1) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title={t('response.nextMatch')}><ChevronDown className="w-4 h-4" /></button>
+            <button type="button" onClick={closeSearch} className="p-1 text-slate-400 hover:text-slate-100" title={t('common.close')}><X className="w-4 h-4" /></button>
           </div>
         )}
         {displayResponse.error && (
@@ -610,7 +614,7 @@ export const ResponseViewer: React.FC<Props> = ({
                     setIsJsonPathFocused(false)
                   }
                 }}
-                placeholder="JSONPath: data.token or $.data.token"
+                placeholder={t('response.jsonPathPlaceholder')}
                 className="flex-1 bg-slate-900 border border-slate-700 rounded px-2 py-1 pr-7 text-[11px] text-slate-200 focus:outline-none focus:border-sky-500"
               />
               {jsonPath && (
@@ -622,7 +626,7 @@ export const ResponseViewer: React.FC<Props> = ({
                     setIsJsonPathFocused(false)
                   }}
                   className="absolute right-2 p-0.5 text-slate-500 hover:text-slate-200 rounded transition-colors"
-                  title="清除 JSONPath"
+                  title={t('response.clearJsonPath')}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>

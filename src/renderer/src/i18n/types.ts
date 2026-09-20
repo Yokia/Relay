@@ -31,6 +31,8 @@ export interface TranslationSchema {
     openInRelayAsRequest: string
     copyLinkUrl: string
     copiedToClipboard: string
+    closeEsc: string
+    resizeSplitter: string
   }
   sidebar: {
     collections: string
@@ -141,6 +143,10 @@ export interface TranslationSchema {
     colDel: string
     preRequest: string
     tests: string
+    extract: string
+    extractDesc: string
+    varNamePlaceholder: string
+    addExtraction: string
   }
   response: {
     emptyTitle: string
@@ -168,6 +174,16 @@ export interface TranslationSchema {
     noTestsRunTip: string
     testSummary: string
     totalTests: string
+    searchResponse: string
+    searchTooltip: string
+    searchPlaceholder: string
+    caseSensitive: string
+    wholeWord: string
+    regex: string
+    prevMatch: string
+    nextMatch: string
+    clearJsonPath: string
+    jsonPathPlaceholder: string
   }
   settings: {
     title: string
@@ -623,5 +639,18 @@ export interface TranslationSchema {
     jwtNotBefore: string
     invalidJwt: string
     invalidTimestamp: string
+    input: string
+    output: string
+    outputFormatted: string
+    format: string
+    prettifyTip: string
+    cleanInput: string
+    cleanInputTip: string
+    unescapeJsonTip: string
+    expandStringEscapesTip: string
+    expandedEscapesTip: string
+    expandEscapesTip: string
+    escapeInputPlaceholder: string
+    timestampPlaceholder: string
   }
 }

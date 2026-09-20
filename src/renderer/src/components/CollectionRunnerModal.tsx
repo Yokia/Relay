@@ -473,7 +473,9 @@ export const CollectionRunnerModal: React.FC<Props> = ({
         url: r.url,
         method: r.method,
         name: r.requestName,
-        timestamp: r.timestamp
+        timestamp: r.timestamp,
+        language: settings.language || 'zh-CN',
+        theme: settings.theme || 'dark'
       })
     }
   }

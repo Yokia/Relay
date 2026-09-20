@@ -1893,8 +1893,8 @@ function MainApp({
 }
 
 export default function App() {
-  const [language, setLanguage] = useState<Language>('zh-CN')
-  const [theme, setTheme] = useState<Theme>('dark')
+  const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('relay_language') as Language) || 'zh-CN')
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('relay_theme') as Theme) || 'dark')
 
   return (
     <I18nProvider language={language} onLanguageChange={setLanguage}>

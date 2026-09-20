@@ -30,7 +30,9 @@ export const zhCN: TranslationSchema = {
     openInBrowser: '在浏览器中打开',
     openInRelayAsRequest: '在 Relay 中作为请求打开',
     copyLinkUrl: '复制链接地址',
-    copiedToClipboard: '已复制到剪贴板！'
+    copiedToClipboard: '已复制到剪贴板！',
+    closeEsc: '关闭 (Esc)',
+    resizeSplitter: '拖动调整左右分栏大小'
   },
   sidebar: {
     collections: '集合',
@@ -140,7 +142,11 @@ export const zhCN: TranslationSchema = {
     colValue: '键值',
     colDel: '删除',
     preRequest: '前置脚本 (Pre-request)',
-    tests: '后置脚本与测试 (Tests)'
+    tests: '后置脚本与测试 (Tests)',
+    extract: '提取 (Extract)',
+    extractDesc: '将响应中的值写入当前环境变量，供后续请求使用。',
+    varNamePlaceholder: '变量名',
+    addExtraction: '添加提取项'
   },
   response: {
     emptyTitle: '尚未发起请求',
@@ -167,7 +173,17 @@ export const zhCN: TranslationSchema = {
     largeMediaBodyNotice: '媒体内容较大，已停止在 Body 中渲染。请切换到 Preview 查看或保存。',
     noTestsRunTip: '前往中部编辑区的“后置脚本与测试”选项卡，编写 JavaScript 断言脚本',
     testSummary: '测试结果概览',
-    totalTests: '个测试项'
+    totalTests: '个测试项',
+    searchResponse: '搜索',
+    searchTooltip: '搜索响应内容 (Ctrl+F)',
+    searchPlaceholder: '搜索响应内容...',
+    caseSensitive: '区分大小写',
+    wholeWord: '全字匹配',
+    regex: '正则表达式',
+    prevMatch: '上一个匹配项',
+    nextMatch: '下一个匹配项',
+    clearJsonPath: '清除 JSONPath',
+    jsonPathPlaceholder: 'JSONPath: 例如 data.token 或 $.data.token'
   },
   settings: {
     title: '首选项与设置',
@@ -623,6 +639,19 @@ export const zhCN: TranslationSchema = {
     jwtIssuedAt: '签发时间 (iat)',
     jwtNotBefore: '生效时间 (nbf)',
     invalidJwt: '无效的 JWT 格式，需为以点号分隔的三段式结构',
-    invalidTimestamp: '无效的时间戳'
+    invalidTimestamp: '无效的时间戳',
+    input: '输入',
+    output: '输出',
+    outputFormatted: '输出 (格式化与取色)',
+    format: '格式化',
+    prettifyTip: '智能排版与缩进规整 (消除多余空格)',
+    cleanInput: '整理',
+    cleanInputTip: '整理输入区格式与消除多余空格',
+    unescapeJsonTip: '去除反斜杠转义并智能排版',
+    expandStringEscapesTip: '解析字符串内部 \\n 和 \\t 为真实换行与制表符（保留字符串内多行文字与原有空格）',
+    expandedEscapesTip: '已解析展开字符串内部 \\n 和 \\t 为真实换行（点击折叠）',
+    expandEscapesTip: '解析展开字符串内部 \\n 和 \\t 为真实换行与缩进',
+    escapeInputPlaceholder: '例如: {"name":"demo"} 或 <div> 或 \\u4e2d\\u6587 或带斜杠/空格的代码片段',
+    timestampPlaceholder: '例如: 1718000000 (秒或毫秒)'
   }
 }

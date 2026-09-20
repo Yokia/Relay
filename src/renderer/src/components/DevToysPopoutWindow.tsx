@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Sun, Moon } from 'lucide-react'
 import { Theme, Language } from '../types'
-import { I18nProvider } from '../i18n'
+import { I18nProvider, useI18n } from '../i18n'
 import { ThemeProvider, useTheme } from '../theme'
 import { DevToysContent } from './DevToysModal'
 import { ToastContainer, ToastMessage } from './Toast'
 
 function DevToysPopoutBody() {
+  const { t } = useI18n()
   const { theme, toggleTheme } = useTheme()
   const [toasts, setToasts] = useState<ToastMessage[]>([])
 
@@ -27,17 +28,17 @@ function DevToysPopoutBody() {
         type="button"
         onClick={toggleTheme}
         className="fixed bottom-4 right-5 z-40 p-2 rounded-xl bg-slate-900/90 border border-slate-700/80 shadow-xl hover:bg-slate-800 text-slate-300 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 text-xs backdrop-blur-sm"
-        title="切换浅色 / 深色主题"
+        title={t('common.toggleTheme')}
       >
         {theme === 'light' ? (
           <>
             <Sun className="w-3.5 h-3.5 text-amber-500" />
-            <span className="text-[11px] font-medium">浅色</span>
+            <span className="text-[11px] font-medium">{t('common.themeLight')}</span>
           </>
         ) : (
           <>
             <Moon className="w-3.5 h-3.5 text-sky-400" />
-            <span className="text-[11px] font-medium">深色</span>
+            <span className="text-[11px] font-medium">{t('common.themeDark')}</span>
           </>
         )}
       </button>
@@ -51,8 +52,8 @@ function DevToysPopoutBody() {
 }
 
 export const DevToysPopoutWindow: React.FC = () => {
-  const [theme, setTheme] = useState<Theme>('dark')
-  const [language, setLanguage] = useState<Language>('zh-CN')
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('relay_theme') as Theme) || 'dark')
+  const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('relay_language') as Language) || 'zh-CN')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

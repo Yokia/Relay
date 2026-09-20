@@ -53,7 +53,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
           onClick={() => setActiveTab('extract')}
           className={"py-2.5 px-1 relative transition-colors shrink-0 whitespace-nowrap " + (activeTab === 'extract' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
         >
-          <span>Extract</span>
+          <span>{t('editor.extract')}</span>
           {(request.responseExtractions || []).length > 0 && <span className="ml-1.5 text-[10px] text-emerald-400">{request.responseExtractions?.length}</span>}
           {activeTab === 'extract' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />}
         </button>
@@ -62,7 +62,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
           onClick={() => setActiveTab('auth')}
           className={"py-2.5 px-1 relative transition-colors shrink-0 whitespace-nowrap " + (activeTab === 'auth' ? "text-sky-400 font-semibold" : "hover:text-slate-200")}
         >
-          <span>Auth</span>
+          <span>{t('editor.auth')}</span>
           {request.auth && request.auth.type !== 'none' && <span className="ml-1.5 w-1.5 h-1.5 inline-block bg-emerald-400 rounded-full align-middle" />}
           {activeTab === 'auth' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-sky-400 rounded-t" />}
         </button>
@@ -267,16 +267,16 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
 
         {activeTab === 'extract' && (
           <div className="p-3 flex flex-col gap-2 text-xs">
-            <div className="text-slate-400">将响应中的值写入当前环境，供后续请求使用。</div>
+            <div className="text-slate-400">{t('editor.extractDesc')}</div>
             {(request.responseExtractions || []).map((rule, index) => (
               <div key={index} className="grid grid-cols-[1fr_90px_1.5fr_auto] gap-1.5 items-center">
-                <input value={rule.variable} onChange={(e) => { const next = [...(request.responseExtractions || [])]; next[index] = { ...rule, variable: e.target.value }; onChange({ responseExtractions: next }) }} placeholder="变量名" className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200" />
+                <input value={rule.variable} onChange={(e) => { const next = [...(request.responseExtractions || [])]; next[index] = { ...rule, variable: e.target.value }; onChange({ responseExtractions: next }) }} placeholder={t('editor.varNamePlaceholder')} className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200" />
                 <select value={rule.source} onChange={(e) => { const next = [...(request.responseExtractions || [])]; next[index] = { ...rule, source: e.target.value as any }; onChange({ responseExtractions: next }) }} className="bg-slate-800 border border-slate-700 rounded px-1 py-1.5 text-slate-200"><option value="json">JSON</option><option value="header">Header</option></select>
                 <input value={rule.path} onChange={(e) => { const next = [...(request.responseExtractions || [])]; next[index] = { ...rule, path: e.target.value }; onChange({ responseExtractions: next }) }} placeholder={rule.source === 'json' ? 'data.token' : 'set-cookie'} className="bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-slate-200" />
                 <button type="button" onClick={() => onChange({ responseExtractions: (request.responseExtractions || []).filter((_, i) => i !== index) })} className="p-1 text-slate-500 hover:text-rose-400"><Trash2 className="w-3 h-3" /></button>
               </div>
             ))}
-            <button type="button" onClick={() => onChange({ responseExtractions: [...(request.responseExtractions || []), { variable: '', source: 'json', path: '' }] })} className="self-start flex items-center gap-1 text-sky-400 hover:text-sky-300"><Plus className="w-3 h-3" />Add extraction</button>
+            <button type="button" onClick={() => onChange({ responseExtractions: [...(request.responseExtractions || []), { variable: '', source: 'json', path: '' }] })} className="self-start flex items-center gap-1 text-sky-400 hover:text-sky-300"><Plus className="w-3 h-3" />{t('editor.addExtraction')}</button>
           </div>
         )}
 

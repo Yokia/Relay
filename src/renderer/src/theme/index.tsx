@@ -24,11 +24,14 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   onThemeChange,
   children
 }) => {
-  const [currentTheme, setCurrentTheme] = useState<Theme>(propTheme || 'dark')
+  const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
+    return propTheme || (localStorage.getItem('relay_theme') as Theme) || 'dark'
+  })
 
   useEffect(() => {
     if (propTheme && propTheme !== currentTheme) {
       setCurrentTheme(propTheme)
+      localStorage.setItem('relay_theme', propTheme)
     }
   }, [propTheme])
 
@@ -46,6 +49,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
   const setTheme = (nextTheme: Theme) => {
     setCurrentTheme(nextTheme)
+    localStorage.setItem('relay_theme', nextTheme)
     if (onThemeChange) {
       onThemeChange(nextTheme)
     }

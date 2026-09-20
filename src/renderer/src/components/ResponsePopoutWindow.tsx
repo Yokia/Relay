@@ -349,10 +349,10 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
               type="button"
               onClick={openSearch}
               className={`flex items-center gap-1 px-2 py-1 rounded border text-[11px] transition-colors ${isSearchOpen ? 'bg-sky-500/15 text-sky-400 border-sky-500/40' : 'bg-slate-800 text-slate-300 border-slate-700/80 hover:text-slate-100 hover:bg-slate-700'}`}
-              title="搜索响应内容 (Ctrl+F)"
+              title={t('response.searchTooltip')}
             >
               <Search className="w-3.5 h-3.5" />
-              <span>搜索</span>
+              <span>{t('response.searchResponse')}</span>
             </button>
 
             {/* Pretty / Raw toggle */}
@@ -435,10 +435,10 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
                   else if (event.key === 'ArrowUp') { event.preventDefault(); setJsonPathSuggestionIndex((value) => (value - 1 + jsonPathSuggestions.length) % jsonPathSuggestions.length) }
                   else if (event.key === 'Enter' || event.key === 'Tab') { event.preventDefault(); selectJsonPathSuggestion(jsonPathSuggestions[jsonPathSuggestionIndex]) }
                 }}
-                placeholder="JSONPath: data.token or $.data.token"
+                placeholder={t('response.jsonPathPlaceholder')}
                 className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 pr-9 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-sky-500"
               />
-              {jsonPath && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setJsonPath('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200" title="清除 JSONPath"><X className="w-4 h-4" /></button>}
+              {jsonPath && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setJsonPath('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200" title={t('response.clearJsonPath')}><X className="w-4 h-4" /></button>}
               {isJsonPathFocused && jsonPath && jsonPathSuggestions.length > 0 && (
                 <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-52 overflow-y-auto rounded border border-slate-700 bg-slate-900 py-1 shadow-xl">
                   {jsonPathSuggestions.map((suggestion, index) => (
@@ -450,17 +450,17 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
             {isSearchOpen && (
               <div className="absolute top-0 right-0 z-20 flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 shadow-2xl">
                 <div className="relative">
-                  <input ref={searchInputRef} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); setSearchActiveIndex((value) => searchMatchCount ? (value + (event.shiftKey ? -1 : 1) + searchMatchCount) % searchMatchCount : 0) } else if (event.key === 'Escape') closeSearch() }} placeholder="Find in response" className="w-72 bg-slate-800 border border-slate-700 rounded px-2 py-1 pr-24 text-xs text-slate-200 focus:outline-none focus:border-sky-500" />
+                  <input ref={searchInputRef} value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); setSearchActiveIndex((value) => searchMatchCount ? (value + (event.shiftKey ? -1 : 1) + searchMatchCount) % searchMatchCount : 0) } else if (event.key === 'Escape') closeSearch() }} placeholder={t('response.searchPlaceholder')} className="w-72 bg-slate-800 border border-slate-700 rounded px-2 py-1 pr-24 text-xs text-slate-200 focus:outline-none focus:border-sky-500" />
                   <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
-                    <button type="button" onClick={() => setSearchCaseSensitive((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${searchCaseSensitive ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title="区分大小写">Aa</button>
-                    <button type="button" onClick={() => setSearchWholeWord((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${searchWholeWord ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title="全字匹配">ab</button>
-                    <button type="button" onClick={() => setSearchRegex((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs font-mono ${searchRegex ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title="正则表达式">.*</button>
+                    <button type="button" onClick={() => setSearchCaseSensitive((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${searchCaseSensitive ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title={t('response.caseSensitive')}>Aa</button>
+                    <button type="button" onClick={() => setSearchWholeWord((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${searchWholeWord ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title={t('response.wholeWord')}>ab</button>
+                    <button type="button" onClick={() => setSearchRegex((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs font-mono ${searchRegex ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title={t('response.regex')}>.*</button>
                   </div>
                 </div>
                 <span className="min-w-12 text-center text-[11px] text-slate-400">{searchMatchCount ? `${searchActiveIndex + 1} / ${searchMatchCount}` : '0 / 0'}</span>
-                <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((value) => (value - 1 + searchMatchCount) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title="上一个"><ChevronUp className="w-4 h-4" /></button>
-                <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((value) => (value + 1) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title="下一个"><ChevronDown className="w-4 h-4" /></button>
-                <button type="button" onClick={closeSearch} className="p-1 text-slate-400 hover:text-slate-100" title="关闭"><X className="w-4 h-4" /></button>
+                <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((value) => (value - 1 + searchMatchCount) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title={t('response.prevMatch')}><ChevronUp className="w-4 h-4" /></button>
+                <button type="button" onClick={() => searchMatchCount && setSearchActiveIndex((value) => (value + 1) % searchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title={t('response.nextMatch')}><ChevronDown className="w-4 h-4" /></button>
+                <button type="button" onClick={closeSearch} className="p-1 text-slate-400 hover:text-slate-100" title={t('common.close')}><X className="w-4 h-4" /></button>
               </div>
             )}
             <CodeEditor
@@ -515,8 +515,8 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
 export const ResponsePopoutWindow: React.FC = () => {
   const [data, setData] = useState<PopoutData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [language, setLanguage] = useState<Language>('zh-CN')
-  const [theme, setTheme] = useState<Theme>('dark')
+  const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('relay_language') as Language) || 'zh-CN')
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('relay_theme') as Theme) || 'dark')
 
   useEffect(() => {
     const fetchPopoutData = async () => {
@@ -524,6 +524,12 @@ export const ResponsePopoutWindow: React.FC = () => {
         if (window.electronAPI?.getPopoutData) {
           const res = await window.electronAPI.getPopoutData()
           setData(res)
+          if (res?.language) {
+            setLanguage(res.language)
+          }
+          if (res?.theme) {
+            setTheme(res.theme)
+          }
         }
         if (window.electronAPI?.getData) {
           const allData = await window.electronAPI.getData()

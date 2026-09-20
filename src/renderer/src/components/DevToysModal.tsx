@@ -63,6 +63,7 @@ const ResizableDualPanels: React.FC<{
   storageKey?: string
   defaultRatio?: number
 }> = ({ left, right, storageKey = 'relay_devtoys_split_ratio', defaultRatio = 50 }) => {
+  const { t } = useI18n()
   const [ratio, setRatio] = useState<number>(() => {
     const saved = localStorage.getItem(storageKey)
     if (saved) {
@@ -111,7 +112,7 @@ const ResizableDualPanels: React.FC<{
       <div
         onMouseDown={handleMouseDown}
         className="w-2.5 -mx-1 hover:w-2.5 bg-transparent hover:bg-sky-500/20 active:bg-sky-500/40 cursor-col-resize flex items-center justify-center transition-colors group select-none shrink-0 z-10 rounded"
-        title="拖动调整左右分栏大小"
+        title={t('common.resizeSplitter')}
       >
         <div className="w-1 h-8 bg-slate-700/80 group-hover:bg-sky-400 group-active:bg-sky-400 rounded-full transition-colors" />
       </div>
@@ -211,7 +212,7 @@ const FormattedCodeOutput: React.FC<{
     <div className="flex flex-col h-full gap-1.5 min-h-0">
       <div className="flex items-center justify-between px-1 text-xs shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-semibold text-slate-400">{title}</span>
+          <span className="text-[11px] font-semibold text-slate-400">{title || t('devtoys.output')}</span>
           {isJson && (
             <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-sky-500/15 text-sky-400 border border-sky-500/30">
               JSON
@@ -230,8 +231,8 @@ const FormattedCodeOutput: React.FC<{
               }`}
               title={
                 expandEscapes
-                  ? '已解析展开字符串内部 \\n 和 \\t 为真实换行（点击折叠）'
-                  : '解析展开字符串内部 \\n 和 \\t 为真实换行与缩进'
+                  ? t('devtoys.expandedEscapesTip')
+                  : t('devtoys.expandEscapesTip')
               }
             >
               <span className="font-mono text-[10px] font-bold">\n\t</span>
@@ -243,10 +244,10 @@ const FormattedCodeOutput: React.FC<{
               type="button"
               onClick={handleFormat}
               className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded hover:bg-slate-800 text-slate-400 hover:text-sky-300 transition-colors cursor-pointer"
-              title="智能排版与缩进规整 (消除多余空格)"
+              title={t('devtoys.prettifyTip')}
             >
               <Code2 className="w-3 h-3 text-sky-400" />
-              <span>Format</span>
+              <span>{t('devtoys.format')}</span>
             </button>
           )}
           {isJson && (
@@ -257,7 +258,7 @@ const FormattedCodeOutput: React.FC<{
               title={t('devtoys.minify')}
             >
               <Minimize2 className="w-3 h-3 text-amber-400" />
-              <span>Minify</span>
+              <span>{t('devtoys.minify')}</span>
             </button>
           )}
           <button
@@ -269,7 +270,7 @@ const FormattedCodeOutput: React.FC<{
             title={t('devtoys.wrapLines')}
           >
             <WrapText className="w-3 h-3" />
-            <span>Wrap</span>
+            <span>{t('devtoys.wrapLines')}</span>
           </button>
           {value && (
             <button
@@ -337,7 +338,7 @@ export const DevToysContent: React.FC<DevToysContentProps> = ({ onClose, onToast
             type="button"
             onClick={onClose}
             className="p-1.5 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
-            title="关闭 (Esc)"
+            title={t('common.closeEsc')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -750,7 +751,7 @@ const TimestampTool: React.FC<{
             type="text"
             value={inputTimestamp}
             onChange={(e) => setInputTimestamp(e.target.value)}
-            placeholder="例如: 1718000000 (秒或毫秒)"
+            placeholder={t('devtoys.timestampPlaceholder')}
             className="flex-1 w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3.5 py-2 font-mono text-xs text-slate-100 focus:outline-none focus:border-sky-500"
           />
         </div>
@@ -955,7 +956,7 @@ const UrlTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error') =>
         storageKey="relay_devtoys_url_split"
         left={
           <div className="flex flex-col gap-1.5 h-full min-h-0">
-            <span className="text-[11px] font-semibold text-slate-400">Input</span>
+            <span className="text-[11px] font-semibold text-slate-400">{t('devtoys.input')}</span>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -967,7 +968,7 @@ const UrlTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error') =>
         right={
           <FormattedCodeOutput
             value={output}
-            title="Output (格式化与取色)"
+            title={t('devtoys.outputFormatted')}
             onToast={onToast}
             onChange={setOutput}
           />
@@ -1147,7 +1148,7 @@ const EscapeTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error')
                   type="button"
                   onClick={handleUnescapeJson}
                   className="px-3 py-1.5 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors cursor-pointer"
-                  title="去除反斜杠转义并智能排版"
+                  title={t('devtoys.unescapeJsonTip')}
                 >
                   {t('devtoys.unescapeJsonString')}
                 </button>
@@ -1203,7 +1204,7 @@ const EscapeTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error')
 
             <label
               className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300 hover:text-slate-100 select-none px-2 py-1 rounded-lg hover:bg-slate-800/60 transition-colors"
-              title="解析字符串内部 \n 和 \t 为真实换行与制表符（保留字符串内多行文字与原有空格）"
+              title={t('devtoys.expandStringEscapesTip')}
             >
               <input
                 type="checkbox"
@@ -1262,23 +1263,23 @@ const EscapeTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error')
         left={
           <div className="flex flex-col gap-1.5 h-full min-h-0">
             <div className="flex items-center justify-between px-1 text-xs shrink-0">
-              <span className="text-[11px] font-semibold text-slate-400">Input</span>
+              <span className="text-[11px] font-semibold text-slate-400">{t('devtoys.input')}</span>
               {input && (
                 <button
                   type="button"
                   onClick={() => setInput(smartFormatText(input))}
                   className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded text-slate-400 hover:text-sky-300 hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="整理输入区格式与消除多余空格"
+                  title={t('devtoys.cleanInputTip')}
                 >
                   <Code2 className="w-3 h-3 text-sky-400" />
-                  <span>整理</span>
+                  <span>{t('devtoys.cleanInput')}</span>
                 </button>
               )}
             </div>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={'例如: {"name":"demo"} 或 <div> 或 \\u4e2d\\u6587 或带斜杠/空格的代码片段'}
+              placeholder={t('devtoys.escapeInputPlaceholder')}
               className="flex-1 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none leading-relaxed"
             />
           </div>
@@ -1286,7 +1287,7 @@ const EscapeTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error')
         right={
           <FormattedCodeOutput
             value={output}
-            title="Output (格式化与取色)"
+            title={t('devtoys.outputFormatted')}
             onToast={onToast}
             onChange={setOutput}
           />
@@ -1391,7 +1392,7 @@ const Base64Tool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error')
         storageKey="relay_devtoys_base64_split"
         left={
           <div className="flex flex-col gap-1.5 h-full min-h-0">
-            <span className="text-[11px] font-semibold text-slate-400">Input</span>
+            <span className="text-[11px] font-semibold text-slate-400">{t('devtoys.input')}</span>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -1403,7 +1404,7 @@ const Base64Tool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error')
         right={
           <FormattedCodeOutput
             value={output}
-            title="Output (格式化与取色)"
+            title={t('devtoys.outputFormatted')}
             onToast={onToast}
             onChange={setOutput}
           />

@@ -30,7 +30,9 @@ export const enUS: TranslationSchema = {
     openInBrowser: 'Open in Browser',
     openInRelayAsRequest: 'Open in Relay as Request',
     copyLinkUrl: 'Copy Link URL',
-    copiedToClipboard: 'Copied to clipboard!'
+    copiedToClipboard: 'Copied to clipboard!',
+    closeEsc: 'Close (Esc)',
+    resizeSplitter: 'Drag to resize split panels'
   },
   sidebar: {
     collections: 'Collections',
@@ -140,7 +142,11 @@ export const enUS: TranslationSchema = {
     colValue: 'Value',
     colDel: 'Del',
     preRequest: 'Pre-request Script',
-    tests: 'Tests'
+    tests: 'Tests',
+    extract: 'Extract',
+    extractDesc: 'Extract response values to environment variables for subsequent requests.',
+    varNamePlaceholder: 'Variable Name',
+    addExtraction: 'Add Extraction'
   },
   response: {
     emptyTitle: 'No response yet',
@@ -167,7 +173,17 @@ export const enUS: TranslationSchema = {
     largeMediaBodyNotice: 'This media response is too large to render in Body. Switch to Preview to view or save it.',
     noTestsRunTip: 'Switch to the "Tests" tab in the request editor to write JavaScript assertions',
     testSummary: 'Test Results',
-    totalTests: 'tests'
+    totalTests: 'tests',
+    searchResponse: 'Search',
+    searchTooltip: 'Find in response (Ctrl+F)',
+    searchPlaceholder: 'Find in response...',
+    caseSensitive: 'Match Case',
+    wholeWord: 'Match Whole Word',
+    regex: 'Regular Expression',
+    prevMatch: 'Previous Match',
+    nextMatch: 'Next Match',
+    clearJsonPath: 'Clear JSONPath',
+    jsonPathPlaceholder: 'JSONPath: e.g. data.token or $.data.token'
   },
   settings: {
     title: 'Preferences & Settings',
@@ -623,6 +639,19 @@ export const enUS: TranslationSchema = {
     jwtIssuedAt: 'Issued At (iat)',
     jwtNotBefore: 'Not Before (nbf)',
     invalidJwt: 'Invalid JWT token. Expecting 3 parts separated by dots.',
-    invalidTimestamp: 'Invalid timestamp value'
+    invalidTimestamp: 'Invalid timestamp value',
+    input: 'Input',
+    output: 'Output',
+    outputFormatted: 'Output (Formatted & Highlighted)',
+    format: 'Format',
+    prettifyTip: 'Format & normalize indentation (remove redundant spaces)',
+    cleanInput: 'Format',
+    cleanInputTip: 'Format input and remove redundant spaces',
+    unescapeJsonTip: 'Unescape backslashes and format JSON',
+    expandStringEscapesTip: 'Parse \\n and \\t into real line breaks and tabs (preserves multiline text and spaces)',
+    expandedEscapesTip: 'String escapes \\n and \\t expanded to real lines (click to collapse)',
+    expandEscapesTip: 'Expand string escapes \\n and \\t into real lines',
+    escapeInputPlaceholder: 'e.g. {"name":"demo"} or <div> or \\u4e2d\\u6587 or code snippets with slashes/spaces',
+    timestampPlaceholder: 'e.g. 1718000000 (seconds or milliseconds)'
   }
 }

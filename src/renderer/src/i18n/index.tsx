@@ -51,16 +51,20 @@ export const I18nProvider: React.FC<I18nProviderProps> = ({
   onLanguageChange,
   children
 }) => {
-  const [currentLang, setCurrentLang] = useState<Language>(propLanguage || 'zh-CN')
+  const [currentLang, setCurrentLang] = useState<Language>(() => {
+    return propLanguage || (localStorage.getItem('relay_language') as Language) || 'zh-CN'
+  })
 
   useEffect(() => {
     if (propLanguage && propLanguage !== currentLang) {
       setCurrentLang(propLanguage)
+      localStorage.setItem('relay_language', propLanguage)
     }
   }, [propLanguage])
 
   const setLanguage = (lang: Language) => {
     setCurrentLang(lang)
+    localStorage.setItem('relay_language', lang)
     if (onLanguageChange) {
       onLanguageChange(lang)
     }
