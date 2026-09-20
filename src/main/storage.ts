@@ -224,11 +224,23 @@ export class StorageService {
     return result
   }
 
-  private enforceResponseStorageLimit(responseHistoryMap: Record<string, any[]>): Record<string, any[]> {
+  private externalizeHistory(history: any[]): any[] {
+    return (Array.isArray(history) ? history : []).map((item: any) => {
+      const response = item?.response
+      if (!response || response.data === undefined || response.data === null || response.blobId || getResponseDataSize(response.data) <= INLINE_RESPONSE_LIMIT) {
+        return item
+      }
+      const blobId = `history-${item.id || Date.now()}`
+      this.writeResponseBlob(blobId, response.data)
+      return { ...item, response: { ...response, data: null, blobId } }
+    })
+  }
+
+  private enforceResponseStorageLimit(responseHistoryMap: Record<string, any[]>, history: any[]): { responseHistoryMap: Record<string, any[]>; history: any[] } {
     const limitMB = Number(this.cache.settings?.responseStorageLimitMB) || DEFAULT_RESPONSE_STORAGE_LIMIT_MB
     const maxBytes = Math.max(1, limitMB) * 1024 * 1024
     const referencedBlobIds = new Set<string>()
-    const entries: Array<{ blobId: string; timestamp: number; size: number; requestId: string; runId: string }> = []
+    const entries: Array<{ blobId: string; timestamp: number; size: number; requestId?: string; runId?: string; historyId?: string }> = []
     Object.entries(responseHistoryMap).forEach(([requestId, runs]) => {
       runs.forEach((run: any) => {
         const blobId = run?.response?.blobId
@@ -239,6 +251,15 @@ export class StorageService {
         entries.push({ blobId, timestamp: Number(run.timestamp) || 0, size: fs.statSync(filePath).size, requestId, runId: run.id })
       })
     })
+    history.forEach((item: any) => {
+      const blobId = item?.response?.blobId
+      if (!blobId) return
+      referencedBlobIds.add(blobId)
+      const filePath = path.join(this.blobDir, `${blobId}.json`)
+      if (fs.existsSync(filePath)) {
+        entries.push({ blobId, timestamp: Number(item.timestamp) || 0, size: fs.statSync(filePath).size, historyId: item.id })
+      }
+    })
     if (fs.existsSync(this.blobDir)) {
       for (const fileName of fs.readdirSync(this.blobDir)) {
         if (fileName.endsWith('.json') && !referencedBlobIds.has(fileName.slice(0, -5))) {
@@ -247,8 +268,9 @@ export class StorageService {
       }
     }
     let totalBytes = entries.reduce((total, entry) => total + entry.size, 0)
-    if (totalBytes <= maxBytes) return responseHistoryMap
+    if (totalBytes <= maxBytes) return { responseHistoryMap, history }
     const nextMap = { ...responseHistoryMap }
+    let nextHistory = history
     entries.sort((a, b) => a.timestamp - b.timestamp)
     for (const entry of entries) {
       if (totalBytes <= maxBytes) break
@@ -258,11 +280,18 @@ export class StorageService {
         continue
       }
       totalBytes -= entry.size
-      nextMap[entry.requestId] = (nextMap[entry.requestId] || []).map((run: any) =>
-        run.id === entry.runId ? { ...run, response: { ...run.response, data: null, blobId: undefined } } : run
-      )
+      if (entry.requestId && entry.runId) {
+        nextMap[entry.requestId] = (nextMap[entry.requestId] || []).map((run: any) =>
+          run.id === entry.runId ? { ...run, response: { ...run.response, data: null, blobId: undefined } } : run
+        )
+      }
+      if (entry.historyId) {
+        nextHistory = nextHistory.map((item: any) =>
+          item.id === entry.historyId ? { ...item, response: { ...item.response, data: null, blobId: undefined } } : item
+        )
+      }
     }
-    return nextMap
+    return { responseHistoryMap: nextMap, history: nextHistory }
   }
 
   public getResponseBlob(blobId: string): any {
@@ -316,9 +345,10 @@ export class StorageService {
         const compacted = compactLargeMediaRuns(loaded)
         this.cache = compacted.data
         const externalized = this.externalizeResponseMap(compacted.data.responseHistoryMap || {})
-        const limited = this.enforceResponseStorageLimit(externalized)
-        const normalized = { ...compacted.data, responseHistoryMap: limited }
-        if (compacted.changed || JSON.stringify(externalized) !== JSON.stringify(compacted.data.responseHistoryMap) || JSON.stringify(limited) !== JSON.stringify(externalized)) {
+        const externalizedHistory = this.externalizeHistory(compacted.data.history || [])
+        const limited = this.enforceResponseStorageLimit(externalized, externalizedHistory)
+        const normalized = { ...compacted.data, responseHistoryMap: limited.responseHistoryMap, history: limited.history }
+        if (compacted.changed || JSON.stringify(externalized) !== JSON.stringify(compacted.data.responseHistoryMap) || JSON.stringify(externalizedHistory) !== JSON.stringify(compacted.data.history) || JSON.stringify(limited) !== JSON.stringify({ responseHistoryMap: externalized, history: externalizedHistory })) {
           this.writeJson('responses', { history: normalized.history, responseHistoryMap: normalized.responseHistoryMap })
         }
         return normalized
@@ -328,8 +358,11 @@ export class StorageService {
         const loaded = { ...defaultData, ...JSON.parse(fs.readFileSync(this.legacyFilePath, 'utf-8')) }
         const compacted = compactLargeMediaRuns(loaded)
         this.cache = compacted.data
-        const responseHistoryMap = this.enforceResponseStorageLimit(this.externalizeResponseMap(compacted.data.responseHistoryMap || {}))
-        const normalized = { ...compacted.data, responseHistoryMap }
+        const limited = this.enforceResponseStorageLimit(
+          this.externalizeResponseMap(compacted.data.responseHistoryMap || {}),
+          this.externalizeHistory(compacted.data.history || [])
+        )
+        const normalized = { ...compacted.data, responseHistoryMap: limited.responseHistoryMap, history: limited.history }
         this.writeAll(normalized)
         return normalized
       }
@@ -386,14 +419,16 @@ export class StorageService {
           splitRatio: this.cache.splitRatio
         })
         if (Object.prototype.hasOwnProperty.call(data, 'settings') && this.cache.responseHistoryMap) {
-          const limited = this.enforceResponseStorageLimit(this.cache.responseHistoryMap)
-          this.cache = { ...this.cache, responseHistoryMap: limited }
-          this.writeJson('responses', { history: this.cache.history, responseHistoryMap: limited })
+          const limited = this.enforceResponseStorageLimit(this.cache.responseHistoryMap, this.cache.history || [])
+          this.cache = { ...this.cache, responseHistoryMap: limited.responseHistoryMap, history: limited.history }
+          this.writeJson('responses', { history: this.cache.history, responseHistoryMap: this.cache.responseHistoryMap })
         }
       }
       if (Object.prototype.hasOwnProperty.call(data, 'history') || Object.prototype.hasOwnProperty.call(data, 'responseHistoryMap')) {
         const responseHistoryMap = this.externalizeResponseMap(this.cache.responseHistoryMap || {})
-        this.cache = { ...this.cache, responseHistoryMap: this.enforceResponseStorageLimit(responseHistoryMap) }
+        const history = this.externalizeHistory(this.cache.history || [])
+        const limited = this.enforceResponseStorageLimit(responseHistoryMap, history)
+        this.cache = { ...this.cache, responseHistoryMap: limited.responseHistoryMap, history: limited.history }
         this.writeJson('responses', {
           history: this.cache.history,
           responseHistoryMap: this.cache.responseHistoryMap

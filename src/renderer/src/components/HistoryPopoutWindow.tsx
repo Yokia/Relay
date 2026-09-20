@@ -157,6 +157,19 @@ function HistoryPopoutContent() {
     return history.find((h) => h.id === selectedId) || filteredHistory[0] || null
   }, [history, selectedId, filteredHistory])
 
+  useEffect(() => {
+    const blobId = selectedItem?.response?.blobId
+    if (!blobId || !window.electronAPI?.getResponseBlob) return
+    window.electronAPI.getResponseBlob(blobId).then((data: any) => {
+      setHistory((prev) => prev.map((item) => item.id === selectedItem.id
+        ? { ...item, response: { ...item.response, data, blobId: undefined } }
+        : item
+      ))
+    }).catch((err: any) => {
+      console.error('Failed to load history response blob:', err)
+    })
+  }, [selectedItem?.id, selectedItem?.response?.blobId])
+
   const selectedPreviewUrl = useMemo(() => {
     return selectedItem ? interpolateUrl(selectedItem.request.url) : ''
   }, [selectedItem, constants, environments, activeEnvId])

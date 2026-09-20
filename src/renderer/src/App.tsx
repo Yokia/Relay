@@ -1020,7 +1020,9 @@ function MainApp({
       })
       setSelectedRunIdMap((prev) => ({ ...prev, [reqId]: newRun.id }))
 
-      // Append to global history (saves previewed URL, resolved parameters and safe response snapshot)
+      // Append to global history with the original response structure. Large
+      // response bodies are externalized by the main process instead of being
+      // rewritten into a truncated preview object.
       const historyRequest: RequestItem = {
         ...JSON.parse(JSON.stringify(effectiveRequest)),
         url: processedUrl,
@@ -1029,47 +1031,13 @@ function MainApp({
         bodyRaw: processedBodyRaw
       }
 
-      // Safe response snapshot with truncation guard to avoid bloating storage
-      const safeResponseSnapshot: ResponseData = {
-        status: res.status,
-        statusText: res.statusText,
-        headers: res.headers || {},
-        time: res.time,
-        size: res.size,
-        contentType: res.contentType,
-        error: res.error,
-        data: (() => {
-          if (typeof res.data === 'string') {
-            if (res.data.length > 256 * 1024) {
-              return res.data.slice(0, 256 * 1024) + '\n\n...[Response truncated to save storage space]'
-            }
-            return res.data
-          }
-          if (res.data && typeof res.data === 'object') {
-            try {
-              const str = JSON.stringify(res.data)
-              if (str.length > 256 * 1024) {
-                return {
-                  _truncated: true,
-                  _message: 'Response payload exceeded 256KB, preview truncated for storage optimization',
-                  _preview: str.slice(0, 32 * 1024)
-                }
-              }
-            } catch {
-              // ignore
-            }
-          }
-          return res.data
-        })()
-      }
-
       const newHistoryItem: HistoryItem = {
         id: 'hist-' + Date.now(),
         request: historyRequest,
         status: res.status,
         time: res.time,
         timestamp: Date.now(),
-        response: safeResponseSnapshot
+        response: res
       }
       const nextHistory = [newHistoryItem, ...history.slice(0, 49)]
       setHistory(nextHistory)
