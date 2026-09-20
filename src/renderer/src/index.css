@@ -33,6 +33,7 @@
   --color-sky-400: 56 189 248;
   --color-amber-300: 252 211 77;
   --color-amber-400: 251 191 36;
+  --color-emerald-300: 110 231 183;
   --color-emerald-400: 52 211 153;
   --color-rose-400: 251 113 133;
   --color-blue-400: 96 165 250;
@@ -64,6 +65,7 @@
   --color-sky-400: 2 132 199;       /* #0284c7 */
   --color-amber-300: 180 83 9;      /* #b45309 */
   --color-amber-400: 217 119 6;     /* #d97706 */
+  --color-emerald-300: 4 120 87;    /* #047857 deep vibrant emerald for high contrast */
   --color-emerald-400: 5 150 105;   /* #059669 */
   --color-rose-400: 225 29 72;      /* #e11d48 */
   --color-blue-400: 37 99 235;      /* #2563eb */

@@ -6,6 +6,7 @@ import { StorageService } from './storage'
 
 let storage: StorageService
 let mainWindow: BrowserWindow | null = null
+let devToysWindow: BrowserWindow | null = null
 const popoutDataMap = new Map<number, any>()
 
 function createWindow(): void {
@@ -228,6 +229,44 @@ app.whenReady().then(() => {
     } else {
       helpWindow.loadFile(join(__dirname, '../renderer/index.html'), {
         query: { view: 'help-window' }
+      })
+    }
+    return true
+  })
+
+  ipcMain.handle('relay:open-devtoys-window', async () => {
+    if (devToysWindow && !devToysWindow.isDestroyed()) {
+      if (devToysWindow.isMinimized()) {
+        devToysWindow.restore()
+      }
+      devToysWindow.focus()
+      return true
+    }
+
+    devToysWindow = new BrowserWindow({
+      width: 1150,
+      height: 780,
+      minWidth: 800,
+      minHeight: 550,
+      title: 'Relay - 开发者工具箱 & 便签',
+      autoHideMenuBar: true,
+      backgroundColor: '#0f172a',
+      webPreferences: {
+        preload: join(__dirname, '../preload/index.js'),
+        sandbox: false
+      }
+    })
+
+    devToysWindow.on('closed', () => {
+      devToysWindow = null
+    })
+
+    const isDev = !app.isPackaged
+    if (isDev && process.env['ELECTRON_RENDERER_URL']) {
+      devToysWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?view=devtoys`)
+    } else {
+      devToysWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+        query: { view: 'devtoys' }
       })
     }
     return true

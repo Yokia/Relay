@@ -538,6 +538,7 @@ export interface TranslationSchema {
     scratchpad: string
     timestamp: string
     urlEncoder: string
+    escape: string
     base64: string
     jwt: string
     hash: string
@@ -545,6 +546,7 @@ export interface TranslationSchema {
     scratchpadDesc: string
     timestampDesc: string
     urlDesc: string
+    escapeDesc: string
     base64Desc: string
     jwtDesc: string
     hashDesc: string
@@ -553,6 +555,20 @@ export interface TranslationSchema {
     outputPlaceholder: string
     encode: string
     decode: string
+    escapeJsonUnicode: string
+    escapeMarkdown: string
+    escapeHtml: string
+    escapeFormatJson: string
+    escapePlaceholder: string
+    wrapLines: string
+    raw: string
+    formatted: string
+    escapeJsonString: string
+    unescapeJsonString: string
+    escapeHtmlEntities: string
+    decodeHtmlEntities: string
+    escapeUnicode: string
+    decodeUnicode: string
     swap: string
     clear: string
     copy: string

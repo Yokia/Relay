@@ -4,6 +4,7 @@ import App from './App'
 import { ResponsePopoutWindow } from './components/ResponsePopoutWindow'
 import { HistoryPopoutWindow } from './components/HistoryPopoutWindow'
 import { HelpPopoutWindow } from './components/HelpPopoutWindow'
+import { DevToysPopoutWindow } from './components/DevToysPopoutWindow'
 import './index.css'
 
 const urlParams = new URLSearchParams(window.location.search)
@@ -17,6 +18,8 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <HistoryPopoutWindow />
     ) : view === 'help-window' ? (
       <HelpPopoutWindow />
+    ) : view === 'devtoys' ? (
+      <DevToysPopoutWindow />
     ) : (
       <App />
     )}

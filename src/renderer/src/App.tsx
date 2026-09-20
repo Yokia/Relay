@@ -1379,10 +1379,23 @@ function MainApp({
   }
 
   // Keyboard shortcuts
+  const handleOpenDevToys = () => {
+    if (window.electronAPI?.openDevToysWindow) {
+      window.electronAPI.openDevToysWindow()
+    } else {
+      setIsDevToysOpen(true)
+    }
+  }
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null
-      const isCodeEditorFocused = Boolean(target?.closest('.cm-editor'))
+      // Check if target is inside CodeMirror or standard input/textarea
+      const target = e.target as HTMLElement
+      const isCodeEditorFocused = target && (
+        target.closest('.cm-editor') ||
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA'
+      )
       // Ctrl+S: Save
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault()
@@ -1413,7 +1426,7 @@ function MainApp({
       // Ctrl+Shift+T: Open DevToys / Scratchpad
       else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 't') {
         e.preventDefault()
-        setIsDevToysOpen(true)
+        handleOpenDevToys()
       }
       // Ctrl+T: New Tab
       else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 't') {
@@ -1494,11 +1507,11 @@ function MainApp({
       {/* DevToys / Scratchpad Toolbox */}
       <button
         type="button"
-        onClick={() => setIsDevToysOpen(true)}
-        className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-300 border border-slate-800/80 transition-colors cursor-pointer"
+        onClick={handleOpenDevToys}
+        className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-800/80 transition-colors cursor-pointer"
         title={`${t('devtoys.title')} (Ctrl+Shift+T)`}
       >
-        <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+        <Sparkles className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
         <span className="text-[11px] font-medium">{t('devtoys.title')}</span>
       </button>
 
@@ -1510,10 +1523,10 @@ function MainApp({
             window.electronAPI.openHelpWindow()
           }
         }}
-        className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-300 border border-slate-800/80 transition-colors cursor-pointer"
+        className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 border border-slate-800/80 transition-colors cursor-pointer"
         title={t('help.title')}
       >
-        <HelpCircle className="w-3.5 h-3.5 text-sky-400" />
+        <HelpCircle className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
         <span className="text-[11px] font-medium">{t('help.btnText')}</span>
       </button>
 
@@ -1521,7 +1534,7 @@ function MainApp({
       <button
         type="button"
         onClick={() => handleUpdateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' })}
-        className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800/80 transition-colors cursor-pointer"
+        className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 border border-slate-800/80 transition-colors cursor-pointer"
         title={t('common.toggleTheme')}
       >
         {settings.theme === 'light' ? (
@@ -1617,7 +1630,7 @@ function MainApp({
         onOpenCurlModal={() => setCurlModalState({ isOpen: true, mode: 'import' })}
         onOpenConstantModal={() => setIsConstantModalOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
-        onOpenDevToys={() => setIsDevToysOpen(true)}
+        onOpenDevToys={handleOpenDevToys}
         onSelectEnv={(id) => {
           setActiveEnvId(id || undefined)
           persist({ activeEnvironmentId: id || undefined })
