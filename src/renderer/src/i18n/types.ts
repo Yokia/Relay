@@ -569,6 +569,15 @@ export interface TranslationSchema {
     decodeHtmlEntities: string
     escapeUnicode: string
     decodeUnicode: string
+    smartMode: string
+    smartModeTip: string
+    jsonMode: string
+    jsonModeTip: string
+    htmlMode: string
+    htmlModeTip: string
+    unicodeMode: string
+    unicodeModeTip: string
+    smartUnescapeBtn: string
     swap: string
     clear: string
     copy: string

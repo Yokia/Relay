@@ -38,7 +38,9 @@ import {
   decodeHtmlEntities,
   encodeHtmlEntities,
   decodeUnicode,
-  encodeUnicode
+  encodeUnicode,
+  smartFormatText,
+  smartUnescape
 } from '../utils/escapeUtils'
 import { CodeEditor } from './CodeEditor'
 
@@ -48,6 +50,75 @@ interface DevToysContentProps {
   onClose?: () => void
   onToast?: (msg: string, type?: 'success' | 'error' | 'info') => void
   isPopout?: boolean
+}
+
+/**
+ * Resizable dual-panel container with draggable splitter and persisted ratio
+ */
+const ResizableDualPanels: React.FC<{
+  left: React.ReactNode
+  right: React.ReactNode
+  storageKey?: string
+  defaultRatio?: number
+}> = ({ left, right, storageKey = 'relay_devtoys_split_ratio', defaultRatio = 50 }) => {
+  const [ratio, setRatio] = useState<number>(() => {
+    const saved = localStorage.getItem(storageKey)
+    if (saved) {
+      const parsed = parseFloat(saved)
+      if (!isNaN(parsed) && parsed >= 20 && parsed <= 80) return parsed
+    }
+    return defaultRatio
+  })
+
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const isDraggingRef = React.useRef(false)
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    isDraggingRef.current = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingRef.current || !containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const newRatio = ((ev.clientX - rect.left) / rect.width) * 100
+      const clamped = Math.max(20, Math.min(80, newRatio))
+      setRatio(clamped)
+      localStorage.setItem(storageKey, clamped.toString())
+    }
+
+    const handleMouseUp = () => {
+      isDraggingRef.current = false
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+  }
+
+  return (
+    <div ref={containerRef} className="flex-1 flex min-h-0 w-full overflow-hidden">
+      <div style={{ width: `${ratio}%` }} className="h-full flex flex-col min-w-0 pr-1.5">
+        {left}
+      </div>
+
+      <div
+        onMouseDown={handleMouseDown}
+        className="w-2.5 -mx-1 hover:w-2.5 bg-transparent hover:bg-sky-500/20 active:bg-sky-500/40 cursor-col-resize flex items-center justify-center transition-colors group select-none shrink-0 z-10 rounded"
+        title="拖动调整左右分栏大小"
+      >
+        <div className="w-1 h-8 bg-slate-700/80 group-hover:bg-sky-400 group-active:bg-sky-400 rounded-full transition-colors" />
+      </div>
+
+      <div style={{ width: `${100 - ratio}%` }} className="h-full flex flex-col min-w-0 pl-1.5">
+        {right}
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -85,16 +156,16 @@ const FormattedCodeOutput: React.FC<{
     onToast?.(t('devtoys.copied'), 'success')
   }
 
-  const handlePrettify = () => {
+  const handleFormat = () => {
+    if (!value || !value.trim()) return
     try {
-      const parsed = JSON.parse(value)
-      const formatted = JSON.stringify(parsed, null, 2)
+      const formatted = smartFormatText(value)
       if (onChange) {
         onChange(formatted)
       }
       onToast?.(t('devtoys.prettify'), 'success')
     } catch (err: any) {
-      onToast?.(`JSON: ${err.message}`, 'error')
+      onToast?.(err.message, 'error')
     }
   }
 
@@ -123,27 +194,27 @@ const FormattedCodeOutput: React.FC<{
           )}
         </div>
         <div className="flex items-center gap-1">
+          {value && (
+            <button
+              type="button"
+              onClick={handleFormat}
+              className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded hover:bg-slate-800 text-slate-400 hover:text-sky-300 transition-colors cursor-pointer"
+              title="智能排版与缩进规整 (消除多余空格)"
+            >
+              <Code2 className="w-3 h-3 text-sky-400" />
+              <span>Format</span>
+            </button>
+          )}
           {isJson && (
-            <>
-              <button
-                type="button"
-                onClick={handlePrettify}
-                className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded hover:bg-slate-800 text-slate-400 hover:text-sky-300 transition-colors"
-                title={t('devtoys.prettify')}
-              >
-                <Code2 className="w-3 h-3 text-sky-400" />
-                <span>Format</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleMinify}
-                className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded hover:bg-slate-800 text-slate-400 hover:text-amber-300 transition-colors"
-                title={t('devtoys.minify')}
-              >
-                <Minimize2 className="w-3 h-3 text-amber-400" />
-                <span>Minify</span>
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={handleMinify}
+              className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded hover:bg-slate-800 text-slate-400 hover:text-amber-300 transition-colors cursor-pointer"
+              title={t('devtoys.minify')}
+            >
+              <Minimize2 className="w-3 h-3 text-amber-400" />
+              <span>Minify</span>
+            </button>
           )}
           <button
             type="button"
@@ -160,7 +231,7 @@ const FormattedCodeOutput: React.FC<{
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+              className="flex items-center gap-1 px-2 py-0.5 text-[11px] rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
             >
               {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
               <span>{copied ? t('devtoys.copied') : t('devtoys.copy')}</span>
@@ -284,7 +355,7 @@ export const DevToysContent: React.FC<DevToysContentProps> = ({ onClose, onToast
         </div>
 
         {/* Workspace View */}
-        <div className="flex-1 bg-slate-900/60 overflow-y-auto p-5 select-text">
+        <div className="flex-1 bg-slate-900/60 overflow-y-auto p-5 select-text flex flex-col min-h-0">
           {activeTab === 'scratchpad' && <ScratchpadTool onToast={onToast} />}
           {activeTab === 'timestamp' && <TimestampTool language={language} onToast={onToast} />}
           {activeTab === 'url' && <UrlTool onToast={onToast} />}
@@ -835,25 +906,29 @@ const UrlTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error') =>
         </div>
       </div>
 
-      {/* Input / Output Panels */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
-        <div className="flex flex-col gap-1.5 min-h-0">
-          <span className="text-[11px] font-semibold text-slate-400">Input</span>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={t('devtoys.inputPlaceholder')}
-            className="flex-1 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none leading-relaxed"
+      {/* Resizable Input / Output Panels */}
+      <ResizableDualPanels
+        storageKey="relay_devtoys_url_split"
+        left={
+          <div className="flex flex-col gap-1.5 h-full min-h-0">
+            <span className="text-[11px] font-semibold text-slate-400">Input</span>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={t('devtoys.inputPlaceholder')}
+              className="flex-1 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none leading-relaxed"
+            />
+          </div>
+        }
+        right={
+          <FormattedCodeOutput
+            value={output}
+            title="Output (格式化与取色)"
+            onToast={onToast}
+            onChange={setOutput}
           />
-        </div>
-
-        <FormattedCodeOutput
-          value={output}
-          title="Output (格式化与取色)"
-          onToast={onToast}
-          onChange={setOutput}
-        />
-      </div>
+        }
+      />
     </div>
   )
 }
@@ -861,23 +936,31 @@ const UrlTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error') =>
 // ==========================================
 // 4. Escape / Unescape Tool (转义与反转义解码 - 支持 CodeEditor 格式化与取色)
 // ==========================================
+type EscapeMode = 'smart' | 'json' | 'html' | 'unicode'
+
 const EscapeTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error') => void }> = ({
   onToast
 }) => {
   const { t } = useI18n()
+  const [mode, setMode] = useState<EscapeMode>('smart')
   const [input, setInput] = useState('')
   const [output, setOutput] = useState('')
+
+  const handleSmartUnescape = () => {
+    try {
+      const res = smartUnescape(input)
+      setOutput(res)
+      onToast?.(t('devtoys.smartUnescapeBtn'), 'success')
+    } catch (err: any) {
+      onToast?.(err.message, 'error')
+    }
+  }
 
   const handleUnescapeJson = () => {
     try {
       const res = unescapeJsonString(input)
-      // Check if result is JSON
-      try {
-        const parsed = JSON.parse(res)
-        setOutput(JSON.stringify(parsed, null, 2))
-      } catch {
-        setOutput(res)
-      }
+      const formatted = smartFormatText(res)
+      setOutput(formatted)
       onToast?.(t('devtoys.unescapeJsonString'), 'success')
     } catch (err: any) {
       onToast?.(err.message, 'error')
@@ -940,97 +1023,201 @@ const EscapeTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error')
   }
 
   return (
-    <div className="flex flex-col gap-4 h-full">
-      {/* Action Toolbar */}
-      <div className="flex flex-wrap items-center justify-between bg-slate-950/60 border border-slate-800 rounded-xl p-3 gap-2 shrink-0">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={handleUnescapeJson}
-            className="px-2.5 py-1 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors cursor-pointer"
-            title="去除反斜杠转义并格式化 JSON"
-          >
-            {t('devtoys.unescapeJsonString')}
-          </button>
-          <button
-            type="button"
-            onClick={handleEscapeJson}
-            className="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
-          >
-            {t('devtoys.escapeJsonString')}
-          </button>
-          <button
-            type="button"
-            onClick={handleDecodeHtml}
-            className="px-2.5 py-1 text-xs rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium transition-colors cursor-pointer"
-          >
-            {t('devtoys.decodeHtmlEntities')}
-          </button>
-          <button
-            type="button"
-            onClick={handleEncodeHtml}
-            className="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
-          >
-            {t('devtoys.escapeHtmlEntities')}
-          </button>
-          <button
-            type="button"
-            onClick={handleDecodeUnicode}
-            className="px-2.5 py-1 text-xs rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium transition-colors cursor-pointer"
-          >
-            {t('devtoys.decodeUnicode')}
-          </button>
-          <button
-            type="button"
-            onClick={handleEncodeUnicode}
-            className="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
-          >
-            {t('devtoys.escapeUnicode')}
-          </button>
+    <div className="flex flex-col gap-3 h-full min-h-0">
+      {/* Top Header & Mode Bar */}
+      <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 flex flex-col gap-2 shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          {/* Segmented Mode Selector */}
+          <div className="flex items-center bg-slate-900/90 border border-slate-800/90 p-1 rounded-xl gap-1">
+            <button
+              type="button"
+              onClick={() => setMode('smart')}
+              className={`px-3 py-1 text-xs rounded-lg font-medium transition-all cursor-pointer ${
+                mode === 'smart'
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              {t('devtoys.smartMode')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('json')}
+              className={`px-3 py-1 text-xs rounded-lg font-medium transition-all cursor-pointer ${
+                mode === 'json'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              {t('devtoys.jsonMode')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('html')}
+              className={`px-3 py-1 text-xs rounded-lg font-medium transition-all cursor-pointer ${
+                mode === 'html'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              {t('devtoys.htmlMode')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('unicode')}
+              className={`px-3 py-1 text-xs rounded-lg font-medium transition-all cursor-pointer ${
+                mode === 'unicode'
+                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              }`}
+            >
+              {t('devtoys.unicodeMode')}
+            </button>
+          </div>
+
+          {/* Action Buttons for Current Mode */}
+          <div className="flex items-center gap-2">
+            {mode === 'smart' && (
+              <button
+                type="button"
+                onClick={handleSmartUnescape}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs rounded-lg bg-gradient-to-r from-sky-600 to-emerald-600 hover:from-sky-500 hover:to-emerald-500 text-white font-medium shadow-sm transition-all cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{t('devtoys.smartUnescapeBtn')}</span>
+              </button>
+            )}
+
+            {mode === 'json' && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleUnescapeJson}
+                  className="px-3 py-1.5 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors cursor-pointer"
+                  title="去除反斜杠转义并智能排版"
+                >
+                  {t('devtoys.unescapeJsonString')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEscapeJson}
+                  className="px-3 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition-colors cursor-pointer"
+                >
+                  {t('devtoys.escapeJsonString')}
+                </button>
+              </>
+            )}
+
+            {mode === 'html' && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleDecodeHtml}
+                  className="px-3 py-1.5 text-xs rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium transition-colors cursor-pointer"
+                >
+                  {t('devtoys.decodeHtmlEntities')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEncodeHtml}
+                  className="px-3 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition-colors cursor-pointer"
+                >
+                  {t('devtoys.escapeHtmlEntities')}
+                </button>
+              </>
+            )}
+
+            {mode === 'unicode' && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleDecodeUnicode}
+                  className="px-3 py-1.5 text-xs rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium transition-colors cursor-pointer"
+                >
+                  {t('devtoys.decodeUnicode')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEncodeUnicode}
+                  className="px-3 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium transition-colors cursor-pointer"
+                >
+                  {t('devtoys.escapeUnicode')}
+                </button>
+              </>
+            )}
+
+            <div className="h-4 w-[1px] bg-slate-800 mx-1" />
+
+            <button
+              type="button"
+              onClick={handleSwap}
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+              title={t('devtoys.swap')}
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setInput('')
+                setOutput('')
+              }}
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors cursor-pointer"
+              title={t('devtoys.clear')}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={handleSwap}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
-            title={t('devtoys.swap')}
-          >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setInput('')
-              setOutput('')
-            }}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors cursor-pointer"
-            title={t('devtoys.clear')}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+        {/* Tip description banner */}
+        <div className="text-[11px] text-slate-400 flex items-center gap-1.5 px-1 font-sans">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0" />
+          <span>
+            {mode === 'smart' && t('devtoys.smartModeTip')}
+            {mode === 'json' && t('devtoys.jsonModeTip')}
+            {mode === 'html' && t('devtoys.htmlModeTip')}
+            {mode === 'unicode' && t('devtoys.unicodeModeTip')}
+          </span>
         </div>
       </div>
 
-      {/* Panels */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
-        <div className="flex flex-col gap-1.5 min-h-0">
-          <span className="text-[11px] font-semibold text-slate-400">Input</span>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={'例如: {"name":"demo"} 或 <div> 或 \\u4e2d\\u6587'}
-            className="flex-1 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none leading-relaxed"
+      {/* Resizable Input / Output Panels */}
+      <ResizableDualPanels
+        storageKey="relay_devtoys_escape_split"
+        left={
+          <div className="flex flex-col gap-1.5 h-full min-h-0">
+            <div className="flex items-center justify-between px-1 text-xs shrink-0">
+              <span className="text-[11px] font-semibold text-slate-400">Input</span>
+              {input && (
+                <button
+                  type="button"
+                  onClick={() => setInput(smartFormatText(input))}
+                  className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded text-slate-400 hover:text-sky-300 hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="整理输入区格式与消除多余空格"
+                >
+                  <Code2 className="w-3 h-3 text-sky-400" />
+                  <span>整理</span>
+                </button>
+              )}
+            </div>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={'例如: {"name":"demo"} 或 <div> 或 \\u4e2d\\u6587 或带斜杠/空格的代码片段'}
+              className="flex-1 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none leading-relaxed"
+            />
+          </div>
+        }
+        right={
+          <FormattedCodeOutput
+            value={output}
+            title="Output (格式化与取色)"
+            onToast={onToast}
+            onChange={setOutput}
           />
-        </div>
-
-        <FormattedCodeOutput
-          value={output}
-          title="Output (格式化与取色)"
-          onToast={onToast}
-          onChange={setOutput}
-        />
-      </div>
+        }
+      />
     </div>
   )
 }
@@ -1125,25 +1312,29 @@ const Base64Tool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error')
         </div>
       </div>
 
-      {/* Input / Output Panels */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0">
-        <div className="flex flex-col gap-1.5 min-h-0">
-          <span className="text-[11px] font-semibold text-slate-400">Input</span>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={t('devtoys.inputPlaceholder')}
-            className="flex-1 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none leading-relaxed"
+      {/* Resizable Input / Output Panels */}
+      <ResizableDualPanels
+        storageKey="relay_devtoys_base64_split"
+        left={
+          <div className="flex flex-col gap-1.5 h-full min-h-0">
+            <span className="text-[11px] font-semibold text-slate-400">Input</span>
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={t('devtoys.inputPlaceholder')}
+              className="flex-1 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none leading-relaxed"
+            />
+          </div>
+        }
+        right={
+          <FormattedCodeOutput
+            value={output}
+            title="Output (格式化与取色)"
+            onToast={onToast}
+            onChange={setOutput}
           />
-        </div>
-
-        <FormattedCodeOutput
-          value={output}
-          title="Output (格式化与取色)"
-          onToast={onToast}
-          onChange={setOutput}
-        />
-      </div>
+        }
+      />
     </div>
   )
 }
