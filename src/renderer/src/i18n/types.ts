@@ -1,3 +1,6 @@
+import { HelpDocSchema } from './locales/help/types'
+
+export * from './locales/help/types'
 export type Language = 'zh-CN' | 'en-US'
 
 export interface TranslationSchema {
@@ -653,4 +656,5 @@ export interface TranslationSchema {
     escapeInputPlaceholder: string
     timestampPlaceholder: string
   }
+  helpDoc: HelpDocSchema
 }

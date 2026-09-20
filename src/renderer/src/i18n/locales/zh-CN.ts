@@ -1,4 +1,5 @@
 import { TranslationSchema } from '../types'
+import { helpDocZh } from './help/zh-CN'
 
 export const zhCN: TranslationSchema = {
   common: {
@@ -653,5 +654,6 @@ export const zhCN: TranslationSchema = {
     expandEscapesTip: '解析展开字符串内部 \\n 和 \\t 为真实换行与缩进',
     escapeInputPlaceholder: '例如: {"name":"demo"} 或 <div> 或 \\u4e2d\\u6587 或带斜杠/空格的代码片段',
     timestampPlaceholder: '例如: 1718000000 (秒或毫秒)'
-  }
+  },
+  helpDoc: helpDocZh
 }

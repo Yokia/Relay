@@ -1,4 +1,5 @@
 import { TranslationSchema } from '../types'
+import { helpDocEn } from './help/en-US'
 
 export const enUS: TranslationSchema = {
   common: {
@@ -653,5 +654,6 @@ export const enUS: TranslationSchema = {
     expandEscapesTip: 'Expand string escapes \\n and \\t into real lines',
     escapeInputPlaceholder: 'e.g. {"name":"demo"} or <div> or \\u4e2d\\u6587 or code snippets with slashes/spaces',
     timestampPlaceholder: 'e.g. 1718000000 (seconds or milliseconds)'
-  }
+  },
+  helpDoc: helpDocEn
 }
