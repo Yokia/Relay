@@ -150,6 +150,26 @@ export interface TranslationSchema {
     extractDesc: string
     varNamePlaceholder: string
     addExtraction: string
+    addDefaultHeaders: string
+    addDefaultHeadersTip: string
+    quickPresets: string
+    presetJson: string
+    presetNoCache: string
+    presetBearer: string
+    presetDefault: string
+    bulkImportHeaders: string
+    bulkImportHeadersTip: string
+    pasteFromClipboard: string
+    pasteHeadersTitle: string
+    pasteHeadersDesc: string
+    pastePlaceholder: string
+    importModeAppend: string
+    importModeReplace: string
+    parsedCountNotice: string
+    noHeadersDetected: string
+    confirmImport: string
+    clipboardReadSuccess: string
+    clipboardEmpty: string
   }
   response: {
     emptyTitle: string

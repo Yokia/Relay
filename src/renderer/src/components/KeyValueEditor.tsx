@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useId } from 'react'
 import { Plus, Trash2, CheckSquare, Square } from 'lucide-react'
 import { KeyValueItem } from '../types'
 import { useI18n } from '../i18n'
@@ -8,15 +8,22 @@ interface Props {
   onChange: (items: KeyValueItem[]) => void
   placeholderKey?: string
   placeholderValue?: string
+  keySuggestions?: string[]
+  valueSuggestions?: string[]
 }
 
 export const KeyValueEditor: React.FC<Props> = ({
   items,
   onChange,
   placeholderKey,
-  placeholderValue
+  placeholderValue,
+  keySuggestions,
+  valueSuggestions
 }) => {
   const { t } = useI18n()
+  const rawId = useId().replace(/:/g, '')
+  const keyListId = keySuggestions && keySuggestions.length > 0 ? `kv-keys-${rawId}` : undefined
+  const valListId = valueSuggestions && valueSuggestions.length > 0 ? `kv-vals-${rawId}` : undefined
 
   const defaultKeyPlaceholder = placeholderKey || t('editor.colKey')
   const defaultValPlaceholder = placeholderValue || t('editor.colValue')
@@ -63,11 +70,16 @@ export const KeyValueEditor: React.FC<Props> = ({
       ) : (
         <div className="flex flex-col gap-1.5 max-h-[260px] overflow-y-auto pr-1">
           {items.map((item, idx) => (
-            <div key={idx} className="flex items-center gap-2 group">
+            <div
+              key={idx}
+              className="flex items-center gap-2 group"
+              title={item.description || undefined}
+            >
               <button
                 type="button"
                 onClick={() => handleToggle(idx)}
-                className="w-8 flex justify-center text-slate-400 hover:text-slate-200"
+                className="w-8 flex justify-center text-slate-400 hover:text-slate-200 cursor-pointer"
+                title={item.enabled ? t('common.active') : t('sidebar.switchActiveValue')}
               >
                 {item.enabled ? (
                   <CheckSquare className="w-4 h-4 text-sky-400" />
@@ -81,6 +93,7 @@ export const KeyValueEditor: React.FC<Props> = ({
                 placeholder={defaultKeyPlaceholder}
                 value={item.key}
                 onChange={(e) => handleKeyChange(idx, e.target.value)}
+                list={keyListId}
                 className="flex-1 bg-slate-900 border border-slate-700/60 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 font-mono"
               />
 
@@ -89,13 +102,15 @@ export const KeyValueEditor: React.FC<Props> = ({
                 placeholder={defaultValPlaceholder}
                 value={item.value}
                 onChange={(e) => handleValChange(idx, e.target.value)}
+                list={valListId}
                 className="flex-1 bg-slate-900 border border-slate-700/60 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 font-mono"
               />
 
               <button
                 type="button"
                 onClick={() => handleDelete(idx)}
-                className="w-8 flex justify-center text-slate-600 hover:text-rose-400 transition-colors"
+                className="w-8 flex justify-center text-slate-600 hover:text-rose-400 transition-colors cursor-pointer"
+                title={t('common.delete')}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -108,11 +123,27 @@ export const KeyValueEditor: React.FC<Props> = ({
         <button
           type="button"
           onClick={handleAdd}
-          className="flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-medium px-2 py-1 rounded hover:bg-slate-800/60 transition-colors"
+          className="flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-medium px-2 py-1 rounded hover:bg-slate-800/60 transition-colors cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" /> {t('common.add')}
         </button>
       </div>
+
+      {/* Datalists for native Chromium autocompletion */}
+      {keyListId && (
+        <datalist id={keyListId}>
+          {keySuggestions?.map((keyName) => (
+            <option key={keyName} value={keyName} />
+          ))}
+        </datalist>
+      )}
+      {valListId && (
+        <datalist id={valListId}>
+          {valueSuggestions?.map((valName) => (
+            <option key={valName} value={valName} />
+          ))}
+        </datalist>
+      )}
     </div>
   )
 }

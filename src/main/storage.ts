@@ -89,7 +89,12 @@ const defaultData: StorageData = {
           name: 'Get Users List',
           method: 'GET',
           url: 'https://jsonplaceholder.typicode.com/users',
-          headers: [],
+          headers: [
+            { key: 'User-Agent', value: 'Relay/1.0.0', enabled: true },
+            { key: 'Accept', value: '*/*', enabled: true },
+            { key: 'Accept-Encoding', value: 'gzip, deflate, br', enabled: true },
+            { key: 'Connection', value: 'keep-alive', enabled: true }
+          ],
           params: [{ key: 'page', value: '1', enabled: true }],
           bodyType: 'none',
           bodyRaw: ''
@@ -99,7 +104,13 @@ const defaultData: StorageData = {
           name: 'Create Post',
           method: 'POST',
           url: 'https://jsonplaceholder.typicode.com/posts',
-          headers: [{ key: 'Content-Type', value: 'application/json', enabled: true }],
+          headers: [
+            { key: 'User-Agent', value: 'Relay/1.0.0', enabled: true },
+            { key: 'Content-Type', value: 'application/json', enabled: true },
+            { key: 'Accept', value: '*/*', enabled: true },
+            { key: 'Accept-Encoding', value: 'gzip, deflate, br', enabled: true },
+            { key: 'Connection', value: 'keep-alive', enabled: true }
+          ],
           params: [],
           bodyType: 'json',
           bodyRaw: JSON.stringify({ title: 'foo', body: 'bar', userId: 1 }, null, 2)

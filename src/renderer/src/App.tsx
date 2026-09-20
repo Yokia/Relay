@@ -22,6 +22,7 @@ import { executePreRequestScript, executeTestScript } from './utils/scriptEngine
 import { queryJsonPath } from './utils/jsonPath'
 import { I18nProvider, useI18n } from './i18n'
 import { ThemeProvider } from './theme'
+import { createDefaultHeaders } from './utils/headerConstants'
 import { Sun, Moon, Search, History, Zap, HelpCircle, Sparkles } from 'lucide-react'
 import {
   findCollectionInTree,
@@ -86,7 +87,7 @@ const defaultNewRequest: RequestItem = {
   method: 'GET',
   url: '{{server}}:{{port}}/api/users',
   params: [],
-  headers: [],
+  headers: createDefaultHeaders(),
   bodyType: 'none',
   bodyRaw: ''
 }
@@ -588,7 +589,8 @@ function MainApp({
       ...defaultNewRequest,
       id: targetTab.requestId,
       name: targetTab.name,
-      method: targetTab.method
+      method: targetTab.method,
+      headers: createDefaultHeaders()
     }
     setDrafts((prev) => ({ ...prev, [targetTab.requestId]: fallbackReq }))
     setCurrentRequest(fallbackReq)
@@ -635,7 +637,8 @@ function MainApp({
     const freshReq: RequestItem = {
       ...defaultNewRequest,
       id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-      name: 'New Request'
+      name: 'New Request',
+      headers: createDefaultHeaders()
     }
     const freshTab: WorkspaceTab = {
       id: 'tab-' + freshReq.id,
@@ -659,7 +662,8 @@ function MainApp({
     const newReq: RequestItem = customReq || {
       ...defaultNewRequest,
       id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-      name: 'New Request'
+      name: 'New Request',
+      headers: createDefaultHeaders()
     }
     const newTab: WorkspaceTab = {
       id: 'tab-' + newReq.id,
@@ -771,7 +775,7 @@ function MainApp({
       method: 'GET',
       url,
       params: [],
-      headers: [],
+      headers: createDefaultHeaders(),
       bodyType: 'none',
       bodyRaw: ''
     }
@@ -1183,7 +1187,8 @@ function MainApp({
     const newReq: RequestItem = {
       ...defaultNewRequest,
       id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
-      name
+      name,
+      headers: createDefaultHeaders()
     }
     const next = addRequestToCollection(collections, colId, newReq)
     setCollections(next)

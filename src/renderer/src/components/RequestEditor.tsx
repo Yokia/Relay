@@ -2,10 +2,18 @@ import React, { useState } from 'react'
 import { KeyValueEditor } from './KeyValueEditor'
 import { CodeEditor } from './CodeEditor'
 import { ScriptEditor } from './ScriptEditor'
-import { RequestItem } from '../types'
-import { Sparkles, WrapText, ChevronDown, KeyRound, Plus, Trash2, FileUp } from 'lucide-react'
+import { HeaderBulkImportModal } from './HeaderBulkImportModal'
+import { RequestItem, KeyValueItem } from '../types'
+import { Sparkles, WrapText, ChevronDown, KeyRound, Plus, Trash2, FileUp, ClipboardPaste, ClipboardList } from 'lucide-react'
 import { stripJsonComments } from '../utils/jsonUtils'
 import { useI18n } from '../i18n'
+import {
+  createDefaultHeaders,
+  parseRawHeaders,
+  COMMON_HEADER_KEYS,
+  COMMON_HEADER_VALUES,
+  HEADER_PRESETS
+} from '../utils/headerConstants'
 
 interface Props {
   request: RequestItem
@@ -18,6 +26,8 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
   const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<TabType>('params')
   const [wrapLines, setWrapLines] = useState(true)
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false)
+  const [bulkImportInitialText, setBulkImportInitialText] = useState('')
 
   const handleFormatJson = () => {
     if (!request.bodyRaw) return
@@ -32,6 +42,66 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
       } catch (e) {
         alert('Invalid JSON content. Please check syntax.')
       }
+    }
+  }
+
+  const handleAddDefaultHeaders = () => {
+    const current = request.headers || []
+    const currentKeys = new Set(current.map((h) => h.key.trim().toLowerCase()))
+    const toAdd = createDefaultHeaders().filter((h) => !currentKeys.has(h.key.toLowerCase()))
+    if (toAdd.length > 0) {
+      onChange({ headers: [...current, ...toAdd] })
+    }
+  }
+
+  const handleApplyPreset = (presetId: string) => {
+    const preset = HEADER_PRESETS.find((p) => p.id === presetId)
+    if (!preset) return
+    const current = request.headers || []
+    const currentKeys = new Set(current.map((h) => h.key.trim().toLowerCase()))
+    const toAdd = preset.headers.filter((h) => !currentKeys.has(h.key.toLowerCase()))
+    if (toAdd.length > 0) {
+      onChange({ headers: [...current, ...toAdd] })
+    }
+  }
+
+  const handleImportHeaders = (newHeaders: KeyValueItem[], mode: 'append' | 'replace') => {
+    if (mode === 'replace') {
+      onChange({ headers: newHeaders })
+    } else {
+      const current = request.headers || []
+      const currentMap = new Map(current.map((h) => [h.key.trim().toLowerCase(), h]))
+      const updated = [...current]
+      for (const item of newHeaders) {
+        const existing = currentMap.get(item.key.toLowerCase())
+        if (existing) {
+          existing.value = item.value
+          existing.enabled = true
+        } else {
+          updated.push(item)
+        }
+      }
+      onChange({ headers: updated })
+    }
+  }
+
+  const handleQuickPasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (!text || !text.trim()) {
+        setBulkImportInitialText('')
+        setIsBulkImportOpen(true)
+        return
+      }
+      const parsed = parseRawHeaders(text)
+      if (parsed.length > 0) {
+        handleImportHeaders(parsed, 'append')
+      } else {
+        setBulkImportInitialText(text)
+        setIsBulkImportOpen(true)
+      }
+    } catch {
+      setIsBulkImportOpen(true)
     }
   }
 
@@ -149,12 +219,81 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
         )}
 
         {activeTab === 'headers' && (
-          <KeyValueEditor
-            items={request.headers || []}
-            onChange={(headers) => onChange({ headers })}
-            placeholderKey={t('editor.headerKeyPlaceholder')}
-            placeholderValue={t('editor.headerValPlaceholder')}
-          />
+          <div className="flex flex-col h-full">
+            {/* Quick Presets & Bulk Import / Paste Bar */}
+            <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900/40 border-b border-slate-800/80 text-xs shrink-0 gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] text-slate-500 font-medium mr-0.5">{t('editor.quickPresets')}:</span>
+                <button
+                  type="button"
+                  onClick={handleAddDefaultHeaders}
+                  className="px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 border border-slate-700/60 transition-colors flex items-center gap-1 cursor-pointer font-medium"
+                  title={t('editor.addDefaultHeadersTip')}
+                >
+                  <Sparkles className="w-3 h-3 text-sky-400" />
+                  <span>{t('editor.presetDefault')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset('json')}
+                  className="px-2 py-0.5 rounded text-[11px] bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-slate-100 border border-slate-700/50 transition-colors cursor-pointer"
+                  title="Content-Type: application/json & Accept: application/json"
+                >
+                  + JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset('no-cache')}
+                  className="px-2 py-0.5 rounded text-[11px] bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-slate-100 border border-slate-700/50 transition-colors cursor-pointer"
+                  title="Cache-Control: no-cache & Pragma: no-cache"
+                >
+                  + No-Cache
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset('bearer')}
+                  className="px-2 py-0.5 rounded text-[11px] bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-slate-100 border border-slate-700/50 transition-colors cursor-pointer"
+                  title="Authorization: Bearer {{token}}"
+                >
+                  + Bearer
+                </button>
+              </div>
+
+              {/* One-click Paste from Clipboard & Bulk Import Modal trigger */}
+              <div className="flex items-center gap-1.5 ml-auto">
+                <button
+                  type="button"
+                  onClick={handleQuickPasteFromClipboard}
+                  className="px-2 py-0.5 rounded text-[11px] bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 border border-sky-500/30 transition-colors flex items-center gap-1 cursor-pointer font-medium"
+                  title={t('editor.pasteFromClipboard')}
+                >
+                  <ClipboardPaste className="w-3 h-3" />
+                  <span>{t('editor.pasteFromClipboard')}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkImportInitialText('')
+                    setIsBulkImportOpen(true)
+                  }}
+                  className="px-2 py-0.5 rounded text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100 border border-slate-700/60 transition-colors flex items-center gap-1 cursor-pointer"
+                  title={t('editor.bulkImportHeadersTip')}
+                >
+                  <ClipboardList className="w-3 h-3 text-slate-400" />
+                  <span>{t('editor.bulkImportHeaders')}</span>
+                </button>
+              </div>
+            </div>
+
+            <KeyValueEditor
+              items={request.headers || []}
+              onChange={(headers) => onChange({ headers })}
+              placeholderKey={t('editor.headerKeyPlaceholder')}
+              placeholderValue={t('editor.headerValPlaceholder')}
+              keySuggestions={COMMON_HEADER_KEYS}
+              valueSuggestions={COMMON_HEADER_VALUES}
+            />
+          </div>
         )}
 
         {activeTab === 'body' && (
@@ -302,6 +441,13 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
           </div>
         )}
       </div>
+
+      <HeaderBulkImportModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        onImport={handleImportHeaders}
+        initialText={bulkImportInitialText}
+      />
     </div>
   )
 }

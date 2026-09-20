@@ -191,6 +191,23 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
     }
   }
 
+  // Fallback defaults for essential headers if not explicitly disabled by user
+  const hasUserAgent = Object.keys(headers).some((k) => k.toLowerCase() === 'user-agent')
+  const userDisabledUserAgent = req.headers?.some(
+    (h) => !h.enabled && h.key.trim().toLowerCase() === 'user-agent'
+  )
+  if (!hasUserAgent && !userDisabledUserAgent) {
+    headers['User-Agent'] = 'Relay/1.0.0'
+  }
+
+  const hasAccept = Object.keys(headers).some((k) => k.toLowerCase() === 'accept')
+  const userDisabledAccept = req.headers?.some(
+    (h) => !h.enabled && h.key.trim().toLowerCase() === 'accept'
+  )
+  if (!hasAccept && !userDisabledAccept) {
+    headers['Accept'] = '*/*'
+  }
+
   const auth = req.auth
   if (auth?.type === 'oauth2' && !auth.accessToken && auth.tokenUrl && auth.clientId) {
     try {
