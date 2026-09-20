@@ -242,6 +242,17 @@ export interface TranslationSchema {
     multiTabsDesc: string
     showCollectionPathTitle: string
     showCollectionPathDesc: string
+    catAbout: string
+    aboutTitle: string
+    aboutTagline: string
+    aboutVersion: string
+    aboutDeveloper: string
+    aboutWebsite: string
+    aboutWebsiteBtn: string
+    aboutOpenDocsBtn: string
+    aboutRuntime: string
+    aboutTechStack: string
+    aboutCopyright: string
   }
   tabs: {
     newTab: string

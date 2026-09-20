@@ -3,12 +3,14 @@
   "version": "1.0.0",
   "description": "A fast, lightweight, and clean API client built with Electron and React.",
   "main": "./out/main/index.js",
-  "author": "Relay Team",
+  "author": "yokiasoft",
+  "homepage": "https://www.yokiasoft.com",
   "scripts": {
     "start": "electron .",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "pack": "npm run build && electron-builder --dir",
+    "build:win": "npm run build && electron-builder --win",
     "preview": "electron-vite preview"
   },
   "dependencies": {
@@ -38,8 +40,9 @@
     "vite": "^5.4.14"
   },
   "build": {
-    "appId": "com.relay.app",
+    "appId": "com.yokiasoft.relay",
     "productName": "Relay",
+    "copyright": "Copyright © 2026 yokiasoft",
     "directories": {
       "output": "dist"
     },
@@ -47,10 +50,29 @@
       "out/**/*",
       "package.json"
     ],
+    "extraResources": [
+      "resources/**"
+    ],
     "win": {
+      "icon": "resources/icon.ico",
       "target": [
-        "dir"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Relay",
+      "installerIcon": "resources/icon.ico",
+      "uninstallerIcon": "resources/icon.ico",
+      "installerHeaderIcon": "resources/icon.ico"
     }
   }
 }

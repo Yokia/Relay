@@ -13,32 +13,35 @@ import {
   Sliders,
   Sparkles,
   ExternalLink,
-  BookOpen
+  BookOpen,
+  Info
 } from 'lucide-react'
 import { Language, Theme, AppSettings } from '../types'
 import { useI18n } from '../i18n'
 
 export type { AppSettings }
 
+export type SettingCategory = 'general' | 'workspace' | 'network' | 'shortcuts' | 'backup' | 'about'
+
 interface Props {
   isOpen: boolean
   settings: AppSettings
+  initialCategory?: SettingCategory
   onClose: () => void
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void
   onOpenDataTransfer?: () => void
 }
 
-type SettingCategory = 'general' | 'workspace' | 'network' | 'shortcuts' | 'backup'
-
 export const SettingsModal: React.FC<Props> = ({
   isOpen,
   settings,
+  initialCategory = 'general',
   onClose,
   onUpdateSettings,
   onOpenDataTransfer
 }) => {
   const { t } = useI18n()
-  const [activeCategory, setActiveCategory] = useState<SettingCategory>('general')
+  const [activeCategory, setActiveCategory] = useState<SettingCategory>(initialCategory)
 
   if (!isOpen) return null
 
@@ -47,7 +50,8 @@ export const SettingsModal: React.FC<Props> = ({
     { id: 'workspace', label: t('settings.catWorkspace'), icon: <Layers className="w-3.5 h-3.5" /> },
     { id: 'network', label: t('settings.catNetwork'), icon: <ShieldCheck className="w-3.5 h-3.5" /> },
     { id: 'shortcuts', label: t('settings.catShortcuts'), icon: <Keyboard className="w-3.5 h-3.5" /> },
-    { id: 'backup', label: t('settings.catBackup'), icon: <ArrowUpDown className="w-3.5 h-3.5" /> }
+    { id: 'backup', label: t('settings.catBackup'), icon: <ArrowUpDown className="w-3.5 h-3.5" /> },
+    { id: 'about', label: t('settings.catAbout'), icon: <Info className="w-3.5 h-3.5" /> }
   ]
 
   const shortcutsList = [
@@ -419,6 +423,94 @@ export const SettingsModal: React.FC<Props> = ({
                       {t('settings.openTransferBtn')}
                     </button>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* 6. ABOUT CATEGORY */}
+            {activeCategory === 'about' && (
+              <div className="flex flex-col gap-4">
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  {t('settings.catAbout')}
+                </span>
+
+                {/* Main Brand Card */}
+                <div className="p-5 rounded-xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950/90 border border-slate-800 shadow-sm flex flex-col items-center text-center relative overflow-hidden">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-400 to-sky-600 flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-sky-500/20 mb-3 select-none">
+                    R
+                  </div>
+                  <h3 className="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                    Relay
+                    <span className="px-2 py-0.5 text-xs rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono font-medium">
+                      v1.0.0
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400 max-w-sm mt-1.5 leading-relaxed">
+                    {t('settings.aboutTagline')}
+                  </p>
+
+                  <div className="flex items-center gap-2.5 mt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.electronAPI?.openExternal?.('https://www.yokiasoft.com')
+                      }}
+                      className="px-3.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-sky-500/20 transition-all cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>{t('settings.aboutWebsiteBtn')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.electronAPI?.openHelpWindow?.()
+                      }}
+                      className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-sky-400" />
+                      <span>{t('settings.aboutOpenDocsBtn')}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Details list */}
+                <div className="rounded-lg bg-slate-950/50 border border-slate-800 divide-y divide-slate-800/80 text-xs">
+                  <div className="p-3 flex items-center justify-between">
+                    <span className="text-slate-400">{t('settings.aboutVersion')}</span>
+                    <span className="font-mono text-slate-200 font-semibold bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                      1.0.0
+                    </span>
+                  </div>
+                  <div className="p-3 flex items-center justify-between">
+                    <span className="text-slate-400">{t('settings.aboutDeveloper')}</span>
+                    <span className="text-slate-200 font-medium">yokiasoft</span>
+                  </div>
+                  <div className="p-3 flex items-center justify-between">
+                    <span className="text-slate-400">{t('settings.aboutWebsite')}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.electronAPI?.openExternal?.('https://www.yokiasoft.com')
+                      }}
+                      className="text-sky-400 hover:text-sky-300 font-mono hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>https://www.yokiasoft.com</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="p-3 flex items-center justify-between">
+                    <span className="text-slate-400">{t('settings.aboutTechStack')}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[11px] text-slate-300 font-medium">Electron 33</span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[11px] text-slate-300 font-medium">React 18</span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 text-[11px] text-slate-300 font-medium">TypeScript</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Copyright */}
+                <div className="text-center text-[11px] text-slate-500 py-1">
+                  {t('settings.aboutCopyright')}
                 </div>
               </div>
             )}

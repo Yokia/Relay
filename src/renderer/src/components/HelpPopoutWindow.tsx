@@ -18,7 +18,8 @@ import {
   Terminal,
   Compass,
   X,
-  Languages
+  Languages,
+  ExternalLink
 } from 'lucide-react'
 import { Theme, Language } from '../types'
 import { I18nProvider, useI18n } from '../i18n'
@@ -598,9 +599,23 @@ function HelpContent() {
             )}
           </div>
 
-          {/* Sidebar Footer Hint */}
-          <div className="p-3 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-500 text-center">
-            {helpDoc.footerHint}
+          {/* Sidebar Footer Hint & Developer Info */}
+          <div className="p-3 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-500 space-y-1 text-center">
+            <div>{helpDoc.footerHint}</div>
+            <div className="pt-1 flex items-center justify-center gap-1.5 text-slate-400 font-mono text-[10px]">
+              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-sky-400 font-semibold">v1.0.0</span>
+              <span>·</span>
+              <button
+                type="button"
+                onClick={() => {
+                  window.electronAPI?.openExternal?.('https://www.yokiasoft.com')
+                }}
+                className="text-slate-400 hover:text-sky-400 transition-colors inline-flex items-center gap-0.5 cursor-pointer font-sans"
+              >
+                <span>© 2026 yokiasoft</span>
+                <ExternalLink className="w-2.5 h-2.5 ml-0.5 opacity-70" />
+              </button>
+            </div>
           </div>
         </aside>
 

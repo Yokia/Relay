@@ -6,7 +6,7 @@ import { ResponseViewer } from './components/ResponseViewer'
 import { EnvironmentModal } from './components/EnvironmentModal'
 import { CurlModal } from './components/CurlModal'
 import { ConstantManagerModal } from './components/ConstantManagerModal'
-import { SettingsModal, AppSettings } from './components/SettingsModal'
+import { SettingsModal, AppSettings, SettingCategory } from './components/SettingsModal'
 import { DataTransferModal } from './components/DataTransferModal'
 import { TabBar } from './components/TabBar'
 import { CommandPaletteModal } from './components/CommandPaletteModal'
@@ -199,6 +199,7 @@ function MainApp({
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false)
   const [isConstantModalOpen, setIsConstantModalOpen] = useState(false)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const [settingsCategory, setSettingsCategory] = useState<SettingCategory | undefined>(undefined)
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
   const [isCodeSnippetOpen, setIsCodeSnippetOpen] = useState(false)
   const [curlModalState, setCurlModalState] = useState<{ isOpen: boolean; mode: 'import' | 'export' }>({
@@ -1448,6 +1449,7 @@ function MainApp({
       // Ctrl+,: Open Settings Modal
       else if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault()
+        setSettingsCategory('general')
         setIsSettingsModalOpen(true)
       }
     }
@@ -1638,7 +1640,10 @@ function MainApp({
         onOpenEnvModal={() => setIsEnvModalOpen(true)}
         onOpenCurlModal={() => setCurlModalState({ isOpen: true, mode: 'import' })}
         onOpenConstantModal={() => setIsConstantModalOpen(true)}
-        onOpenSettings={() => setIsSettingsModalOpen(true)}
+        onOpenSettings={(cat) => {
+          setSettingsCategory(cat || 'general')
+          setIsSettingsModalOpen(true)
+        }}
         onOpenDevToys={handleOpenDevToys}
         onSelectEnv={(id) => {
           setActiveEnvId(id || undefined)
@@ -1772,6 +1777,7 @@ function MainApp({
       {isSettingsModalOpen && (
         <SettingsModal
           isOpen={isSettingsModalOpen}
+          initialCategory={settingsCategory}
           settings={settings}
           onClose={() => setIsSettingsModalOpen(false)}
           onUpdateSettings={handleUpdateSettings}

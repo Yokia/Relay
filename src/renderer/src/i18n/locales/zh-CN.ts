@@ -239,7 +239,18 @@ export const zhCN: TranslationSchema = {
     multiTabsTitle: '多标签页工作区 (Multi-Tabs)',
     multiTabsDesc: '在顶部开启多标签页，方便在多个关联接口之间快速来回切换对比。关闭后将恢复单工作区模式。',
     showCollectionPathTitle: '标签页显示集合名称',
-    showCollectionPathDesc: '在请求名称前显示所属集合和子集合路径，例如：用户管理 - 登录接口。'
+    showCollectionPathDesc: '在请求名称前显示所属集合和子集合路径，例如：用户管理 - 登录接口。',
+    catAbout: '关于 Relay',
+    aboutTitle: '关于 Relay',
+    aboutTagline: '专为开发者打造的轻量、极速、无 CORS 拦截的高性能 API 客户端',
+    aboutVersion: '版本号',
+    aboutDeveloper: '开发者',
+    aboutWebsite: '官方网址',
+    aboutWebsiteBtn: '访问官方网站',
+    aboutOpenDocsBtn: '查看使用文档',
+    aboutRuntime: '内核与环境',
+    aboutTechStack: '技术栈',
+    aboutCopyright: '版权所有 © 2026 yokiasoft. 保留所有权利。'
   },
   tabs: {
     newTab: '新建标签页',

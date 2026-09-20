@@ -33,6 +33,7 @@ import {
   Sparkles
 } from 'lucide-react'
 import { CollectionItem, HistoryItem, Environment, RequestItem, HttpMethod, ConstantItem } from '../types'
+import { SettingCategory } from './SettingsModal'
 import {
   findCollectionInTree,
   countAllRequests,
@@ -74,7 +75,7 @@ interface Props {
   onSelectEnv: (id: string) => void
   onSwitchConstant: (name: string, value: string) => void
   dirtyIds?: Set<string>
-  onOpenSettings: () => void
+  onOpenSettings: (category?: SettingCategory) => void
   onOpenDevToys?: () => void
   onOpenDataTransfer?: (tab?: 'export' | 'import', targetColId?: string, format?: 'json' | 'html' | 'markdown') => void
   onRunCollection?: (col: CollectionItem) => void
@@ -696,6 +697,14 @@ export const Sidebar: React.FC<Props> = ({
             R
           </div>
           <span>Relay</span>
+          <button
+            type="button"
+            onClick={() => onOpenSettings('about')}
+            title={`${t('settings.aboutTitle')} (v1.0.0)`}
+            className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 border border-sky-500/20 transition-colors cursor-pointer ml-0.5"
+          >
+            v1.0.0
+          </button>
         </div>
         <div className="flex items-center gap-1">
           {onOpenDataTransfer && (
@@ -876,7 +885,7 @@ export const Sidebar: React.FC<Props> = ({
           </button>
           <button
             type="button"
-            onClick={onOpenSettings}
+            onClick={() => onOpenSettings('general')}
             title={t('sidebar.prefSettings')}
             className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition-colors"
           >

@@ -9,6 +9,19 @@ let mainWindow: BrowserWindow | null = null
 let devToysWindow: BrowserWindow | null = null
 const popoutDataMap = new Map<number, any>()
 
+const getAppIcon = (): string => {
+  // In development, resources is at project root; in packaged app, resources is at process.resourcesPath
+  const isDev = !app.isPackaged
+  const devIconPath = join(__dirname, '../../resources/icon.png')
+  const prodIconPath = join(process.resourcesPath, 'resources/icon.png')
+  const fallbackRendererIcon = join(__dirname, '../renderer/icon.png')
+
+  if (fs.existsSync(devIconPath)) return devIconPath
+  if (fs.existsSync(prodIconPath)) return prodIconPath
+  if (fs.existsSync(fallbackRendererIcon)) return fallbackRendererIcon
+  return devIconPath
+}
+
 function createWindow(): void {
   const savedBounds = storage?.getData()?.windowBounds
   const isMaximized = savedBounds?.isMaximized || false
@@ -43,7 +56,8 @@ function createWindow(): void {
     y,
     minWidth: 900,
     minHeight: 600,
-    title: 'Relay - API Client',
+    title: 'Relay - Lightweight API Client',
+    icon: getAppIcon(),
     autoHideMenuBar: true,
     backgroundColor: '#0f172a',
     webPreferences: {
@@ -156,6 +170,7 @@ app.whenReady().then(() => {
       minWidth: 500,
       minHeight: 400,
       title: `Response: ${responsePayload.method || 'GET'} ${responsePayload.url || ''} (${responsePayload.response?.status || 0})`,
+      icon: getAppIcon(),
       autoHideMenuBar: true,
       backgroundColor: '#0f172a',
       webPreferences: {
@@ -189,6 +204,7 @@ app.whenReady().then(() => {
       minWidth: 700,
       minHeight: 500,
       title: 'Relay - Request History',
+      icon: getAppIcon(),
       autoHideMenuBar: true,
       backgroundColor: '#0f172a',
       webPreferences: {
@@ -215,6 +231,7 @@ app.whenReady().then(() => {
       minWidth: 800,
       minHeight: 550,
       title: 'Relay - 用户使用指南与帮助中心',
+      icon: getAppIcon(),
       autoHideMenuBar: true,
       backgroundColor: '#0f172a',
       webPreferences: {
@@ -249,6 +266,7 @@ app.whenReady().then(() => {
       minWidth: 800,
       minHeight: 550,
       title: 'Relay - 开发者工具箱 & 便签',
+      icon: getAppIcon(),
       autoHideMenuBar: true,
       backgroundColor: '#0f172a',
       webPreferences: {

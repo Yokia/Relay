@@ -239,7 +239,18 @@ export const enUS: TranslationSchema = {
     multiTabsTitle: 'Multi-Tab Workspace',
     multiTabsDesc: 'Enable browser-like multiple tabs on top to quickly switch and compare between related requests. Turn off to restore single workspace mode.',
     showCollectionPathTitle: 'Show collection names in tabs',
-    showCollectionPathDesc: 'Show the collection and sub-collection path before the request name, for example: Users - Login.'
+    showCollectionPathDesc: 'Show the collection and sub-collection path before the request name, for example: Users - Login.',
+    catAbout: 'About Relay',
+    aboutTitle: 'About Relay',
+    aboutTagline: 'A lightweight, ultra-fast, CORS-free API client built for developers',
+    aboutVersion: 'Version',
+    aboutDeveloper: 'Developer',
+    aboutWebsite: 'Official Website',
+    aboutWebsiteBtn: 'Visit Official Website',
+    aboutOpenDocsBtn: 'Documentation',
+    aboutRuntime: 'Runtime & Environment',
+    aboutTechStack: 'Tech Stack',
+    aboutCopyright: 'Copyright © 2026 yokiasoft. All rights reserved.'
   },
   tabs: {
     newTab: 'New Tab',
