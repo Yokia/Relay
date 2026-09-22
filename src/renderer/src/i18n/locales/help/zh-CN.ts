@@ -20,18 +20,18 @@ export const helpDocZh: HelpDocSchema = {
     step1Or: '或直接按下快捷键',
     step2Prefix: '在 URL 地址栏输入目标地址，例如',
     step3Prefix: '点击右侧醒目的蓝色',
-    step3Btn: '发送',
-    step3Or: '按钮，或直接按下',
+    step3Btn: '发送 (Ctrl+Enter)',
+    step3Or: '按钮，或在界面任意处直接按下',
     step4: '右侧响应面板将立即展示返回的 JSON 结构体、响应头信息及耗时数据！'
   },
   requestBuilder: {
     title: '2. 请求构建与动态变量解析',
     tag: '核心亮点',
-    keywords: ['常量', '变量', '覆盖值', 'url', '动态变量', 'json注释', 'body', 'query', 'params', 'headers'],
+    keywords: ['常量', '变量', '覆盖值', 'url', '动态变量', 'json注释', 'body', 'query', 'params', 'headers', '实时预览'],
     constantsTitle: '动态常量池与专属覆盖值 (Unique Feature)',
     constantsDesc: 'Relay 提供强大的全局动态常量系统，可在 URL、Query 参数、Headers 或 Body 中通过 {{变量名}} 占位符进行动态引用。',
     urlExampleComment: '// URL 示例',
-    previewExampleComment: '// 实时预览解析后真实地址：',
+    previewExampleComment: '// 地址栏下方实时展示替换真实值后的预览地址：',
     presetCandidatesTitle: '常量快捷候选值与中文备注',
     presetCandidatesDesc: '每个常量可预设多组候选值（如本地 127.0.0.1、开发服 192.168.1.100、线上域名），并标注中文用途。在 URL 中点击常量胶囊，即可一键下拉切换！',
     overrideTitle: '单请求专属覆盖值 (Per-Request Override)',
@@ -62,13 +62,15 @@ export const helpDocZh: HelpDocSchema = {
   collectionRunner: {
     title: '4. 冒烟测试与集合运行器 (Collection Runner)',
     tag: '测试提效',
-    keywords: ['runner', '批量运行', '冒烟测试', '测试报告', '自动化', '集合测试', '多选', 'smoke test'],
+    keywords: ['runner', '批量运行', '冒烟测试', '测试报告', '自动化', '集合测试', '多选', 'smoke test', '变量解析'],
     heading: '一键冒烟回归测试',
     desc: '在版本发版、环境迁移或上线前，使用 Collection Runner 能够一键对集合内的所有接口或特定挑选的接口进行全自动串行/间隔压测回归。',
     method1Title: '方式一：整目录一键运行',
     method1Desc: '鼠标悬停在左侧任意集合名称上，点击出现的绿色 ▶ 运行按钮（或右键菜单选择「运行集合」），即可把整个集合及子集合内的所有请求一次性装载进运行队列。',
     method2Title: '方式二：多选挑选举办冒烟',
     method2Desc: '在集合树中按住 Ctrl 或 Shift 键多选任意几个重点接口，右键选择「运行选中请求 (N 个)」，快速针对性验证！',
+    layoutOptimizationTitle: '请求分层排版与真实地址高亮',
+    layoutOptimizationDesc: '测试项列表中标题置于第一行（包含请求方法 Badge 与接口名称）；第二行以专属高亮背景独立呈现已完成常量与环境变量替换的真实请求目标 URL，避免盲测与配置错用。',
     reportsHeading: '测试报告与指标审查',
     itemDashboardTitle: '实时执行看板',
     itemDashboardDesc: '直观显示总请求数、成功（2xx）数、失败数、总耗时、平均耗时与状态码分布柱状概览。',
@@ -79,8 +81,34 @@ export const helpDocZh: HelpDocSchema = {
     itemExportTitle: '一键导出报告',
     itemExportDesc: '支持导出标准的 JSON 格式回归测试报告，便于归档或向团队同步。'
   },
+  scriptsAndTests: {
+    title: '5. 前置脚本与断言测试 (Scripts & Tests)',
+    tag: '自动化质检',
+    keywords: ['脚本', '前置脚本', '测试断言', 'pre-request', 'tests', '断言', 'pm.test', 'pm.expect', 'relay.setEnv'],
+    heading: '自动化请求预处理与断言校验',
+    desc: '在接口调试或持续回归中，Relay 支持在请求发送前后执行 JavaScript 逻辑，无缝完成环境变量动态计算与响应数据多维断言。',
+    preRequestTitle: '前置脚本 (Pre-request Script)',
+    preRequestDesc: '在发起网络请求前执行自定义 JS 脚本。可动态修改请求头、计算 HMAC/MD5 签名、生成时间戳，并通过 relay.setEnv(key, value) 或 pm.environment.set(key, value) 动态更新环境变量。',
+    testsTitle: '测试断言 (Tests)',
+    testsDesc: '全面兼容主流断言语法，如 pm.test("状态码 200", () => pm.expect(pm.response.code).to.equal(200))，支持校验 HTTP 状态码、响应耗时（pm.response.responseTime）及 JSON 响应体字段值。',
+    runnerIntegrationTitle: '集合测试器深度联动',
+    runnerIntegrationDesc: '在 Collection Runner 批量冒烟测试中，每个接口的测试断言会自动执行并在测试报告中汇总通过与失败条数，快速发现回归缺陷。'
+  },
+  devToys: {
+    title: '6. 开发者工具箱与便签 (DevToys & Scratchpad)',
+    tag: '实用工具',
+    keywords: ['devtoys', '工具箱', '便签', 'scratchpad', 'jwt', '时间戳', 'base64', 'hash', '翻译', 'ctrl+shift+t'],
+    heading: '内置全能开发者瑞士军刀',
+    desc: '无需在浏览器标签中搜索各类工具网站，Relay 内置了高频辅助研发工具箱，按下快捷键 Ctrl+Shift+T 或点击顶部工具栏随时呼出：',
+    toolsTitle: '多功能编码与转换工具',
+    toolsDesc: '集成 JSON 格式化校验、URL 编解码、Base64 转换、JWT 解码、Unix 时间戳转换、文本 Hash 散列（MD5/SHA1/SHA256）、UUID 生成及正则表达式测试。',
+    scratchpadTitle: '临时便签 (Scratchpad)',
+    scratchpadDesc: '专为调试过程中随手记录临时 Token、SQL 语句、JSON 片段或联调备忘打造，内容实时保存在本地磁盘，应用重启自动还原。',
+    translateTitle: '多引擎接口与文档翻译',
+    translateDesc: '集成 Google、DeepL、AI LLM (OpenAI / DeepSeek) 引擎，输入文本后可直接按下 Ctrl+Enter 快捷翻译，极大方便阅读英文 API 文档或报错日志。'
+  },
   historyPopout: {
-    title: '5. 历史记录与独立弹窗',
+    title: '7. 历史记录与独立弹窗',
     tag: '多任务',
     keywords: ['历史', '历史记录', '弹窗', '新窗口', '快照', '响应快照', 'history', 'popout'],
     heading: '持久化历史记录与响应数据快照',
@@ -93,7 +121,7 @@ export const helpDocZh: HelpDocSchema = {
     restoreCardDesc: '在历史弹窗中找到历史记录后，点击右上角的「在主界面打开」，主界面将自动新建标签并载入该请求的全部参数与地址！'
   },
   commandPalette: {
-    title: '6. 全局搜索 (Command Palette)',
+    title: '8. 全局搜索 (Command Palette)',
     tag: '快捷操作',
     keywords: ['全局搜索', 'ctrl+p', 'quick open', '命令面板', 'command palette', '模糊搜索'],
     heading: '按下 Ctrl+P 瞬间直达任意接口',
@@ -105,7 +133,7 @@ export const helpDocZh: HelpDocSchema = {
     keyboardEsc: '退出'
   },
   codeAndData: {
-    title: '7. 代码生成器与数据迁移共享',
+    title: '9. 代码生成器与数据迁移共享',
     tag: '开发协同',
     keywords: ['代码', '代码生成', 'curl', '数据迁移', '导出', '导入', '备份', 'axios', 'fetch', 'python'],
     codeHeading: '多语言客户端代码生成 (Code Snippets)',
@@ -120,8 +148,21 @@ export const helpDocZh: HelpDocSchema = {
     curlImportTitle: 'cURL 命令行一键导入',
     curlImportDesc: '点击侧边栏终端图标，直接粘贴从浏览器开发者工具复制的 cURL 命令，系统自动识别并一键解析为接口请求。'
   },
+  updaterAndDocs: {
+    title: '10. 应用自动更新与离线文档导出',
+    tag: '版本与交付',
+    keywords: ['更新', '自动更新', '版本', 'changelog', '更新说明', '离线文档', 'html文档', 'markdown导出', 'updater'],
+    heading: '无缝版本迭代与离线文档交付',
+    desc: 'Relay 具备现代化的应用内静默检测与一键覆盖升级能力，并支持免服务器的独立离线文档导出。',
+    autoUpdateTitle: '基于 GitHub Releases 的应用内更新',
+    autoUpdateDesc: '启动 3 秒后在后台静默请求 GitHub 最新发布版本并执行 SemVer 语义化版本比对。发现新版时侧边栏版本号旁点亮蓝点，设置中心「关于」提供【检查更新】。支持流式下载 Windows 安装包，实时展示百分比与瞬时网速（MB/s），下载完毕一键退出并启动安装包完成覆盖安装。',
+    changelogTitle: '版本更新日志说明 (Changelog)',
+    changelogDesc: '每次升级后启动应用将自动展示当前版本的新特性与优化列表，帮助开发者第一时间了解变化。亦可在设置中心的「关于」面板中随时查阅完整历史变更。',
+    offlineDocsTitle: '免部署离线 API 文档导出',
+    offlineDocsDesc: '在集合右键菜单或数据迁移中心，支持将集合一键导出为单个自包含的 HTML 网页或 Markdown 文档。无需搭建任何在线文档服务，双击即可离线检索接口、查看参数与请求示例。'
+  },
   layoutCustomization: {
-    title: '8. 界面与分栏自由定制',
+    title: '11. 界面与分栏自由定制',
     tag: '个性定制',
     keywords: ['布局', '分栏', '侧边栏宽度', '主题', '暗色', '浅色', '拖拽', '记忆', 'layout'],
     heading: '高度自由的双向拖拽与视觉记忆',
@@ -135,27 +176,28 @@ export const helpDocZh: HelpDocSchema = {
     dualThemeDesc: '支持深色暗夜护眼模式（Dark）与清爽明亮模式（Light），可点击右上角太阳/月亮图标一键切换。'
   },
   shortcutsCheatSheet: {
-    title: '9. 完整快捷键速查表',
+    title: '12. 完整快捷键速查表',
     tag: '高频必备',
-    keywords: ['快捷键', 'shortcuts', 'ctrl+s', 'ctrl+p', 'ctrl+enter', 'ctrl+d', 'ctrl+t', 'ctrl+w'],
+    keywords: ['快捷键', 'shortcuts', 'ctrl+s', 'ctrl+p', 'ctrl+enter', 'ctrl+shift+t', 'ctrl+d', 'ctrl+t', 'ctrl+w'],
     heading: '常用快捷键一览',
     thShortcut: '快捷键',
     thFunction: '功能说明',
     thContext: '使用场景',
     shortcuts: [
-      { key: 'Ctrl + Enter', func: '发送当前请求', context: '光标在任意输入框时立即发送网络请求' },
-      { key: 'Ctrl + S', func: '保存当前请求', context: '将当前的修改写回集合树中' },
+      { key: 'Ctrl + Enter', func: '发送当前请求', context: '全局快捷键：光标在请求体编辑器、地址栏、参数表或主界面任意处立即发送' },
+      { key: 'Ctrl + S', func: '保存当前请求', context: '将当前修改写回集合树中' },
       { key: 'Ctrl + P', func: '全局快速搜索', context: '快速模糊检索接口名称、URL 或所属目录' },
-      { key: 'Ctrl + D', func: '快速复制请求', context: '一键克隆当前打开的接口及其所有参数配置' },
+      { key: 'Ctrl + Shift + T', func: '开发者工具箱 & 便签', context: '随时呼出集成了格式转换、时间戳、翻译与临时便签的工具箱' },
+      { key: 'Ctrl + D', func: '快速克隆请求', context: '一键复制当前打开的接口及其所有参数配置' },
       { key: 'Ctrl + T', func: '新建请求标签', context: '开启一个空白就绪的全新接口测试标签页' },
       { key: 'Ctrl + W', func: '关闭当前标签', context: '关闭当前正在浏览的标签页' },
       { key: 'Ctrl + ,', func: '首选项与设置', context: '快速呼出应用设置中心' }
     ]
   },
   faq: {
-    title: '10. 常见问题与排错指引 (FAQ)',
+    title: '13. 常见问题与排错指引 (FAQ)',
     tag: '排错',
-    keywords: ['faq', '常见问题', 'cors', '跨域', '证书', 'ssl', '自签名', '超时', '错误'],
+    keywords: ['faq', '常见问题', 'cors', '跨域', '证书', 'ssl', '自签名', '超时', '错误', '更新失败'],
     heading: '常见疑问与解答',
     items: [
       {
@@ -169,6 +211,10 @@ export const helpDocZh: HelpDocSchema = {
       {
         q: 'Q: 为什么常量没有被正确替换？',
         a: '请检查变量名称是否与常量管理弹窗中完全一致（严格区分大小写），且必须使用英文半角双大括号包裹，例如 {{server}} 而非中文全角括号或单括号。'
+      },
+      {
+        q: 'Q: 应用内自动更新下载失败或受限怎么办？',
+        a: 'Relay 的自动更新直接连接 GitHub Releases。若在某些网络环境下无法连通，可点击更新弹窗右下角的「在 GitHub 中查看」，通过浏览器镜像或备用代理直接下载 Windows 安装包手动运行覆盖即可。'
       }
     ]
   },

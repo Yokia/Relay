@@ -20,18 +20,18 @@ export const helpDocEn: HelpDocSchema = {
     step1Or: 'button at the top of the left sidebar, or press',
     step2Prefix: 'Enter the target URL in the address bar, for example',
     step3Prefix: 'Click the prominent blue',
-    step3Btn: 'Send',
+    step3Btn: 'Send (Ctrl+Enter)',
     step3Or: 'button on the right, or press',
     step4: 'The response panel on the right will immediately display the returned JSON payload, response headers, and latency metrics!'
   },
   requestBuilder: {
     title: '2. Request Builder & Dynamic Variables',
     tag: 'Key Feature',
-    keywords: ['constants', 'variables', 'override', 'url', 'dynamic variables', 'json comments', 'body', 'query', 'params', 'headers'],
+    keywords: ['constants', 'variables', 'override', 'url', 'dynamic variables', 'json comments', 'body', 'query', 'params', 'headers', 'live preview'],
     constantsTitle: 'Dynamic Constant Pool & Per-Request Overrides (Unique Feature)',
     constantsDesc: 'Relay offers a powerful global dynamic constant system. Reference variables dynamically in URLs, Query parameters, Headers, or Request Bodies using the {{variableName}} placeholder syntax.',
     urlExampleComment: '// URL Example',
-    previewExampleComment: '// Live preview of resolved actual URL:',
+    previewExampleComment: '// Live preview showing resolved actual URL below address bar:',
     presetCandidatesTitle: 'Preset Candidate Values & Descriptive Notes',
     presetCandidatesDesc: 'Each constant can have multiple preset candidate values (e.g. Local 127.0.0.1, Dev 192.168.1.100, Production domain) with descriptive notes. Click the constant pill in the URL bar to switch values with one click!',
     overrideTitle: 'Per-Request Custom Overrides (Per-Request Override)',
@@ -62,13 +62,15 @@ export const helpDocEn: HelpDocSchema = {
   collectionRunner: {
     title: '4. Smoke Testing & Collection Runner',
     tag: 'Testing',
-    keywords: ['runner', 'batch run', 'smoke test', 'test report', 'automation', 'collection test', 'multi-select'],
+    keywords: ['runner', 'batch run', 'smoke test', 'test report', 'automation', 'collection test', 'multi-select', 'resolved url'],
     heading: 'One-Click Smoke & Regression Testing',
     desc: 'Before releases, environment migrations, or deployments, use the Collection Runner to run automated serial regression tests across all requests in a collection or a cherry-picked subset.',
     method1Title: 'Method 1: Run Entire Folder / Collection',
     method1Desc: 'Hover over any collection name in the left sidebar and click the green ▶ Run button (or right-click and choose "Run Collection") to load all requests from the collection and sub-collections into the execution queue.',
     method2Title: 'Method 2: Multi-Select Cherry Pick',
     method2Desc: 'Hold Ctrl or Shift to select multiple key requests across the tree, then right-click and choose "Run Selected Requests (N)" for fast, targeted verification!',
+    layoutOptimizationTitle: 'Clear Two-Line Layout & Resolved URL Highlight',
+    layoutOptimizationDesc: 'Each request item displays its method badge and name on the first line, and prominently displays the fully interpolated real URL with variables resolved on the second line with high-contrast background styling for reliable visual verification.',
     reportsHeading: 'Test Reports & Metric Inspection',
     itemDashboardTitle: 'Real-Time Dashboard',
     itemDashboardDesc: 'Visual dashboard showing total requests, passed (2xx), failed, total time, average latency, and status code distribution histogram.',
@@ -79,8 +81,34 @@ export const helpDocEn: HelpDocSchema = {
     itemExportTitle: 'Export Reports',
     itemExportDesc: 'Export comprehensive test reports in standard JSON format for archival or sharing with teammates.'
   },
+  scriptsAndTests: {
+    title: '5. Pre-request Scripts & Test Assertions',
+    tag: 'Automation',
+    keywords: ['scripts', 'pre-request', 'tests', 'assertions', 'pm.test', 'pm.expect', 'relay.setEnv'],
+    heading: 'Automated Pre-processing & Assertion Testing',
+    desc: 'Execute custom JavaScript before dispatching requests to sign payloads or inject variables, and write assertions to validate responses automatically.',
+    preRequestTitle: 'Pre-request Script',
+    preRequestDesc: 'Runs before network dispatch. Dynamically alter query parameters, headers, or body data, generate timestamps/signatures, and update environment variables using relay.setEnv(key, value) or pm.environment.set(key, value).',
+    testsTitle: 'Response Test Assertions (Tests)',
+    testsDesc: 'Compatible with Postman testing syntax such as pm.test("Status code is 200", () => pm.expect(pm.response.code).to.equal(200)), supporting status code, latency (pm.response.responseTime), and JSON payload assertions.',
+    runnerIntegrationTitle: 'Collection Runner Integration',
+    runnerIntegrationDesc: 'During batch execution in Collection Runner, all assertion tests run automatically and report pass/fail summaries in the real-time execution dashboard.'
+  },
+  devToys: {
+    title: '6. Developer Toolbox & Scratchpad (DevToys)',
+    tag: 'Utilities',
+    keywords: ['devtoys', 'toolbox', 'scratchpad', 'jwt', 'timestamp', 'base64', 'hash', 'translate', 'ctrl+shift+t'],
+    heading: 'Built-in Swiss Army Knife for Developers',
+    desc: 'No need to search online tools in browser tabs. Relay provides a dedicated developer toolbox accessible via shortcut Ctrl+Shift+T or the top toolbar button:',
+    toolsTitle: 'Versatile Encoders & Converters',
+    toolsDesc: 'Includes JSON formatter/validator, URL encoder/decoder, Base64 converter, JWT decoder, Unix timestamp converter, text hashing (MD5/SHA1/SHA256), UUID generator, and regex tester.',
+    scratchpadTitle: 'Quick Scratchpad',
+    scratchpadDesc: 'Designed to quickly jot down temporary API tokens, SQL queries, JSON snippets, or debugging notes. Automatically persisted to local storage across restarts.',
+    translateTitle: 'Multi-Engine Translation',
+    translateDesc: 'Integrated with Google, DeepL, and AI LLMs (OpenAI / DeepSeek). Enter text and press Ctrl+Enter for instant translation of documentation or error logs.'
+  },
   historyPopout: {
-    title: '5. Request History & Popout Windows',
+    title: '7. Request History & Popout Windows',
     tag: 'Multi-Window',
     keywords: ['history', 'popout', 'new window', 'snapshot', 'response snapshot', 'multi-window'],
     heading: 'Persistent History & Response Snapshots',
@@ -93,7 +121,7 @@ export const helpDocEn: HelpDocSchema = {
     restoreCardDesc: 'Locate a history record and click "Open in Main Window" in the top right—Relay automatically opens a new tab with all parameters and URL prefilled!'
   },
   commandPalette: {
-    title: '6. Command Palette & Quick Open',
+    title: '8. Command Palette & Quick Open',
     tag: 'Quick Action',
     keywords: ['command palette', 'ctrl+p', 'quick open', 'fuzzy search', 'search requests'],
     heading: 'Press Ctrl+P to Jump to Any Request Instantly',
@@ -105,7 +133,7 @@ export const helpDocEn: HelpDocSchema = {
     keyboardEsc: 'to dismiss'
   },
   codeAndData: {
-    title: '7. Code Generation & Data Migration',
+    title: '9. Code Generation & Data Migration',
     tag: 'Collaboration',
     keywords: ['code snippets', 'code generation', 'curl', 'data migration', 'export', 'import', 'backup', 'axios', 'fetch', 'python'],
     codeHeading: 'Multi-Language Client Code Generation (Code Snippets)',
@@ -120,8 +148,21 @@ export const helpDocEn: HelpDocSchema = {
     curlImportTitle: 'One-Click cURL Import',
     curlImportDesc: 'Click the sidebar terminal icon to paste cURL commands copied directly from browser DevTools; Relay automatically parses them into structured requests.'
   },
+  updaterAndDocs: {
+    title: '10. In-App Updates & Offline Docs Export',
+    tag: 'Updates & Docs',
+    keywords: ['update', 'auto update', 'version', 'changelog', 'release notes', 'offline docs', 'html export', 'markdown export'],
+    heading: 'Seamless Version Updates & Serverless Offline Docs',
+    desc: 'Relay offers native in-app update detection with zero-fuss overwrite installation, along with standalone offline documentation generation.',
+    autoUpdateTitle: 'GitHub Releases Auto Updates',
+    autoUpdateDesc: 'Checks GitHub Releases silently 3 seconds after launch using SemVer version comparison. When a new version is detected, a blue dot lights up beside the sidebar version badge, and an update check button is available in Settings > About. Supports streaming download of Windows setups with real-time MB/s speed and progress bar, followed by one-click restart for in-place overwrite installation.',
+    changelogTitle: 'Version Release Notes (Changelog)',
+    changelogDesc: 'Displays a release changelog dialog on first launch after an update to highlight new features and fixes. Can also be re-opened anytime in Settings > About.',
+    offlineDocsTitle: 'Zero-Server Offline API Docs Export',
+    offlineDocsDesc: 'Export collections as standalone single-file HTML or Markdown documents via the collection context menu or Export center. Easily share API documentation with frontend developers or external partners without hosting any server.'
+  },
   layoutCustomization: {
-    title: '8. UI & Layout Customization',
+    title: '11. UI & Layout Customization',
     tag: 'Customization',
     keywords: ['layout', 'split pane', 'sidebar width', 'theme', 'dark', 'light', 'drag resize', 'layout memory'],
     heading: 'High-Flexibility Bi-Directional Resizing & Memory',
@@ -135,17 +176,18 @@ export const helpDocEn: HelpDocSchema = {
     dualThemeDesc: 'Supports eye-friendly Dark Mode and crisp Light Mode. Toggle anytime via the sun/moon icon in the top right header.'
   },
   shortcutsCheatSheet: {
-    title: '9. Keyboard Shortcuts Cheat Sheet',
+    title: '12. Keyboard Shortcuts Cheat Sheet',
     tag: 'Essential',
-    keywords: ['shortcuts', 'hotkeys', 'cheat sheet', 'ctrl+s', 'ctrl+p', 'ctrl+enter', 'ctrl+d', 'ctrl+t', 'ctrl+w'],
+    keywords: ['shortcuts', 'hotkeys', 'cheat sheet', 'ctrl+s', 'ctrl+p', 'ctrl+enter', 'ctrl+shift+t', 'ctrl+d', 'ctrl+t', 'ctrl+w'],
     heading: 'Common Shortcuts Overview',
     thShortcut: 'Shortcut',
     thFunction: 'Function',
     thContext: 'Context / Usage',
     shortcuts: [
-      { key: 'Ctrl + Enter', func: 'Send Current Request', context: 'Trigger network request immediately from any input field' },
+      { key: 'Ctrl + Enter', func: 'Send Current Request', context: 'Global shortcut: trigger network dispatch from editor, body, address bar, or any panel' },
       { key: 'Ctrl + S', func: 'Save Current Request', context: 'Save current changes back into the collection tree' },
       { key: 'Ctrl + P', func: 'Global Quick Open', context: 'Fuzzy search request names, URLs, or parent collections' },
+      { key: 'Ctrl + Shift + T', func: 'DevToys & Scratchpad', context: 'Open developer toolbox with encoders, converters, translation, and scratchpad' },
       { key: 'Ctrl + D', func: 'Duplicate Request', context: 'Clone current request with all configurations in one click' },
       { key: 'Ctrl + T', func: 'New Request Tab', context: 'Open a brand new ready-to-test blank request tab' },
       { key: 'Ctrl + W', func: 'Close Current Tab', context: 'Close the active request tab' },
@@ -153,9 +195,9 @@ export const helpDocEn: HelpDocSchema = {
     ]
   },
   faq: {
-    title: '10. FAQ & Troubleshooting Guide',
+    title: '13. FAQ & Troubleshooting Guide',
     tag: 'Troubleshooting',
-    keywords: ['faq', 'troubleshooting', 'cors', 'certificate', 'ssl', 'self-signed', 'timeout', 'error'],
+    keywords: ['faq', 'troubleshooting', 'cors', 'certificate', 'ssl', 'self-signed', 'timeout', 'error', 'update error'],
     heading: 'Frequently Asked Questions',
     items: [
       {
@@ -169,6 +211,10 @@ export const helpDocEn: HelpDocSchema = {
       {
         q: 'Q: Why wasn\'t my constant variable replaced correctly?',
         a: 'Ensure variable names match exactly with the constant manager (case-sensitive) and are wrapped in double curly braces, e.g. {{server}}, rather than single braces or full-width symbols.'
+      },
+      {
+        q: 'Q: What if in-app auto update fails or is throttled by network?',
+        a: 'Relay connects directly to GitHub Releases. If restricted by local network environments, click "View on GitHub" at the bottom of the update modal to download the Windows setup installer directly via browser.'
       }
     ]
   },

@@ -78,6 +78,8 @@ export interface HelpDocSchema {
     method1Desc: string
     method2Title: string
     method2Desc: string
+    layoutOptimizationTitle: string
+    layoutOptimizationDesc: string
     reportsHeading: string
     itemDashboardTitle: string
     itemDashboardDesc: string
@@ -87,6 +89,32 @@ export interface HelpDocSchema {
     itemPopoutDesc: string
     itemExportTitle: string
     itemExportDesc: string
+  }
+  scriptsAndTests: {
+    title: string
+    tag: string
+    keywords: string[]
+    heading: string
+    desc: string
+    preRequestTitle: string
+    preRequestDesc: string
+    testsTitle: string
+    testsDesc: string
+    runnerIntegrationTitle: string
+    runnerIntegrationDesc: string
+  }
+  devToys: {
+    title: string
+    tag: string
+    keywords: string[]
+    heading: string
+    desc: string
+    toolsTitle: string
+    toolsDesc: string
+    scratchpadTitle: string
+    scratchpadDesc: string
+    translateTitle: string
+    translateDesc: string
   }
   historyPopout: {
     title: string
@@ -128,6 +156,19 @@ export interface HelpDocSchema {
     collectionOnlyDesc: string
     curlImportTitle: string
     curlImportDesc: string
+  }
+  updaterAndDocs: {
+    title: string
+    tag: string
+    keywords: string[]
+    heading: string
+    desc: string
+    autoUpdateTitle: string
+    autoUpdateDesc: string
+    changelogTitle: string
+    changelogDesc: string
+    offlineDocsTitle: string
+    offlineDocsDesc: string
   }
   layoutCustomization: {
     title: string

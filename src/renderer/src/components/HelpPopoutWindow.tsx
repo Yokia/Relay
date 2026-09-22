@@ -19,7 +19,10 @@ import {
   Compass,
   X,
   Languages,
-  ExternalLink
+  ExternalLink,
+  Wrench,
+  FileCode2,
+  DownloadCloud
 } from 'lucide-react'
 import { Theme, Language } from '../types'
 import { I18nProvider, useI18n } from '../i18n'
@@ -258,6 +261,111 @@ function HelpContent() {
             <li><strong>{helpDoc.collectionRunner.itemPopoutTitle}</strong>：{helpDoc.collectionRunner.itemPopoutDesc}</li>
             <li><strong>{helpDoc.collectionRunner.itemExportTitle}</strong>：{helpDoc.collectionRunner.itemExportDesc}</li>
           </ul>
+
+          <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50 mt-3">
+            <h5 className="font-semibold text-xs text-sky-400 mb-1 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" />
+              {helpDoc.collectionRunner.layoutOptimizationTitle}
+            </h5>
+            <p className="text-xs text-slate-400">
+              {helpDoc.collectionRunner.layoutOptimizationDesc}
+            </p>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'scripts-and-tests',
+      icon: <FileCode2 className="w-4 h-4 text-cyan-400" />,
+      title: helpDoc.scriptsAndTests.title,
+      tag: helpDoc.scriptsAndTests.tag,
+      keywords: helpDoc.scriptsAndTests.keywords,
+      content: (
+        <div className="space-y-4 text-sm text-slate-300 leading-relaxed">
+          <h3 className="text-base font-bold text-slate-100 border-b border-slate-800 pb-2">
+            {helpDoc.scriptsAndTests.heading}
+          </h3>
+          <p className="text-xs text-slate-300">
+            {helpDoc.scriptsAndTests.desc}
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+              <h5 className="font-semibold text-xs text-cyan-400 mb-1 flex items-center gap-1.5">
+                <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                {helpDoc.scriptsAndTests.preRequestTitle}
+              </h5>
+              <p className="text-xs text-slate-400">
+                {helpDoc.scriptsAndTests.preRequestDesc}
+              </p>
+            </div>
+            <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+              <h5 className="font-semibold text-xs text-emerald-400 mb-1 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                {helpDoc.scriptsAndTests.testsTitle}
+              </h5>
+              <p className="text-xs text-slate-400">
+                {helpDoc.scriptsAndTests.testsDesc}
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3.5 rounded-lg bg-sky-500/10 border border-sky-500/25">
+            <h5 className="font-semibold text-xs text-sky-400 mb-1 flex items-center gap-1.5">
+              <Play className="w-3.5 h-3.5 text-sky-400" />
+              {helpDoc.scriptsAndTests.runnerIntegrationTitle}
+            </h5>
+            <p className="text-xs text-slate-300">
+              {helpDoc.scriptsAndTests.runnerIntegrationDesc}
+            </p>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'devtoys',
+      icon: <Wrench className="w-4 h-4 text-amber-400" />,
+      title: helpDoc.devToys.title,
+      tag: helpDoc.devToys.tag,
+      keywords: helpDoc.devToys.keywords,
+      content: (
+        <div className="space-y-4 text-sm text-slate-300 leading-relaxed">
+          <h3 className="text-base font-bold text-slate-100 border-b border-slate-800 pb-2">
+            {helpDoc.devToys.heading}
+          </h3>
+          <p className="text-xs text-slate-300">
+            {helpDoc.devToys.desc}
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+            <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+              <h5 className="font-semibold text-xs text-amber-400 mb-1 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                {helpDoc.devToys.toolsTitle}
+              </h5>
+              <p className="text-xs text-slate-400">
+                {helpDoc.devToys.toolsDesc}
+              </p>
+            </div>
+            <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+              <h5 className="font-semibold text-xs text-purple-400 mb-1 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-purple-400" />
+                {helpDoc.devToys.scratchpadTitle}
+              </h5>
+              <p className="text-xs text-slate-400">
+                {helpDoc.devToys.scratchpadDesc}
+              </p>
+            </div>
+            <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+              <h5 className="font-semibold text-xs text-emerald-400 mb-1 flex items-center gap-1.5">
+                <Languages className="w-3.5 h-3.5 text-emerald-400" />
+                {helpDoc.devToys.translateTitle}
+              </h5>
+              <p className="text-xs text-slate-400">
+                {helpDoc.devToys.translateDesc}
+              </p>
+            </div>
+          </div>
         </div>
       )
     },
@@ -365,6 +473,53 @@ function HelpContent() {
             <li><strong>{helpDoc.codeAndData.collectionOnlyTitle}</strong>：{helpDoc.codeAndData.collectionOnlyDesc}</li>
             <li><strong>{helpDoc.codeAndData.curlImportTitle}</strong>：{helpDoc.codeAndData.curlImportDesc}</li>
           </ul>
+        </div>
+      )
+    },
+    {
+      id: 'updater-and-docs',
+      icon: <DownloadCloud className="w-4 h-4 text-emerald-400" />,
+      title: helpDoc.updaterAndDocs.title,
+      tag: helpDoc.updaterAndDocs.tag,
+      keywords: helpDoc.updaterAndDocs.keywords,
+      content: (
+        <div className="space-y-4 text-sm text-slate-300 leading-relaxed">
+          <h3 className="text-base font-bold text-slate-100 border-b border-slate-800 pb-2">
+            {helpDoc.updaterAndDocs.heading}
+          </h3>
+          <p className="text-xs text-slate-300">
+            {helpDoc.updaterAndDocs.desc}
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+            <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+              <h5 className="font-semibold text-xs text-emerald-400 mb-1 flex items-center gap-1.5">
+                <DownloadCloud className="w-3.5 h-3.5 text-emerald-400" />
+                {helpDoc.updaterAndDocs.autoUpdateTitle}
+              </h5>
+              <p className="text-xs text-slate-400">
+                {helpDoc.updaterAndDocs.autoUpdateDesc}
+              </p>
+            </div>
+            <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+              <h5 className="font-semibold text-xs text-sky-400 mb-1 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+                {helpDoc.updaterAndDocs.changelogTitle}
+              </h5>
+              <p className="text-xs text-slate-400">
+                {helpDoc.updaterAndDocs.changelogDesc}
+              </p>
+            </div>
+            <div className="p-3 bg-slate-800/40 rounded-lg border border-slate-700/50">
+              <h5 className="font-semibold text-xs text-amber-400 mb-1 flex items-center gap-1.5">
+                <Code className="w-3.5 h-3.5 text-amber-400" />
+                {helpDoc.updaterAndDocs.offlineDocsTitle}
+              </h5>
+              <p className="text-xs text-slate-400">
+                {helpDoc.updaterAndDocs.offlineDocsDesc}
+              </p>
+            </div>
+          </div>
         </div>
       )
     },
@@ -603,7 +758,7 @@ function HelpContent() {
           <div className="p-3 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-500 space-y-1 text-center">
             <div>{helpDoc.footerHint}</div>
             <div className="pt-1 flex items-center justify-center gap-1.5 text-slate-400 font-mono text-[10px]">
-              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-sky-400 font-semibold">v1.0.0</span>
+              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-sky-400 font-semibold">v1.1.0</span>
               <span>·</span>
               <button
                 type="button"
