@@ -1514,6 +1514,12 @@ function MainApp({
     addToast(t('toast.dataImported'), 'success')
   }
 
+  const handleSendRef = useRef(handleSend)
+  handleSendRef.current = handleSend
+
+  const handleSaveRef = useRef(handleSave)
+  handleSaveRef.current = handleSave
+
   // Keyboard shortcuts
   const handleOpenDevToys = () => {
     if (window.electronAPI?.openDevToysWindow) {
@@ -1526,16 +1532,47 @@ function MainApp({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // Check if target is inside CodeMirror or standard input/textarea
-      const target = e.target as HTMLElement
-      const isCodeEditorFocused = target && (
-        target.closest('.cm-editor') ||
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA'
+      const target = e.target as HTMLElement | null
+      const isCodeEditorFocused = Boolean(
+        target && (
+          target.closest('.cm-editor') ||
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA'
+        )
       )
+
+      const isModalOpen = Boolean(
+        isSettingsModalOpen ||
+        isConstantModalOpen ||
+        isEnvModalOpen ||
+        isChangelogOpen ||
+        isCommandPaletteOpen ||
+        isCodeSnippetOpen ||
+        curlModalState.isOpen ||
+        dataTransferState.isOpen ||
+        runnerState.isOpen ||
+        isDevToysOpen ||
+        isUpdateModalOpen ||
+        (target && (target.closest('.fixed.inset-0') || target.closest('[role="dialog"]')))
+      )
+
+      // Ctrl+Enter / Cmd+Enter: Send Request (when no modal dialog is open)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (!isModalOpen) {
+          e.preventDefault()
+          e.stopPropagation()
+          handleSendRef.current()
+        }
+        return
+      }
+
       // Ctrl+S: Save
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault()
-        handleSave()
+        if (!isModalOpen) {
+          e.preventDefault()
+          handleSaveRef.current()
+        }
+        return
       }
       // Ctrl+P: Quick Open Command Palette
       else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
@@ -1544,7 +1581,7 @@ function MainApp({
       }
       // Ctrl+D: Duplicate current request
       else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
-        if (isCodeEditorFocused) return
+        if (isCodeEditorFocused || isModalOpen) return
         e.preventDefault()
         const found = findRequestInTree(collections, currentRequest.id)
         if (found) {
@@ -1566,11 +1603,13 @@ function MainApp({
       }
       // Ctrl+T: New Tab
       else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 't') {
+        if (isModalOpen) return
         e.preventDefault()
         handleNewTab()
       }
       // Ctrl+W: Close Active Tab
       else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'w') {
+        if (isModalOpen) return
         e.preventDefault()
         if (settings.enableMultiTabs !== false) {
           handleCloseTab(activeTabId)
@@ -1583,9 +1622,25 @@ function MainApp({
         setIsSettingsModalOpen(true)
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [currentRequest, collections, activeTabId, settings.enableMultiTabs])
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [
+    currentRequest,
+    collections,
+    activeTabId,
+    settings.enableMultiTabs,
+    isSettingsModalOpen,
+    isConstantModalOpen,
+    isEnvModalOpen,
+    isChangelogOpen,
+    isCommandPaletteOpen,
+    isCodeSnippetOpen,
+    curlModalState.isOpen,
+    dataTransferState.isOpen,
+    runnerState.isOpen,
+    isDevToysOpen,
+    isUpdateModalOpen
+  ])
 
   // Mouse drag handlers for split & sidebar
   const handleSplitMouseDown = () => {

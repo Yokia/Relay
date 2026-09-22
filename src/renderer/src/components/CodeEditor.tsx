@@ -479,6 +479,10 @@ export const CodeEditor: React.FC<Props> = ({
         else if (key === 'd') handled = copyLineDown(view)
         else if (event.shiftKey && key === 'arrowup') handled = moveLineUp(view)
         else if (event.shiftKey && key === 'arrowdown') handled = moveLineDown(view)
+        else if (key === 'enter') {
+          // Prevent CodeMirror defaultKeymap from inserting a blank line on Ctrl+Enter / Cmd+Enter
+          event.preventDefault()
+        }
         if (handled) {
           event.preventDefault()
           event.stopPropagation()

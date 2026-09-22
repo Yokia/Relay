@@ -875,10 +875,14 @@ export const RequestHeader: React.FC<Props> = ({
           type="button"
           onClick={() => onSend()}
           disabled={isLoading || !request.url?.trim()}
-          className="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-medium px-4 py-1.5 rounded transition-all shadow-sm active:scale-95 shrink-0"
+          title={`${t('header.send')} (${typeof navigator !== 'undefined' && /mac/i.test(navigator.userAgent) ? '⌘+Enter' : 'Ctrl+Enter'})`}
+          className="flex items-center gap-2 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-medium px-3.5 py-1.5 rounded transition-all shadow-sm active:scale-95 shrink-0 cursor-pointer disabled:cursor-not-allowed"
         >
           <Send className={"w-3.5 h-3.5 " + (isLoading ? "animate-pulse" : "")} />
           <span>{isLoading ? t('header.sending') : t('header.send')}</span>
+          <kbd className="px-1.5 py-0.2 text-[10px] bg-sky-600/70 text-sky-100 rounded border border-sky-400/40 font-mono leading-none select-none">
+            {typeof navigator !== 'undefined' && /mac/i.test(navigator.userAgent) ? '⌘+Enter' : 'Ctrl+Enter'}
+          </kbd>
         </button>
       </div>
 

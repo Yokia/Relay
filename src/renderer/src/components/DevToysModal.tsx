@@ -2235,6 +2235,13 @@ const TranslateTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'erro
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  doTranslate()
+                }
+              }}
               placeholder={t('devtoys.translateInputPlaceholder')}
               className="flex-1 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none leading-relaxed"
             />
