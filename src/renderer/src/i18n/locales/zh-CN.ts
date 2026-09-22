@@ -517,6 +517,7 @@ export const zhCN: TranslationSchema = {
     requestDuplicated: '请求已成功复制',
     requestDeleted: '请求已删除',
     requestMoved: '已将请求移动至 "{name}"',
+    requestsMoved: '已将选中的 {count} 个请求移动至 "{name}"',
     collectionMoved: '已将 "{name}" 移动至 "{target}"',
     collectionReordered: '已调整 "{name}" 的排序',
     requestSaved: '请求已保存',

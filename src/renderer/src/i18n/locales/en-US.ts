@@ -517,6 +517,7 @@ export const enUS: TranslationSchema = {
     requestDuplicated: 'Request duplicated successfully',
     requestDeleted: 'Request deleted',
     requestMoved: 'Moved request to "{name}"',
+    requestsMoved: 'Moved {count} selected requests to "{name}"',
     collectionMoved: 'Moved "{name}" into "{target}"',
     collectionReordered: 'Reordered "{name}"',
     requestSaved: 'Request saved',

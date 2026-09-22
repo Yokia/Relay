@@ -38,6 +38,7 @@ import {
   duplicateCollectionInTree,
   moveCollectionInTree,
   moveRequestInTree,
+  moveRequestsInTree,
   collectAllRequests,
   findRequestCollectionPath
 } from './utils/collectionTree'
@@ -1265,6 +1266,29 @@ function MainApp({
     }
   }
 
+  // Move Multiple Requests (supports batch dragging or batch context menu move)
+  const handleMoveRequests = (
+    reqIds: string[],
+    targetColId: string,
+    targetIndex?: number
+  ) => {
+    if (!reqIds || reqIds.length === 0) return
+    if (reqIds.length === 1) {
+      const found = findRequestInTree(collections, reqIds[0])
+      if (found) {
+        handleMoveRequest(found.col.id, targetColId, reqIds[0], targetIndex)
+      }
+      return
+    }
+    const next = moveRequestsInTree(collections, reqIds, targetColId, targetIndex)
+    setCollections(next)
+    persist({ collections: next })
+    const targetCol = findCollectionInTree(collections, targetColId)
+    if (targetCol) {
+      addToast(t('toast.requestsMoved', { count: reqIds.length, name: targetCol.name }), 'success')
+    }
+  }
+
   // Move Collection (supports reordering before/after, or nesting inside another collection as sub-collection)
   const handleMoveCollection = (
     sourceColId: string,
@@ -1630,6 +1654,7 @@ function MainApp({
         onDuplicateRequest={handleDuplicateRequest}
         onDeleteRequest={handleDeleteRequest}
         onMoveRequest={handleMoveRequest}
+        onMoveRequests={handleMoveRequests}
         onCopyRequestCurl={handleCopyRequestCurl}
         onCopyUrl={handleCopyUrl}
         onClearHistory={() => {

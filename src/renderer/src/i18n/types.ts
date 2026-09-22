@@ -518,6 +518,7 @@ export interface TranslationSchema {
     requestDuplicated: string
     requestDeleted: string
     requestMoved: string
+    requestsMoved: string
     collectionMoved: string
     collectionReordered: string
     requestSaved: string

@@ -517,6 +517,67 @@ export function moveRequestInTree(
 }
 
 /**
+ * Immutably move multiple requests across collections or into a target collection
+ */
+export function moveRequestsInTree(
+  cols: CollectionItem[],
+  reqIds: string[],
+  targetColId: string,
+  targetIndex?: number
+): CollectionItem[] {
+  if (!reqIds || reqIds.length === 0) return cols
+
+  // Collect the requests in their original order, preserving items
+  const reqIdSet = new Set(reqIds)
+  const itemsToMove: RequestItem[] = []
+
+  const findItems = (list: CollectionItem[]) => {
+    for (const c of list) {
+      for (const r of c.requests) {
+        if (reqIdSet.has(r.id)) {
+          itemsToMove.push(r)
+        }
+      }
+      if (c.children && c.children.length > 0) {
+        findItems(c.children)
+      }
+    }
+  }
+  findItems(cols)
+
+  if (itemsToMove.length === 0) return cols
+
+  // Remove all moved requests from everywhere in tree, and insert them into targetCol
+  const recurse = (list: CollectionItem[]): CollectionItem[] => {
+    return list.map((c) => {
+      let nextReqs = c.requests.filter((r) => !reqIdSet.has(r.id))
+
+      if (c.id === targetColId) {
+        nextReqs = [...nextReqs]
+        if (targetIndex !== undefined && targetIndex >= 0 && targetIndex <= nextReqs.length) {
+          nextReqs.splice(targetIndex, 0, ...itemsToMove)
+        } else {
+          nextReqs.push(...itemsToMove)
+        }
+      }
+
+      let nextChildren = c.children
+      if (c.children && c.children.length > 0) {
+        nextChildren = recurse(c.children)
+      }
+
+      return {
+        ...c,
+        requests: nextReqs,
+        ...(nextChildren ? { children: nextChildren } : {})
+      }
+    })
+  }
+
+  return recurse(cols)
+}
+
+/**
  * Count total number of requests inside a collection and all its descendants
  */
 export function countAllRequests(col: CollectionItem): number {

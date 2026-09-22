@@ -66,6 +66,7 @@ interface Props {
   onDuplicateRequest: (colId: string, reqId: string) => void
   onDeleteRequest: (colId: string, reqId: string) => void
   onMoveRequest: (sourceColId: string, targetColId: string, reqId: string, targetIndex?: number) => void
+  onMoveRequests?: (reqIds: string[], targetColId: string, targetIndex?: number) => void
   onCopyRequestCurl: (req: RequestItem) => void
   onCopyUrl: (url: string) => void
   onClearHistory: () => void
@@ -141,6 +142,7 @@ export const Sidebar: React.FC<Props> = ({
   onDuplicateRequest,
   onDeleteRequest,
   onMoveRequest,
+  onMoveRequests,
   onCopyRequestCurl,
   onCopyUrl,
   onClearHistory,
@@ -157,7 +159,14 @@ export const Sidebar: React.FC<Props> = ({
   onRunRequests
 }) => {
   const { t } = useI18n()
-  const [collapsedCols, setCollapsedCols] = useState<Record<string, boolean>>({})
+  const [collapsedCols, setCollapsedCols] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('relay_collapsed_cols')
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  })
   const [searchQuery, setSearchQuery] = useState('')
 
   // Multi-selection state for batch operations
@@ -271,7 +280,11 @@ export const Sidebar: React.FC<Props> = ({
   }, [contextMenu])
 
   const toggleCol = (id: string) => {
-    setCollapsedCols((prev) => ({ ...prev, [id]: !prev[id] }))
+    setCollapsedCols((prev) => {
+      const next = { ...prev, [id]: !prev[id] }
+      localStorage.setItem('relay_collapsed_cols', JSON.stringify(next))
+      return next
+    })
   }
 
   const allColIds = useMemo<string[]>(() => collectAllCollectionIds(collections), [collections])
@@ -279,10 +292,12 @@ export const Sidebar: React.FC<Props> = ({
   const toggleCollapseAll = () => {
     if (isAllCollapsed) {
       setCollapsedCols({})
+      localStorage.setItem('relay_collapsed_cols', JSON.stringify({}))
     } else {
       const all: Record<string, boolean> = {}
       allColIds.forEach((id: string) => (all[id] = true))
       setCollapsedCols(all)
+      localStorage.setItem('relay_collapsed_cols', JSON.stringify(all))
     }
   }
 
@@ -326,7 +341,8 @@ export const Sidebar: React.FC<Props> = ({
     reqIndex: number,
     depth: number
   ) => {
-    const isBeingDragged = draggedItem?.reqId === req.id
+    const isBeingDragged = draggedItem?.reqId === req.id ||
+      (draggedItem !== null && selectedReqIds.size > 1 && selectedReqIds.has(req.id) && selectedReqIds.has(draggedItem.reqId))
     const isDragTarget = dragOverReqId === req.id
 
     return (
@@ -360,7 +376,12 @@ export const Sidebar: React.FC<Props> = ({
           e.preventDefault()
           e.stopPropagation()
           if (draggedItem) {
-            onMoveRequest(draggedItem.colId, col.id, draggedItem.reqId, reqIndex)
+            if (onMoveRequests && selectedReqIds.size > 1 && selectedReqIds.has(draggedItem.reqId)) {
+              onMoveRequests([...selectedReqIds], col.id, reqIndex)
+              setSelectedReqIds(new Set())
+            } else {
+              onMoveRequest(draggedItem.colId, col.id, draggedItem.reqId, reqIndex)
+            }
           }
           setDraggedItem(null)
           setDragOverColId(null)
@@ -525,7 +546,12 @@ export const Sidebar: React.FC<Props> = ({
             if (draggedColId && dragOverColTarget && draggedColId !== dragOverColTarget.id) {
               onMoveCollection(draggedColId, dragOverColTarget.id, dragOverColTarget.position)
             } else if (draggedItem) {
-              onMoveRequest(draggedItem.colId, col.id, draggedItem.reqId)
+              if (onMoveRequests && selectedReqIds.size > 1 && selectedReqIds.has(draggedItem.reqId)) {
+                onMoveRequests([...selectedReqIds], col.id)
+                setSelectedReqIds(new Set())
+              } else {
+                onMoveRequest(draggedItem.colId, col.id, draggedItem.reqId)
+              }
             }
             setDraggedColId(null)
             setDragOverColTarget(null)
@@ -913,9 +939,9 @@ export const Sidebar: React.FC<Props> = ({
                     }
                     setContextMenu(null)
                   }}
-                  className="px-2.5 py-1.5 text-left hover:bg-emerald-500/20 hover:text-emerald-300 rounded flex items-center gap-2 transition-colors font-medium text-emerald-400"
+                  className="px-2.5 py-1.5 text-left hover:bg-emerald-500/20 hover:text-emerald-700 dark:hover:text-emerald-300 rounded flex items-center gap-2 transition-colors font-medium text-emerald-600 dark:text-emerald-400"
                 >
-                  <Play className="w-3.5 h-3.5 fill-emerald-400/20" />
+                  <Play className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 fill-emerald-600/20 dark:fill-emerald-400/20" />
                   <span>{t('sidebar.runCollection')}</span>
                 </button>
               )}
@@ -991,9 +1017,9 @@ export const Sidebar: React.FC<Props> = ({
                       onOpenDataTransfer('export', contextMenu.colId, 'html')
                       setContextMenu(null)
                     }}
-                    className="px-2.5 py-1.5 text-left hover:bg-emerald-500/20 hover:text-emerald-300 rounded flex items-center gap-2 transition-colors text-emerald-300"
+                    className="px-2.5 py-1.5 text-left hover:bg-emerald-500/20 hover:text-emerald-700 dark:hover:text-emerald-300 rounded flex items-center gap-2 transition-colors text-emerald-600 dark:text-emerald-300 font-medium"
                   >
-                    <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>{t('sidebar.exportDocCollection')}</span>
                   </button>
                 </>
@@ -1143,7 +1169,12 @@ export const Sidebar: React.FC<Props> = ({
                             key={targetCol.id}
                             type="button"
                             onClick={() => {
-                              onMoveRequest(contextMenu.colId, targetCol.id, contextMenu.request!.id)
+                              if (onMoveRequests && selectedReqIds.size > 1 && selectedReqIds.has(contextMenu.request!.id)) {
+                                onMoveRequests([...selectedReqIds], targetCol.id)
+                                setSelectedReqIds(new Set())
+                              } else {
+                                onMoveRequest(contextMenu.colId, targetCol.id, contextMenu.request!.id)
+                              }
                               setContextMenu(null)
                               setShowMoveSubmenu(false)
                             }}
