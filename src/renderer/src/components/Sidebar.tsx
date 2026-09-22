@@ -83,6 +83,8 @@ interface Props {
   onOpenDataTransfer?: (tab?: 'export' | 'import', targetColId?: string, format?: 'json' | 'html' | 'markdown') => void
   onRunCollection?: (col: CollectionItem) => void
   onRunRequests?: (requests: RequestItem[], title: string) => void
+  updateAvailable?: boolean
+  onOpenUpdateModal?: () => void
 }
 
 const methodBadgeColor: Record<HttpMethod, string> = {
@@ -159,7 +161,9 @@ export const Sidebar: React.FC<Props> = ({
   onOpenDevToys,
   onOpenDataTransfer,
   onRunCollection,
-  onRunRequests
+  onRunRequests,
+  updateAvailable,
+  onOpenUpdateModal
 }) => {
   const { t } = useI18n()
   const [collapsedCols, setCollapsedCols] = useState<Record<string, boolean>>(() => {
@@ -729,13 +733,19 @@ export const Sidebar: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => {
-              if (onOpenChangelog) onOpenChangelog()
+              if (updateAvailable && onOpenUpdateModal) onOpenUpdateModal()
+              else if (onOpenChangelog) onOpenChangelog()
               else onOpenSettings('about')
             }}
-            title={`${t('changelog.title')} (v${APP_VERSION})`}
-            className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 border border-sky-500/20 transition-colors cursor-pointer ml-0.5 flex items-center gap-1"
+            title={updateAvailable ? t('updater.newVersionFound') : `${t('changelog.title')} (v${APP_VERSION})`}
+            className={`text-[10px] font-mono px-1.5 py-0.5 rounded transition-colors cursor-pointer ml-0.5 flex items-center gap-1 ${
+              updateAvailable
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30'
+                : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 border border-sky-500/20'
+            }`}
           >
             v{APP_VERSION}
+            {updateAvailable && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
           </button>
         </div>
         <div className="flex items-center gap-1">

@@ -173,3 +173,29 @@ export interface RunnerReport {
   statusCodeDistribution: Record<string, number>
   results: RunnerRequestResult[]
 }
+
+export interface ReleaseAssetInfo {
+  name: string
+  size: number
+  downloadUrl: string
+}
+
+export interface UpdateCheckResult {
+  success: boolean
+  updateAvailable: boolean
+  currentVersion: string
+  latestVersion?: string
+  releaseName?: string
+  releaseNotes?: string
+  publishedAt?: string
+  releaseUrl?: string
+  asset?: ReleaseAssetInfo
+  error?: string
+}
+
+export interface UpdateDownloadProgress {
+  percent: number
+  transferred: number
+  total: number
+  bytesPerSecond: number
+}

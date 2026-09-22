@@ -14,10 +14,11 @@ import { CodeSnippetModal } from './components/CodeSnippetModal'
 import { CollectionRunnerModal } from './components/CollectionRunnerModal'
 import { DevToysModal } from './components/DevToysModal'
 import { ChangelogModal } from './components/ChangelogModal'
+import { UpdateModal } from './components/UpdateModal'
 import { APP_VERSION } from './data/changelog'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastContainer, ToastMessage } from './components/Toast'
-import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme, WorkspaceTab } from './types'
+import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme, WorkspaceTab, UpdateCheckResult } from './types'
 import { stripJsonComments } from './utils/jsonUtils'
 import { mergeCollections, mergeConstants, mergeEnvironments, ParsedImportData } from './utils/dataTransferUtils'
 import { executePreRequestScript, executeTestScript } from './utils/scriptEngine'
@@ -273,6 +274,9 @@ function MainApp({
     requests: []
   })
   const [isDevToysOpen, setIsDevToysOpen] = useState(false)
+  const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null)
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false)
 
   // Toast Notification System
   const [toasts, setToasts] = useState<ToastMessage[]>([])
@@ -608,6 +612,37 @@ function MainApp({
       }
     }
   }, [handleSelectRequest, t])
+
+  // Check for updates
+  const handleCheckForUpdates = async (manual = false) => {
+    if (!window.electronAPI?.checkForUpdates) return
+    setIsCheckingUpdates(true)
+    try {
+      const res = await window.electronAPI.checkForUpdates()
+      if (res && res.success) {
+        if (res.updateAvailable) {
+          setUpdateInfo(res)
+          setIsUpdateModalOpen(true)
+        } else if (manual) {
+          addToast(t('updater.upToDate'), 'info')
+        }
+      } else if (manual) {
+        addToast(res?.error || t('updater.downloadFailed'), 'error')
+      }
+    } catch (err: any) {
+      if (manual) addToast(err.message || 'Check updates failed', 'error')
+    } finally {
+      setIsCheckingUpdates(false)
+    }
+  }
+
+  // Silent update check 3 seconds after app starts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleCheckForUpdates(false)
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Multi-Tab Handlers
   const handleSelectTab = (tabId: string) => {
@@ -1757,6 +1792,8 @@ function MainApp({
         }
         onRunCollection={handleRunCollection}
         onRunRequests={handleRunSelectedRequests}
+        updateAvailable={!!updateInfo?.updateAvailable}
+        onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
       />
 
       {/* Sidebar Resizable Divider */}
@@ -1885,6 +1922,8 @@ function MainApp({
             })
           }
           onOpenChangelog={() => setIsChangelogOpen(true)}
+          onCheckUpdates={() => handleCheckForUpdates(true)}
+          isCheckingUpdates={isCheckingUpdates}
         />
       )}
 
@@ -2005,6 +2044,15 @@ function MainApp({
         <DevToysModal
           isOpen={isDevToysOpen}
           onClose={() => setIsDevToysOpen(false)}
+          onToast={(msg, type) => addToast(msg, type || 'success')}
+        />
+      )}
+
+      {isUpdateModalOpen && (
+        <UpdateModal
+          isOpen={isUpdateModalOpen}
+          updateInfo={updateInfo}
+          onClose={() => setIsUpdateModalOpen(false)}
           onToast={(msg, type) => addToast(msg, type || 'success')}
         />
       )}

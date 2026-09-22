@@ -4,6 +4,7 @@ import fs from 'fs'
 import { executeRequest, RequestPayload } from './httpService'
 import { executeTranslation, TranslateParams } from './translateService'
 import { StorageService } from './storage'
+import { updateService } from './updateService'
 
 let storage: StorageService
 let mainWindow: BrowserWindow | null = null
@@ -405,6 +406,38 @@ app.whenReady().then(() => {
       return { success: true, filePath, content }
     }
     return { canceled: true }
+  })
+
+  // Auto-updater IPC handlers
+  ipcMain.handle('relay:check-for-updates', async () => {
+    return await updateService.checkForUpdates()
+  })
+
+  ipcMain.handle('relay:start-download-update', async (event, downloadUrl: string) => {
+    try {
+      const sender = event.sender
+      const installerPath = await updateService.downloadUpdate(downloadUrl, (progress) => {
+        if (!sender.isDestroyed()) {
+          sender.send('relay:update-download-progress', progress)
+        }
+      })
+      if (!sender.isDestroyed()) {
+        sender.send('relay:update-download-complete', installerPath)
+      }
+      return { success: true, installerPath }
+    } catch (err: any) {
+      console.error('[Update IPC] Download error:', err)
+      return { success: false, error: err.message || 'Download failed' }
+    }
+  })
+
+  ipcMain.handle('relay:cancel-download-update', () => {
+    updateService.cancelDownload()
+    return { success: true }
+  })
+
+  ipcMain.handle('relay:install-and-restart', (_event, installerPath?: string) => {
+    return updateService.installAndRestart(installerPath)
   })
 
   createWindow()

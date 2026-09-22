@@ -726,5 +726,28 @@ export const zhCN: TranslationSchema = {
     gotIt: '我知道了',
     autoLoadedNotice: '已自动为您载入最新版本'
   },
+  updater: {
+    checkUpdates: '检查更新',
+    checking: '正在检查更新...',
+    upToDate: '当前已是最新版本',
+    updateAvailable: '发现新版本',
+    newVersionFound: '发现 Relay 新版本',
+    currentVersion: '当前版本',
+    latestVersion: '最新版本',
+    releaseDate: '发布日期',
+    packageSize: '安装包大小',
+    releaseNotes: '更新内容',
+    updateNow: '立即更新',
+    downloading: '正在下载新版本安装包...',
+    downloadProgress: '下载进度',
+    downloadComplete: '安装包下载完成',
+    installAndRestart: '立即安装并重启',
+    downloadFailed: '下载失败，请重试或前往 GitHub 手动下载',
+    retry: '重试下载',
+    viewOnGitHub: '在 GitHub 中查看',
+    later: '稍后提醒',
+    cancel: '取消下载',
+    speed: '速度'
+  },
   helpDoc: helpDocZh
 }

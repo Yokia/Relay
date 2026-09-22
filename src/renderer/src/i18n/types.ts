@@ -727,5 +727,28 @@ export interface TranslationSchema {
     gotIt: string
     autoLoadedNotice: string
   }
+  updater: {
+    checkUpdates: string
+    checking: string
+    upToDate: string
+    updateAvailable: string
+    newVersionFound: string
+    currentVersion: string
+    latestVersion: string
+    releaseDate: string
+    packageSize: string
+    releaseNotes: string
+    updateNow: string
+    downloading: string
+    downloadProgress: string
+    downloadComplete: string
+    installAndRestart: string
+    downloadFailed: string
+    retry: string
+    viewOnGitHub: string
+    later: string
+    cancel: string
+    speed: string
+  }
   helpDoc: HelpDocSchema
 }

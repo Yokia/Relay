@@ -726,5 +726,28 @@ export const enUS: TranslationSchema = {
     gotIt: 'Got it',
     autoLoadedNotice: 'You are using the latest version of Relay'
   },
+  updater: {
+    checkUpdates: 'Check for Updates',
+    checking: 'Checking for updates...',
+    upToDate: 'Relay is up to date',
+    updateAvailable: 'Update Available',
+    newVersionFound: 'New Relay Version Available',
+    currentVersion: 'Current Version',
+    latestVersion: 'Latest Version',
+    releaseDate: 'Release Date',
+    packageSize: 'Package Size',
+    releaseNotes: 'Release Notes',
+    updateNow: 'Update Now',
+    downloading: 'Downloading update installer...',
+    downloadProgress: 'Download Progress',
+    downloadComplete: 'Download Complete',
+    installAndRestart: 'Install & Restart Now',
+    downloadFailed: 'Download failed. Please retry or download manually from GitHub.',
+    retry: 'Retry Download',
+    viewOnGitHub: 'View on GitHub',
+    later: 'Remind Me Later',
+    cancel: 'Cancel',
+    speed: 'Speed'
+  },
   helpDoc: helpDocEn
 }

@@ -14,7 +14,9 @@ import {
   Sparkles,
   ExternalLink,
   BookOpen,
-  Info
+  Info,
+  RefreshCw,
+  Loader2
 } from 'lucide-react'
 import { Language, Theme, AppSettings } from '../types'
 import { useI18n } from '../i18n'
@@ -32,6 +34,8 @@ interface Props {
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void
   onOpenDataTransfer?: () => void
   onOpenChangelog?: () => void
+  onCheckUpdates?: () => void
+  isCheckingUpdates?: boolean
 }
 
 export const SettingsModal: React.FC<Props> = ({
@@ -41,7 +45,9 @@ export const SettingsModal: React.FC<Props> = ({
   onClose,
   onUpdateSettings,
   onOpenDataTransfer,
-  onOpenChangelog
+  onOpenChangelog,
+  onCheckUpdates,
+  isCheckingUpdates = false
 }) => {
   const { t } = useI18n()
   const [activeCategory, setActiveCategory] = useState<SettingCategory>(initialCategory)
@@ -476,6 +482,21 @@ export const SettingsModal: React.FC<Props> = ({
                         <span>{t('settings.aboutWhatsNewBtn')}</span>
                       </button>
                     )}
+                    {onCheckUpdates && (
+                      <button
+                        type="button"
+                        onClick={onCheckUpdates}
+                        disabled={isCheckingUpdates}
+                        className="px-3 py-1.5 bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 border border-sky-500/30 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        {isCheckingUpdates ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-400" />
+                        ) : (
+                          <RefreshCw className="w-3.5 h-3.5 text-sky-400" />
+                        )}
+                        <span>{isCheckingUpdates ? t('updater.checking') : t('updater.checkUpdates')}</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
@@ -493,9 +514,22 @@ export const SettingsModal: React.FC<Props> = ({
                 <div className="rounded-lg bg-slate-950/50 border border-slate-800 divide-y divide-slate-800/80 text-xs">
                   <div className="p-3 flex items-center justify-between">
                     <span className="text-slate-400">{t('settings.aboutVersion')}</span>
-                    <span className="font-mono text-slate-200 font-semibold bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                      {APP_VERSION}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-slate-200 font-semibold bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                        {APP_VERSION}
+                      </span>
+                      {onCheckUpdates && (
+                        <button
+                          type="button"
+                          onClick={onCheckUpdates}
+                          disabled={isCheckingUpdates}
+                          className="text-[11px] text-sky-400 hover:text-sky-300 hover:underline flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          {isCheckingUpdates && <Loader2 className="w-3 h-3 animate-spin" />}
+                          <span>{isCheckingUpdates ? t('updater.checking') : t('updater.checkUpdates')}</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="p-3 flex items-center justify-between">
                     <span className="text-slate-400">{t('settings.aboutDeveloper')}</span>

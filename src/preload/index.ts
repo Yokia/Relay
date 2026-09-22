@@ -25,7 +25,21 @@ export const api = {
   getPopoutData: () => ipcRenderer.invoke('relay:get-popout-data'),
   saveFileDialog: (opts: any) => ipcRenderer.invoke('relay:save-file-dialog', opts),
   openFileDialog: (opts?: any) => ipcRenderer.invoke('relay:open-file-dialog', opts),
-  translate: (params: any) => ipcRenderer.invoke('relay:translate', params)
+  translate: (params: any) => ipcRenderer.invoke('relay:translate', params),
+  checkForUpdates: () => ipcRenderer.invoke('relay:check-for-updates'),
+  startDownloadUpdate: (downloadUrl: string) => ipcRenderer.invoke('relay:start-download-update', downloadUrl),
+  cancelDownloadUpdate: () => ipcRenderer.invoke('relay:cancel-download-update'),
+  installAndRestart: (installerPath?: string) => ipcRenderer.invoke('relay:install-and-restart', installerPath),
+  onUpdateDownloadProgress: (callback: (progress: any) => void) => {
+    const listener = (_: any, progress: any) => callback(progress)
+    ipcRenderer.on('relay:update-download-progress', listener)
+    return () => ipcRenderer.removeListener('relay:update-download-progress', listener)
+  },
+  onUpdateDownloadComplete: (callback: (installerPath: string) => void) => {
+    const listener = (_: any, installerPath: string) => callback(installerPath)
+    ipcRenderer.on('relay:update-download-complete', listener)
+    return () => ipcRenderer.removeListener('relay:update-download-complete', listener)
+  }
 }
 
 if (process.contextIsolated) {
