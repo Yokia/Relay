@@ -22,7 +22,12 @@
   <a href="#-快速开始">快速开始</a> •
   <a href="#-项目结构">项目结构</a> •
   <a href="#-更新日志">更新日志</a> •
+  <a href="#-界面预览-screenshots">界面预览</a> •
   <a href="#-license">开源协议</a>
+</p>
+
+<p align="center">
+  <img src="./docs/images/01-main-workspace.png" alt="Relay Main Workspace" width="920" />
 </p>
 
 </div>
@@ -90,6 +95,34 @@
 ### 9. 🎨 布局自由拖拽与双主题
 - 侧边栏宽度支持自由拖拽（180px ~ 600px），请求/响应区域分栏比例自由滑动调节，窗口尺寸全局记忆。
 - 完整支持深色暗夜模式（Dark）与清爽明亮模式（Light），中英文双语界面无缝切换。
+
+---
+
+## 📷 界面预览 (Screenshots)
+
+### 1. 主工作区与请求调试
+多标签页切换、URL 动态变量胶囊下拉切换、支持 JSON 注释的请求体编辑器与右侧高亮响应面板：
+<p align="center">
+  <img src="./docs/images/01-main-workspace.png" alt="主工作区" width="900" />
+</p>
+
+### 2. 内置开发者实用工具箱 (DevToys)
+集成临时便签、时间戳、URL 编解码、转义解码、多引擎文本与代码变量翻译、Base64、JWT 与哈希计算：
+<p align="center">
+  <img src="./docs/images/02-devtoys-toolbox.png" alt="开发者工具箱" width="900" />
+</p>
+
+### 3. 集合冒烟测试与批量运行器 (Collection Runner)
+一键装载集合全量接口或多选重点接口，配置请求间隔与遇错即停，全自动测试：
+<p align="center">
+  <img src="./docs/images/04-collection-runner.png" alt="集合运行器" width="900" />
+</p>
+
+### 4. 版本更新说明 (What's New)
+版本升级自动提醒，按新功能、优化、修复分类展示，支持随时回溯历史版本记录：
+<p align="center">
+  <img src="./docs/images/03-whats-new-changelog.png" alt="版本更新说明" width="900" />
+</p>
 
 ---
 
