@@ -319,34 +319,64 @@ app.whenReady().then(() => {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win) return { canceled: true }
     
-    let defaultFilters: Electron.FileFilter[] = [
-      { name: 'HTML Document', extensions: ['html', 'htm'] },
-      { name: 'Markdown Document', extensions: ['md', 'markdown'] },
-      { name: 'JSON', extensions: ['json'] },
-      { name: 'Text', extensions: ['txt', 'log'] },
-      { name: 'All Files', extensions: ['*'] }
-    ]
-
-    if (defaultPath?.endsWith('.html')) {
-      defaultFilters = [
-        { name: 'HTML Document', extensions: ['html', 'htm'] },
-        { name: 'All Files', extensions: ['*'] }
-      ]
-    } else if (defaultPath?.endsWith('.md')) {
-      defaultFilters = [
-        { name: 'Markdown Document', extensions: ['md', 'markdown'] },
-        { name: 'All Files', extensions: ['*'] }
-      ]
-    } else if (defaultPath?.endsWith('.json')) {
-      defaultFilters = [
-        { name: 'JSON', extensions: ['json'] },
-        { name: 'All Files', extensions: ['*'] }
-      ]
+    let computedFilters: Electron.FileFilter[] | undefined = filters && filters.length > 0 ? filters : undefined
+    if (!computedFilters) {
+      const ext = defaultPath ? path.extname(defaultPath).toLowerCase().replace('.', '') : ''
+      if (ext === 'html' || ext === 'htm') {
+        computedFilters = [
+          { name: 'HTML Document', extensions: ['html', 'htm'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      } else if (ext === 'md' || ext === 'markdown') {
+        computedFilters = [
+          { name: 'Markdown Document', extensions: ['md', 'markdown'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      } else if (ext === 'json') {
+        computedFilters = [
+          { name: 'JSON Document', extensions: ['json'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      } else if (['mp4', 'mkv', 'avi', 'mov', 'webm', 'flv', 'wmv'].includes(ext)) {
+        computedFilters = [
+          { name: `${ext.toUpperCase()} Video`, extensions: [ext] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(ext)) {
+        computedFilters = [
+          { name: `${ext.toUpperCase()} Image`, extensions: [ext] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      } else if (['mp3', 'wav', 'ogg', 'flac', 'aac', 'm4a', 'wma'].includes(ext)) {
+        computedFilters = [
+          { name: `${ext.toUpperCase()} Audio`, extensions: [ext] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      } else if (ext === 'pdf') {
+        computedFilters = [
+          { name: 'PDF Document', extensions: ['pdf'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      } else if (ext === 'txt' || ext === 'log') {
+        computedFilters = [
+          { name: 'Text Document', extensions: ['txt', 'log'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      } else if (ext) {
+        computedFilters = [
+          { name: `${ext.toUpperCase()} File`, extensions: [ext] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      } else {
+        computedFilters = [
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      }
     }
 
     const result = await dialog.showSaveDialog(win, {
       defaultPath: defaultPath || 'export.json',
-      filters: filters || defaultFilters
+      filters: computedFilters
     })
     if (!result.canceled && result.filePath) {
       if (typeof content === 'object' && content.encoding === 'base64') {

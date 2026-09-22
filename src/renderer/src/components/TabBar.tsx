@@ -140,7 +140,7 @@ export const TabBar: React.FC<Props> = ({
         {/* New Tab Button */}
         <button
           type="button"
-          onClick={onNewTab}
+          onClick={() => onNewTab()}
           title={t('tabs.newTab') + ' (Ctrl+T)'}
           className="p-1.5 mx-1 text-slate-400 hover:text-sky-400 hover:bg-slate-800/80 rounded transition-colors shrink-0"
         >

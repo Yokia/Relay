@@ -46,6 +46,9 @@ export const ConstantsBar: React.FC<Props> = ({
             ...(overrideVal ? [overrideVal] : [])
           ]))
 
+          const effectiveVal = isOverridden ? overrideVal : (c.currentValue || '')
+          const note = (effectiveVal && c.optionNotes?.[effectiveVal]) || c.description
+
           return (
             <div
               key={c.id}
@@ -56,17 +59,17 @@ export const ConstantsBar: React.FC<Props> = ({
                     ? "bg-sky-950/40 border-sky-500/70 text-sky-200 shadow-sm ring-1 ring-sky-500/30"
                     : "bg-slate-900 border-slate-700/80 text-slate-300 hover:border-slate-600")
               }
-              title={isOverridden ? `{{${c.name}}} ${t('header.exclusiveValue')}` : `{{${c.name}}} ${t('header.globalValue')}`}
+              title={isOverridden ? `{{${c.name}}} ${note ? note + ' — ' : ''}${t('header.exclusiveValue')}` : `{{${c.name}}} ${note ? note + ' — ' : ''}${t('header.globalValue')}`}
             >
               <div className="flex items-center gap-1 px-2 py-0.5 bg-slate-800/80 border-r border-slate-700/80 text-slate-300 font-semibold text-[11px]">
                 <span>{'{' + '{' + c.name + '}' + '}'}:</span>
                 {isOverridden ? (
                   <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 font-sans">
-                    {t('constantsBar.exclusiveBadge')}
+                    {note || t('constantsBar.exclusiveBadge')}
                   </span>
                 ) : (
                   <span className="text-[9px] px-1 py-0.2 rounded bg-slate-700/50 text-slate-400 font-sans">
-                    {t('constantsBar.globalBadge')}
+                    {note || t('constantsBar.globalBadge')}
                   </span>
                 )}
               </div>

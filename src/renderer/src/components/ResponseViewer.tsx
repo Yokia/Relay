@@ -23,6 +23,7 @@ import { ResponseDiffModal } from './ResponseDiffModal'
 import { useI18n } from '../i18n'
 import { useTheme } from '../theme'
 import { queryJsonPath } from '../utils/jsonPath'
+import { getSuggestedFileName, getFileFilters } from '../utils/fileExport'
 
 interface Props {
   response: ResponseData | null
@@ -273,17 +274,51 @@ export const ResponseViewer: React.FC<Props> = ({
 
   const handleSaveFile = async () => {
     if (!window.electronAPI?.saveFileDialog || !displayResponse) return
-    const safeName = requestName ? requestName.replace(/[^a-zA-Z0-9_-]/g, '_') : 'response'
-    const binaryPreview = activeTab === 'preview' && (previewType.startsWith('image/') || previewType.startsWith('video/') || previewType.startsWith('audio/') || previewType === 'application/pdf')
-    const extension = binaryPreview
-      ? ({ 'image/jpeg': '.jpg', 'image/svg+xml': '.svg', 'video/mp4': '.mp4', 'audio/mpeg': '.mp3', 'application/pdf': '.pdf' } as Record<string, string>)[previewType] || `.${previewType.split('/')[1] || 'bin'}`
-      : activeTab === 'preview' && previewType === 'text/html' ? '.html' : typeof displayResponse.data === 'object' ? '.json' : '.txt'
-    const previewBase64 = previewSource.match(/^data:[^;]+;base64,(.*)$/s)?.[1]
+    const isPreview = activeTab === 'preview'
+    const binaryPreview = isPreview && (previewType.startsWith('image/') || previewType.startsWith('video/') || previewType.startsWith('audio/') || previewType === 'application/pdf')
+    const isJsonObject = typeof displayResponse.data === 'object'
+
+    const effectiveUrl = (activeRun?.url && !activeRun.url.includes('{{'))
+      ? activeRun.url
+      : (requestUrl && !requestUrl.includes('{{'))
+        ? requestUrl
+        : (previewSource.startsWith('http://') || previewSource.startsWith('https://'))
+          ? previewSource
+          : (activeRun?.url || requestUrl || '')
+
+    const defaultPath = getSuggestedFileName({
+      url: effectiveUrl,
+      headers: displayResponse.headers,
+      requestName,
+      contentType: displayResponse.contentType,
+      isPreview,
+      isJsonObject
+    })
+
+    const filters = getFileFilters({
+      contentType: displayResponse.contentType,
+      isPreview,
+      isJsonObject,
+      defaultPath
+    })
+
+    let previewBase64 = previewSource.match(/^data:[^;]+;base64,(.*)$/s)?.[1] || null
+    if (!previewBase64 && binaryPreview && typeof previewSource === 'string') {
+      if (previewSource.startsWith('base64,')) {
+        previewBase64 = previewSource.slice(7)
+      } else if (!previewSource.startsWith('http://') && !previewSource.startsWith('https://')) {
+        previewBase64 = previewSource.trim()
+      }
+    }
+
     const result = await window.electronAPI.saveFileDialog({
-      defaultPath: safeName + extension,
+      defaultPath,
+      filters,
       content: binaryPreview && previewBase64
         ? { encoding: 'base64', data: previewBase64 }
-        : activeTab === 'preview' && previewType === 'text/html' ? previewSource : bodyFormat === 'pretty' ? bodyString : rawString
+        : isPreview && previewType === 'text/html'
+          ? previewSource
+          : bodyFormat === 'pretty' ? bodyString : rawString
     })
     if (result && result.success) {
       setSavedNotice('Saved!')

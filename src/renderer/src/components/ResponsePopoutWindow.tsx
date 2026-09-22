@@ -21,6 +21,7 @@ import { CodeEditor } from './CodeEditor'
 import { I18nProvider, useI18n } from '../i18n'
 import { ThemeProvider, useTheme } from '../theme'
 import { queryJsonPath } from '../utils/jsonPath'
+import { getSuggestedFileName, getFileFilters } from '../utils/fileExport'
 
 const methodBadgeColor: Record<string, string> = {
   GET: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
@@ -165,9 +166,24 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
 
   const handleSaveFile = async () => {
     if (!window.electronAPI?.saveFileDialog) return
-    const defaultFilename = (name ? name.replace(/[^a-zA-Z0-9_-]/g, '_') : 'response') + (typeof response.data === 'object' ? '.json' : '.txt')
+    const isJsonObject = typeof response.data === 'object'
+    const defaultFilename = getSuggestedFileName({
+      url,
+      headers: response.headers,
+      requestName: name,
+      contentType: response.contentType,
+      isPreview: false,
+      isJsonObject
+    })
+    const filters = getFileFilters({
+      contentType: response.contentType,
+      isPreview: false,
+      isJsonObject,
+      defaultPath: defaultFilename
+    })
     const result = await window.electronAPI.saveFileDialog({
       defaultPath: defaultFilename,
+      filters,
       content: currentBody
     })
     if (result && result.success) {

@@ -500,7 +500,7 @@ export const RequestHeader: React.FC<Props> = ({
           {/* Save Request */}
           <button
             type="button"
-            onClick={onSave}
+            onClick={() => onSave()}
             title={`${t('header.save')} (Ctrl+S)`}
             className={"flex items-center gap-1 text-xs px-3 py-1 rounded transition-colors active:scale-95 shadow-sm " +
               (isDirty && !autoSave
@@ -702,6 +702,8 @@ export const RequestHeader: React.FC<Props> = ({
                   const isValid = Boolean(constant)
                   const overrideVal = request.constantOverrides ? request.constantOverrides[seg.value] : undefined
                   const isOverridden = overrideVal !== undefined
+                  const effectiveVal = isOverridden ? overrideVal : (constant?.currentValue || '')
+                  const note = (effectiveVal && constant?.optionNotes?.[effectiveVal]) || constant?.description
 
                   if (isValid) {
                     return (
@@ -724,16 +726,16 @@ export const RequestHeader: React.FC<Props> = ({
                             ? "bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/40 text-purple-400 ring-1 ring-purple-500/20"
                             : "bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-400 ring-1 ring-sky-500/20")
                         }
-                        title={isOverridden ? `{{${seg.value}}} ${t('header.exclusiveValue')}: ${overrideVal}` : `{{${seg.value}}} ${t('header.globalValue')}: ${constant?.currentValue || ''}`}
+                        title={isOverridden ? `{{${seg.value}}} ${note ? note + ' — ' : ''}${t('header.exclusiveValue')}: ${overrideVal}` : `{{${seg.value}}} ${note ? note + ' — ' : ''}${t('header.globalValue')}: ${constant?.currentValue || ''}`}
                       >
                         <span className="font-semibold">{seg.raw}</span>
                         {isOverridden ? (
                           <span className="text-[9px] px-1 py-0.1 rounded bg-purple-500/25 text-purple-400 border border-purple-500/40 font-sans font-medium">
-                            {t('header.exclusiveValue')}
+                            {note || t('header.exclusiveValue')}
                           </span>
                         ) : (
                           <span className="text-[9px] px-1 py-0.1 rounded bg-sky-500/25 text-sky-400 border border-sky-500/40 font-sans font-medium">
-                            {t('header.globalValue')}
+                            {note || t('header.globalValue')}
                           </span>
                         )}
                         <ChevronDown className="w-3 h-3 opacity-60 group-hover/pill:opacity-100 transition-opacity" />
@@ -871,7 +873,7 @@ export const RequestHeader: React.FC<Props> = ({
         {/* Send Button */}
         <button
           type="button"
-          onClick={onSend}
+          onClick={() => onSend()}
           disabled={isLoading || !request.url?.trim()}
           className="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-medium px-4 py-1.5 rounded transition-all shadow-sm active:scale-95 shrink-0"
         >
@@ -954,17 +956,22 @@ export const RequestHeader: React.FC<Props> = ({
               </div>
 
               <div className="flex items-center gap-1.5">
-                {activePill.isValid ? (
-                  request.constantOverrides && request.constantOverrides[activePill.name] !== undefined ? (
+                {activePill.isValid ? (() => {
+                  const overrideVal = request.constantOverrides ? request.constantOverrides[activePill.name] : undefined
+                  const isOverridden = overrideVal !== undefined
+                  const effectiveVal = isOverridden ? overrideVal : (activeConstantItem?.currentValue || '')
+                  const note = (effectiveVal && activeConstantItem?.optionNotes?.[effectiveVal]) || activeConstantItem?.description
+
+                  return isOverridden ? (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/40 font-medium">
-                      {t('header.exclusiveValue')}
+                      {note || t('header.exclusiveValue')}
                     </span>
                   ) : (
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-400 border border-sky-500/40 font-medium">
-                      {t('header.globalValue')}
+                      {note || t('header.globalValue')}
                     </span>
                   )
-                ) : (
+                })() : (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/40 font-semibold">
                     {t('header.undefinedConstant')}
                   </span>

@@ -119,6 +119,27 @@ const stripLargeMediaFromResponseRuns = (runsMap: Record<string, ResponseRun[]>)
   return result
 }
 
+// Helper to ensure clean, non-circular request clone
+const cloneCleanRequest = (r: RequestItem): RequestItem => {
+  return {
+    id: r.id || ('req-' + Date.now()),
+    name: r.name || 'Request',
+    method: r.method || 'GET',
+    url: r.url || '',
+    params: Array.isArray(r.params) ? r.params.map((p) => ({ key: String(p.key || ''), value: String(p.value || ''), enabled: Boolean(p.enabled), description: p.description })) : [],
+    headers: Array.isArray(r.headers) ? r.headers.map((h) => ({ key: String(h.key || ''), value: String(h.value || ''), enabled: Boolean(h.enabled), description: h.description })) : [],
+    bodyType: r.bodyType || 'none',
+    bodyRaw: typeof r.bodyRaw === 'string' ? r.bodyRaw : '',
+    bodyFormData: Array.isArray(r.bodyFormData) ? r.bodyFormData : undefined,
+    bodyUrlEncoded: Array.isArray(r.bodyUrlEncoded) ? r.bodyUrlEncoded : undefined,
+    auth: r.auth ? { ...r.auth } : undefined,
+    preRequestScript: r.preRequestScript || '',
+    testScript: r.testScript || '',
+    responseExtractions: Array.isArray(r.responseExtractions) ? r.responseExtractions : undefined,
+    constantOverrides: r.constantOverrides ? { ...r.constantOverrides } : undefined
+  }
+}
+
 function MainApp({
   onLanguageChange,
   onThemeChange
@@ -311,15 +332,18 @@ function MainApp({
             }
 
             // Restore previously opened tabs or fallback to default collection item
-            if (data.tabs && Array.isArray(data.tabs) && data.tabs.length > 0) {
-              setTabs(data.tabs)
+            const validTabs = (data.tabs && Array.isArray(data.tabs))
+              ? data.tabs.filter((t: any) => t && t.id && t.requestId && t.requestId !== 'undefined')
+              : []
+            if (validTabs.length > 0) {
+              setTabs(validTabs)
               const targetActiveTabId =
-                data.activeTabId && data.tabs.some((t: any) => t.id === data.activeTabId)
+                data.activeTabId && validTabs.some((t: any) => t.id === data.activeTabId)
                   ? data.activeTabId
-                  : data.tabs[0].id
+                  : validTabs[0].id
               setActiveTabId(targetActiveTabId)
 
-              const targetTab = data.tabs.find((t: any) => t.id === targetActiveTabId) || data.tabs[0]
+              const targetTab = validTabs.find((t: any) => t.id === targetActiveTabId) || validTabs[0]
               let reqToLoad: RequestItem | undefined = savedDrafts[targetTab.requestId]
 
               if (!reqToLoad && data.collections) {
@@ -338,7 +362,7 @@ function MainApp({
                 }
               }
 
-              const cloned = JSON.parse(JSON.stringify(reqToLoad))
+              const cloned = cloneCleanRequest(reqToLoad)
               setCurrentRequest(cloned)
               setDrafts((prev) => ({ ...prev, [cloned.id]: cloned }))
 
@@ -449,15 +473,20 @@ function MainApp({
 
   // Update request handler with draft and auto-save support
   const handleRequestChange = (updates: Partial<RequestItem>) => {
+    if (!updates || typeof updates !== 'object' || 'nativeEvent' in (updates as any) || '_reactName' in (updates as any) || 'target' in (updates as any)) {
+      return
+    }
     setCurrentRequest((prev) => {
       const next = { ...prev, ...updates }
       // Record draft in memory immediately so switching APIs preserves it
-      setDrafts((prevDrafts) => ({ ...prevDrafts, [next.id]: next }))
+      if (next.id) {
+        setDrafts((prevDrafts) => ({ ...prevDrafts, [next.id]: next }))
+      }
 
       if (settings.autoSave) {
         // Auto Save ON: write directly to collections and persist
         syncToCollections(next)
-      } else {
+      } else if (next.id) {
         // Auto Save OFF: mark as dirty (unsaved)
         setDirtyIds((prevSet) => new Set(prevSet).add(next.id))
       }
@@ -663,12 +692,23 @@ function MainApp({
     setResponse(null)
   }
 
-  const handleNewTab = (customReq?: RequestItem) => {
+  const handleNewTab = (customReq?: unknown) => {
+    const isValidReq = Boolean(
+      customReq &&
+      typeof customReq === 'object' &&
+      !('nativeEvent' in (customReq as any)) &&
+      !('_reactName' in (customReq as any)) &&
+      !('target' in (customReq as any)) &&
+      typeof (customReq as any).id === 'string' &&
+      typeof (customReq as any).method === 'string'
+    )
+    const validCustomReq = isValidReq ? (customReq as RequestItem) : undefined
+
     if (currentRequest.id) {
-      setDrafts((prev) => ({ ...prev, [currentRequest.id]: JSON.parse(JSON.stringify(currentRequest)) }))
+      setDrafts((prev) => ({ ...prev, [currentRequest.id]: cloneCleanRequest(currentRequest) }))
     }
 
-    const newReq: RequestItem = customReq || {
+    const newReq: RequestItem = validCustomReq ? cloneCleanRequest(validCustomReq) : {
       ...defaultNewRequest,
       id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
       name: 'New Request',
@@ -935,7 +975,7 @@ function MainApp({
     }
 
     const maxRuns = settings.maxResponsesPerRequest || 5
-    const reqId = currentRequest.id
+    const reqId = currentRequest.id || ('req-' + Date.now())
 
     try {
       const res = await window.electronAPI.sendRequest(payload)
@@ -949,25 +989,25 @@ function MainApp({
       if (effectiveRequest.responseExtractions?.length && activeEnv) {
         const extracted: { key: string; value: string }[] = []
         for (const rule of effectiveRequest.responseExtractions) {
-          let value: any
-          if (rule.source === 'header') {
-            value = fullRes.headers?.[rule.path] ?? fullRes.headers?.[rule.path.toLowerCase()]
-          } else {
-            value = queryJsonPath(fullRes.data, rule.path)
-          }
+          if (!rule.variable || !rule.path) continue
+          const value = extractFromResponse(fullRes, rule.source, rule.path)
           if (value !== undefined && value !== null) extracted.push({ key: rule.variable, value: typeof value === 'string' ? value : JSON.stringify(value) })
         }
-        if (extracted.length) {
+        if (extracted.length > 0) {
           setEnvironments((prevEnvs) => {
             const nextEnvs = prevEnvs.map((env) => {
               if (env.id !== activeEnv.id) return env
-              const vars = [...env.variables]
+              const updatedVars = [...env.variables]
               for (const item of extracted) {
-                const existing = vars.find((v) => v.key === item.key)
-                if (existing) { existing.value = item.value; existing.enabled = true }
-                else vars.push({ key: item.key, value: item.value, enabled: true })
+                const existing = updatedVars.find((v) => v.key === item.key)
+                if (existing) {
+                  existing.value = item.value
+                  existing.enabled = true
+                } else {
+                  updatedVars.push({ key: item.key, value: item.value, enabled: true })
+                }
               }
-              return { ...env, variables: vars }
+              return { ...env, variables: updatedVars }
             })
             persist({ environments: nextEnvs })
             return nextEnvs
@@ -1037,7 +1077,7 @@ function MainApp({
       // response bodies are externalized by the main process instead of being
       // rewritten into a truncated preview object.
       const historyRequest: RequestItem = {
-        ...JSON.parse(JSON.stringify(effectiveRequest)),
+        ...cloneCleanRequest(effectiveRequest),
         url: processedUrl,
         headers: processedHeaders,
         params: processedParams,
@@ -1092,7 +1132,7 @@ function MainApp({
       const errHistoryItem: HistoryItem = {
         id: 'hist-' + Date.now(),
         request: {
-          ...JSON.parse(JSON.stringify(currentRequest)),
+          ...cloneCleanRequest(currentRequest),
           url: processedUrl,
           headers: processedHeaders,
           params: processedParams,
@@ -1715,7 +1755,7 @@ function MainApp({
             onCloseOtherTabs={handleCloseOtherTabs}
             onCloseTabsToRight={handleCloseTabsToRight}
             onCloseAllTabs={handleCloseAllTabs}
-            onNewTab={handleNewTab}
+            onNewTab={() => handleNewTab()}
             extraRight={renderTopRightToolbar()}
           />
         ) : (
