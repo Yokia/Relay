@@ -866,6 +866,23 @@ function MainApp({
     handleSelectTab(current.id)
   }
 
+  const handleCloseTabsToLeft = (tabId: string) => {
+    const idx = tabsRef.current.findIndex((t) => t.id === tabId)
+    if (idx <= 0) return
+    const tabsToClose = tabsRef.current.slice(0, idx)
+    const dirtyTab = tabsToClose.find((t) => isTabDirty(t))
+    if (dirtyTab) {
+      handleCloseTab(dirtyTab.id)
+      return
+    }
+    const remaining = tabsRef.current.slice(idx)
+    setTabs(remaining)
+    if (!remaining.some((t) => t.id === activeTabId)) {
+      setActiveTabId(tabId)
+      handleSelectTab(tabId)
+    }
+  }
+
   const handleCloseTabsToRight = (tabId: string) => {
     const idx = tabsRef.current.findIndex((t) => t.id === tabId)
     if (idx === -1) return
@@ -2029,6 +2046,7 @@ function MainApp({
             onSelectTab={handleSelectTab}
             onCloseTab={handleCloseTab}
             onCloseOtherTabs={handleCloseOtherTabs}
+            onCloseTabsToLeft={handleCloseTabsToLeft}
             onCloseTabsToRight={handleCloseTabsToRight}
             onCloseAllTabs={handleCloseAllTabs}
             onNewTab={() => handleNewTab()}

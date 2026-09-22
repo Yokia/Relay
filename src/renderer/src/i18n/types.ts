@@ -260,6 +260,7 @@ export interface TranslationSchema {
     closeTab: string
     closeOthers: string
     closeAll: string
+    closeToLeft: string
     closeToRight: string
     untitledTab: string
     saveConfirmTitle: string

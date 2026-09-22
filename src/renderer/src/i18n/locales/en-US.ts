@@ -258,6 +258,7 @@ export const enUS: TranslationSchema = {
     closeTab: 'Close Tab',
     closeOthers: 'Close Other Tabs',
     closeAll: 'Close All Tabs',
+    closeToLeft: 'Close Tabs to the Left',
     closeToRight: 'Close Tabs to the Right',
     untitledTab: 'Untitled Request',
     saveConfirmTitle: 'Save unsaved changes?',

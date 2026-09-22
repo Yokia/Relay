@@ -258,6 +258,7 @@ export const zhCN: TranslationSchema = {
     closeTab: '关闭标签页',
     closeOthers: '关闭其他标签页',
     closeAll: '关闭所有标签页',
+    closeToLeft: '关闭左侧标签页',
     closeToRight: '关闭右侧标签页',
     untitledTab: '未命名请求',
     saveConfirmTitle: '保存未保存的修改？',

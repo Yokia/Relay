@@ -9,6 +9,7 @@ interface Props {
   onSelectTab: (tabId: string) => void
   onCloseTab: (tabId: string) => void
   onCloseOtherTabs: (tabId: string) => void
+  onCloseTabsToLeft: (tabId: string) => void
   onCloseTabsToRight: (tabId: string) => void
   onCloseAllTabs: () => void
   onNewTab: () => void
@@ -31,6 +32,7 @@ export const TabBar: React.FC<Props> = ({
   onSelectTab,
   onCloseTab,
   onCloseOtherTabs,
+  onCloseTabsToLeft,
   onCloseTabsToRight,
   onCloseAllTabs,
   onNewTab,
@@ -156,56 +158,76 @@ export const TabBar: React.FC<Props> = ({
       )}
 
       {/* Context Menu */}
-      {contextMenu && (
-        <div
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-          className="fixed z-50 bg-slate-900 border border-slate-700/80 rounded-lg shadow-2xl p-1 w-44 text-xs text-slate-200 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-75"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={() => {
-              onCloseTab(contextMenu.tabId)
-              setContextMenu(null)
-            }}
-            className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center justify-between transition-colors"
+      {contextMenu && (() => {
+        const currentTabIndex = tabs.findIndex((t) => t.id === contextMenu.tabId)
+        const hasTabsToLeft = currentTabIndex > 0
+        const hasTabsToRight = currentTabIndex !== -1 && currentTabIndex < tabs.length - 1
+        const hasOtherTabs = tabs.length > 1
+
+        return (
+          <div
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            className="fixed z-50 bg-slate-900 border border-slate-700/80 rounded-lg shadow-2xl p-1 w-44 text-xs text-slate-200 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-75"
+            onClick={(e) => e.stopPropagation()}
           >
-            <span>{t('tabs.closeTab')}</span>
-            <span className="text-[10px] text-slate-500 font-mono">Ctrl+W</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onCloseOtherTabs(contextMenu.tabId)
-              setContextMenu(null)
-            }}
-            className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded transition-colors"
-          >
-            <span>{t('tabs.closeOthers')}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onCloseTabsToRight(contextMenu.tabId)
-              setContextMenu(null)
-            }}
-            className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded transition-colors"
-          >
-            <span>{t('tabs.closeToRight')}</span>
-          </button>
-          <div className="h-px bg-slate-800 my-0.5" />
-          <button
-            type="button"
-            onClick={() => {
-              onCloseAllTabs()
-              setContextMenu(null)
-            }}
-            className="px-2.5 py-1.5 text-left hover:bg-rose-500/20 hover:text-rose-400 text-rose-400 rounded transition-colors"
-          >
-            <span>{t('tabs.closeAll')}</span>
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={() => {
+                onCloseTab(contextMenu.tabId)
+                setContextMenu(null)
+              }}
+              className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center justify-between transition-colors cursor-pointer"
+            >
+              <span>{t('tabs.closeTab')}</span>
+              <span className="text-[10px] text-slate-500 font-mono">Ctrl+W</span>
+            </button>
+            <button
+              type="button"
+              disabled={!hasOtherTabs}
+              onClick={() => {
+                onCloseOtherTabs(contextMenu.tabId)
+                setContextMenu(null)
+              }}
+              className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded transition-colors cursor-pointer disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-inherit disabled:cursor-not-allowed"
+            >
+              <span>{t('tabs.closeOthers')}</span>
+            </button>
+            <button
+              type="button"
+              disabled={!hasTabsToLeft}
+              onClick={() => {
+                onCloseTabsToLeft(contextMenu.tabId)
+                setContextMenu(null)
+              }}
+              className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded transition-colors cursor-pointer disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-inherit disabled:cursor-not-allowed"
+            >
+              <span>{t('tabs.closeToLeft')}</span>
+            </button>
+            <button
+              type="button"
+              disabled={!hasTabsToRight}
+              onClick={() => {
+                onCloseTabsToRight(contextMenu.tabId)
+                setContextMenu(null)
+              }}
+              className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded transition-colors cursor-pointer disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-inherit disabled:cursor-not-allowed"
+            >
+              <span>{t('tabs.closeToRight')}</span>
+            </button>
+            <div className="h-px bg-slate-800 my-0.5" />
+            <button
+              type="button"
+              onClick={() => {
+                onCloseAllTabs()
+                setContextMenu(null)
+              }}
+              className="px-2.5 py-1.5 text-left hover:bg-rose-500/20 hover:text-rose-400 text-rose-400 rounded transition-colors cursor-pointer"
+            >
+              <span>{t('tabs.closeAll')}</span>
+            </button>
+          </div>
+        )
+      })()}
     </div>
   )
 }
