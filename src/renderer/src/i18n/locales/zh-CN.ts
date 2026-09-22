@@ -259,7 +259,15 @@ export const zhCN: TranslationSchema = {
     closeOthers: '关闭其他标签页',
     closeAll: '关闭所有标签页',
     closeToRight: '关闭右侧标签页',
-    untitledTab: '未命名请求'
+    untitledTab: '未命名请求',
+    saveConfirmTitle: '保存未保存的修改？',
+    saveConfirmDesc: '标签页 "{name}" 包含未保存的内容变更。如果直接关闭，所做的修改将会丢失。',
+    saveToCollection: '保存到集合',
+    chooseCollection: '选择目标集合',
+    requestNameLabel: '请求名称',
+    dontSave: '不保存',
+    saveAndClose: '保存并关闭',
+    autoCreateCollectionNotice: '当前暂无集合，将自动为您创建 "My Collection"'
   },
   codeSnippet: {
     title: '生成客户端代码 (Code Snippets)',

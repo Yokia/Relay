@@ -259,7 +259,15 @@ export const enUS: TranslationSchema = {
     closeOthers: 'Close Other Tabs',
     closeAll: 'Close All Tabs',
     closeToRight: 'Close Tabs to the Right',
-    untitledTab: 'Untitled Request'
+    untitledTab: 'Untitled Request',
+    saveConfirmTitle: 'Save unsaved changes?',
+    saveConfirmDesc: 'Tab "{name}" has unsaved modifications. Your changes will be lost if you close it without saving.',
+    saveToCollection: 'Save to Collection',
+    chooseCollection: 'Choose target collection',
+    requestNameLabel: 'Request Name',
+    dontSave: "Don't Save",
+    saveAndClose: 'Save & Close',
+    autoCreateCollectionNotice: 'No collection exists. "My Collection" will be created automatically'
   },
   codeSnippet: {
     title: 'Generate Client Code (Code Snippets)',

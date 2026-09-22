@@ -15,6 +15,7 @@ import { CollectionRunnerModal } from './components/CollectionRunnerModal'
 import { DevToysModal } from './components/DevToysModal'
 import { ChangelogModal } from './components/ChangelogModal'
 import { UpdateModal } from './components/UpdateModal'
+import { CloseTabConfirmModal } from './components/CloseTabConfirmModal'
 import { APP_VERSION } from './data/changelog'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastContainer, ToastMessage } from './components/Toast'
@@ -242,6 +243,10 @@ function MainApp({
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
   const [isChangelogOpen, setIsChangelogOpen] = useState(false)
   const [settingsCategory, setSettingsCategory] = useState<SettingCategory | undefined>(undefined)
+  const [tabCloseConfirm, setTabCloseConfirm] = useState<{
+    tab: WorkspaceTab
+    request: RequestItem
+  } | null>(null)
 
   // Auto-display changelog on version update
   useEffect(() => {
@@ -542,11 +547,12 @@ function MainApp({
         setDrafts((prevDrafts) => ({ ...prevDrafts, [next.id]: next }))
       }
 
-      if (settings.autoSave) {
+      const isInCollection = Boolean(findRequestInTree(collections, next.id))
+      if (settings.autoSave && isInCollection) {
         // Auto Save ON: write directly to collections and persist
         syncToCollections(next)
       } else if (next.id) {
-        // Auto Save OFF: mark as dirty (unsaved)
+        // Auto Save OFF, or brand new tab not yet in any collection: mark as dirty (unsaved)
         setDirtyIds((prevSet) => new Set(prevSet).add(next.id))
       }
       return next
@@ -724,13 +730,51 @@ function MainApp({
     setResponse(null)
   }
 
-  const handleCloseTab = (tabId: string) => {
+  // Helper to get effective request object for a tab
+  const getTabRequest = (tab: WorkspaceTab): RequestItem => {
+    if (tab.requestId === currentRequest.id) {
+      return currentRequest
+    }
+    return drafts[tab.requestId] || findRequestInTree(collections, tab.requestId)?.request || {
+      ...defaultNewRequest,
+      id: tab.requestId,
+      name: tab.name,
+      method: tab.method,
+      headers: createDefaultHeaders()
+    }
+  }
+
+  // Check if a tab has unsaved changes
+  const isTabDirty = (tab: WorkspaceTab): boolean => {
+    if (dirtyIds.has(tab.requestId) || tab.isDirty) return true
+    if (tab.requestId === currentRequest.id && dirtyIds.has(currentRequest.id)) return true
+    return false
+  }
+
+  // Core execution of tab closure
+  const executeCloseTab = (tabId: string) => {
     const currentTabs = tabsRef.current
     const tabIndex = currentTabs.findIndex((t) => t.id === tabId)
     if (tabIndex === -1) return
 
+    const tabToClose = currentTabs[tabIndex]
+
+    if (tabToClose?.requestId) {
+      setDrafts((prev) => {
+        const next = { ...prev }
+        delete next[tabToClose.requestId]
+        return next
+      })
+      setDirtyIds((prev) => {
+        const next = new Set(prev)
+        next.delete(tabToClose.requestId)
+        return next
+      })
+    }
+
     const remaining = currentTabs.filter((t) => t.id !== tabId)
     if (remaining.length === 0) {
+      setTabs([])
       handleNewTab()
       return
     }
@@ -742,9 +786,81 @@ function MainApp({
     }
   }
 
+  // Handle Save and close tab
+  const handleSaveAndCloseTab = (
+    tab: WorkspaceTab,
+    reqToSave: RequestItem,
+    targetColId?: string
+  ) => {
+    const isInCollection = Boolean(findRequestInTree(collections, reqToSave.id))
+    if (isInCollection) {
+      const { updated } = updateRequestInTree(collections, reqToSave)
+      setCollections(updated)
+      persist({ collections: updated })
+      addToast(t('toast.requestSaved'), 'success')
+    } else {
+      if (collections.length === 0) {
+        const newCol: CollectionItem = {
+          id: 'col-' + Date.now(),
+          name: 'My Collection',
+          requests: [JSON.parse(JSON.stringify(reqToSave))],
+          children: []
+        }
+        const updatedCols = [newCol]
+        setCollections(updatedCols)
+        persist({ collections: updatedCols })
+        addToast(t('toast.collectionCreated', { name: 'My Collection' }), 'success')
+      } else {
+        const colId = targetColId || collections[0].id
+        const updatedCols = addRequestToCollection(
+          collections,
+          colId,
+          JSON.parse(JSON.stringify(reqToSave))
+        )
+        setCollections(updatedCols)
+        persist({ collections: updatedCols })
+        addToast(t('toast.requestSaved'), 'success')
+      }
+    }
+
+    if (currentRequest.id === reqToSave.id) {
+      setCurrentRequest(reqToSave)
+    }
+
+    setTabCloseConfirm(null)
+    executeCloseTab(tab.id)
+  }
+
+  // Handle Discard and close tab
+  const handleDiscardAndCloseTab = (tab: WorkspaceTab) => {
+    setTabCloseConfirm(null)
+    executeCloseTab(tab.id)
+  }
+
+  // Handle closing tab (checks dirty state and prompts if unsaved)
+  const handleCloseTab = (tabId: string) => {
+    const currentTabs = tabsRef.current
+    const targetTab = currentTabs.find((t) => t.id === tabId)
+    if (!targetTab) return
+
+    if (isTabDirty(targetTab)) {
+      const req = getTabRequest(targetTab)
+      setTabCloseConfirm({ tab: targetTab, request: req })
+      return
+    }
+
+    executeCloseTab(tabId)
+  }
+
   const handleCloseOtherTabs = (tabId: string) => {
     const current = tabsRef.current.find((t) => t.id === tabId)
     if (!current) return
+    const tabsToClose = tabsRef.current.filter((t) => t.id !== tabId)
+    const dirtyTab = tabsToClose.find((t) => isTabDirty(t))
+    if (dirtyTab) {
+      handleCloseTab(dirtyTab.id)
+      return
+    }
     setTabs([current])
     setActiveTabId(current.id)
     handleSelectTab(current.id)
@@ -753,6 +869,12 @@ function MainApp({
   const handleCloseTabsToRight = (tabId: string) => {
     const idx = tabsRef.current.findIndex((t) => t.id === tabId)
     if (idx === -1) return
+    const tabsToClose = tabsRef.current.slice(idx + 1)
+    const dirtyTab = tabsToClose.find((t) => isTabDirty(t))
+    if (dirtyTab) {
+      handleCloseTab(dirtyTab.id)
+      return
+    }
     const remaining = tabsRef.current.slice(0, idx + 1)
     setTabs(remaining)
     if (!remaining.some((t) => t.id === activeTabId)) {
@@ -762,6 +884,11 @@ function MainApp({
   }
 
   const handleCloseAllTabs = () => {
+    const dirtyTab = tabsRef.current.find((t) => isTabDirty(t))
+    if (dirtyTab) {
+      handleCloseTab(dirtyTab.id)
+      return
+    }
     const freshReq: RequestItem = {
       ...defaultNewRequest,
       id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
@@ -1573,6 +1700,7 @@ function MainApp({
       )
 
       const isModalOpen = Boolean(
+        tabCloseConfirm ||
         isSettingsModalOpen ||
         isConstantModalOpen ||
         isEnvModalOpen ||
@@ -2010,6 +2138,18 @@ function MainApp({
           onOpenChangelog={() => setIsChangelogOpen(true)}
           onCheckUpdates={() => handleCheckForUpdates(true)}
           isCheckingUpdates={isCheckingUpdates}
+        />
+      )}
+
+      {tabCloseConfirm && (
+        <CloseTabConfirmModal
+          isOpen={Boolean(tabCloseConfirm)}
+          tab={tabCloseConfirm.tab}
+          request={tabCloseConfirm.request}
+          collections={collections}
+          onSaveAndClose={handleSaveAndCloseTab}
+          onDiscardAndClose={handleDiscardAndCloseTab}
+          onCancel={() => setTabCloseConfirm(null)}
         />
       )}
 

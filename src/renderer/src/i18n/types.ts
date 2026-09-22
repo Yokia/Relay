@@ -262,6 +262,14 @@ export interface TranslationSchema {
     closeAll: string
     closeToRight: string
     untitledTab: string
+    saveConfirmTitle: string
+    saveConfirmDesc: string
+    saveToCollection: string
+    chooseCollection: string
+    requestNameLabel: string
+    dontSave: string
+    saveAndClose: string
+    autoCreateCollectionNotice: string
   }
   codeSnippet: {
     title: string
