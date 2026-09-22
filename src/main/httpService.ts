@@ -244,12 +244,27 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
     headers[auth.key] = auth.value
   }
 
-  // 2. Prepare Params
+  // 2. Prepare Params (Avoid duplicate query parameters if already present in req.url)
+  const urlQueryKeys = new Set<string>()
+  const qMarkIndex = req.url.indexOf('?')
+  if (qMarkIndex !== -1) {
+    const rawQuery = req.url.slice(qMarkIndex + 1).split('#')[0]
+    for (const part of rawQuery.split('&')) {
+      if (!part) continue
+      const eqIdx = part.indexOf('=')
+      const k = eqIdx !== -1 ? part.slice(0, eqIdx).trim() : part.trim()
+      if (k) urlQueryKeys.add(k)
+    }
+  }
+
   const params: Record<string, string> = {}
   if (req.params) {
     for (const p of req.params) {
       if (p.enabled && p.key.trim()) {
-        params[p.key.trim()] = p.value
+        const k = p.key.trim()
+        if (!urlQueryKeys.has(k)) {
+          params[k] = p.value
+        }
       }
     }
   }

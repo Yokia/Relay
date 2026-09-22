@@ -23,6 +23,7 @@ import { stripJsonComments } from './utils/jsonUtils'
 import { mergeCollections, mergeConstants, mergeEnvironments, ParsedImportData } from './utils/dataTransferUtils'
 import { executePreRequestScript, executeTestScript } from './utils/scriptEngine'
 import { queryJsonPath } from './utils/jsonPath'
+import { parseUrlToParams, buildUrlWithParams, areParamsEquivalent } from './utils/urlParamsUtils'
 import { I18nProvider, useI18n } from './i18n'
 import { ThemeProvider } from './theme'
 import { createDefaultHeaders } from './utils/headerConstants'
@@ -124,12 +125,25 @@ const stripLargeMediaFromResponseRuns = (runsMap: Record<string, ResponseRun[]>)
 
 // Helper to ensure clean, non-circular request clone
 const cloneCleanRequest = (r: RequestItem): RequestItem => {
+  let params = Array.isArray(r.params)
+    ? r.params.map((p) => ({
+        key: String(p.key || ''),
+        value: String(p.value || ''),
+        enabled: Boolean(p.enabled),
+        description: p.description
+      }))
+    : []
+
+  if (r.url && r.url.includes('?') && params.length === 0) {
+    params = parseUrlToParams(r.url, params)
+  }
+
   return {
     id: r.id || ('req-' + Date.now()),
     name: r.name || 'Request',
     method: r.method || 'GET',
     url: r.url || '',
-    params: Array.isArray(r.params) ? r.params.map((p) => ({ key: String(p.key || ''), value: String(p.value || ''), enabled: Boolean(p.enabled), description: p.description })) : [],
+    params,
     headers: Array.isArray(r.headers) ? r.headers.map((h) => ({ key: String(h.key || ''), value: String(h.value || ''), enabled: Boolean(h.enabled), description: h.description })) : [],
     bodyType: r.bodyType || 'none',
     bodyRaw: typeof r.bodyRaw === 'string' ? r.bodyRaw : '',
@@ -400,7 +414,7 @@ function MainApp({
                 setResponse(null)
               }
             } else if (data.collections?.[0]?.requests?.[0]) {
-              const initialReq = JSON.parse(JSON.stringify(data.collections[0].requests[0]))
+              const initialReq = cloneCleanRequest(data.collections[0].requests[0])
               setCurrentRequest(initialReq)
               setDrafts({ [initialReq.id]: initialReq })
               const initialTab: WorkspaceTab = {
@@ -499,13 +513,30 @@ function MainApp({
     }
   }
 
-  // Update request handler with draft and auto-save support
+  // Update request handler with draft and auto-save support, with bi-directional URL <-> Params synchronization
   const handleRequestChange = (updates: Partial<RequestItem>) => {
     if (!updates || typeof updates !== 'object' || 'nativeEvent' in (updates as any) || '_reactName' in (updates as any) || 'target' in (updates as any)) {
       return
     }
     setCurrentRequest((prev) => {
-      const next = { ...prev, ...updates }
+      let finalUpdates = { ...updates }
+
+      // 1. Bi-directional sync: URL changed directly -> sync query string into params
+      if (finalUpdates.url !== undefined && finalUpdates.params === undefined) {
+        const syncedParams = parseUrlToParams(finalUpdates.url, prev.params || [])
+        if (!areParamsEquivalent(prev.params || [], syncedParams)) {
+          finalUpdates.params = syncedParams
+        }
+      }
+      // 2. Bi-directional sync: Params changed directly -> sync params into URL
+      else if (finalUpdates.params !== undefined && finalUpdates.url === undefined) {
+        const syncedUrl = buildUrlWithParams(prev.url || '', finalUpdates.params)
+        if (syncedUrl !== prev.url) {
+          finalUpdates.url = syncedUrl
+        }
+      }
+
+      const next = { ...prev, ...finalUpdates }
       // Record draft in memory immediately so switching APIs preserves it
       if (next.id) {
         setDrafts((prevDrafts) => ({ ...prevDrafts, [next.id]: next }))
@@ -543,7 +574,7 @@ function MainApp({
 
     // 2. If there is an unsaved working draft for this request, load the draft!
     const reqToLoad = drafts[targetReq.id] || targetReq
-    const cloned = JSON.parse(JSON.stringify(reqToLoad))
+    const cloned = cloneCleanRequest(reqToLoad)
     setCurrentRequest(cloned)
     setDrafts((prev) => ({ ...prev, [cloned.id]: cloned }))
 
@@ -658,7 +689,7 @@ function MainApp({
 
     // 2. If present in drafts, load draft
     if (drafts[targetTab.requestId]) {
-      const cloned = JSON.parse(JSON.stringify(drafts[targetTab.requestId]))
+      const cloned = cloneCleanRequest(drafts[targetTab.requestId])
       setCurrentRequest(cloned)
       const existingRuns = responseHistoryMap[targetTab.requestId] || []
       const selectedRunId = selectedRunIdMap[targetTab.requestId]
@@ -670,7 +701,7 @@ function MainApp({
     // 3. Look up in collections tree
     const found = findRequestInTree(collections, targetTab.requestId)
     if (found) {
-      const cloned = JSON.parse(JSON.stringify(found.request))
+      const cloned = cloneCleanRequest(found.request)
       setCurrentRequest(cloned)
       setDrafts((prev) => ({ ...prev, [cloned.id]: cloned }))
       const existingRuns = responseHistoryMap[found.request.id] || []
@@ -1448,7 +1479,7 @@ function MainApp({
         setCollections(parsed.collections)
         updates.collections = parsed.collections
         if (parsed.collections[0]?.requests?.[0]) {
-          const req = JSON.parse(JSON.stringify(parsed.collections[0].requests[0]))
+          const req = cloneCleanRequest(parsed.collections[0].requests[0])
           setCurrentRequest(req)
           setResponse(null)
           const newTab: WorkspaceTab = {
@@ -1497,7 +1528,7 @@ function MainApp({
       updates.collections = nextCols
       // If current request was empty, load the first imported request
       if (!currentRequest.url && parsed.collections[0]?.requests?.[0]) {
-        setCurrentRequest(JSON.parse(JSON.stringify(parsed.collections[0].requests[0])))
+        setCurrentRequest(cloneCleanRequest(parsed.collections[0].requests[0]))
       }
     }
     if (parsed.constants && parsed.constants.length > 0) {
