@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { KeyValueEditor } from './KeyValueEditor'
 import { CodeEditor } from './CodeEditor'
 import { ScriptEditor } from './ScriptEditor'
@@ -21,10 +21,29 @@ interface Props {
 }
 
 type TabType = 'params' | 'headers' | 'body' | 'auth' | 'extract' | 'preRequest' | 'tests'
+const VALID_TABS: TabType[] = ['params', 'headers', 'body', 'auth', 'extract', 'preRequest', 'tests']
 
 export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
   const { t } = useI18n()
-  const [activeTab, setActiveTab] = useState<TabType>('params')
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    try {
+      const saved = localStorage.getItem('relay_request_active_tab') as TabType | null
+      if (saved && VALID_TABS.includes(saved)) {
+        return saved
+      }
+    } catch {
+      // ignore
+    }
+    return 'params'
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('relay_request_active_tab', activeTab)
+    } catch {
+      // ignore
+    }
+  }, [activeTab])
   const [wrapLines, setWrapLines] = useState(true)
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false)
   const [bulkImportInitialText, setBulkImportInitialText] = useState('')
