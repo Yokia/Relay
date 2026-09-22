@@ -167,6 +167,8 @@ function MainApp({
     }
   ])
   const [activeTabId, setActiveTabId] = useState<string>('tab-' + defaultNewRequest.id)
+  // Keep a ref that always mirrors `tabs` — avoids stale closure bugs in event handlers
+  const tabsRef = useRef<WorkspaceTab[]>(tabs)
 
   // Per-request response runs history (Preserves responses across switching APIs and app restarts)
   const [responseHistoryMap, setResponseHistoryMap] = useState<Record<string, ResponseRun[]>>({})
@@ -433,6 +435,11 @@ function MainApp({
     )
   }, [currentRequest.id, currentRequest.name, currentRequest.method, dirtyIds, collections, settings.showCollectionPath])
 
+  // Keep tabsRef in sync with the latest tabs state
+  useEffect(() => {
+    tabsRef.current = tabs
+  }, [tabs])
+
   // Persist helper
   const persist = (updates: any) => {
     if (window.electronAPI) {
@@ -491,12 +498,11 @@ function MainApp({
 
     // 4. Manage Multi-Tabs
     if (settings.enableMultiTabs !== false) {
-      setTabs((prev) => {
-        const existingTab = prev.find((t) => t.requestId === targetReq.id)
-        if (existingTab) {
-          setActiveTabId(existingTab.id)
-          return prev
-        }
+      const currentTabs = tabsRef.current
+      const existingTab = currentTabs.find((t) => t.requestId === targetReq.id)
+      if (existingTab) {
+        setActiveTabId(existingTab.id)
+      } else {
         const newTab: WorkspaceTab = {
           id: 'tab-' + targetReq.id + '-' + Date.now(),
           requestId: targetReq.id,
@@ -504,9 +510,9 @@ function MainApp({
           method: targetReq.method,
           isDirty: dirtyIds.has(targetReq.id)
         }
+        setTabs((prev) => [...prev, newTab])
         setActiveTabId(newTab.id)
-        return [...prev, newTab]
-      })
+      }
     } else {
       const singleTab: WorkspaceTab = {
         id: 'tab-' + targetReq.id,
@@ -552,7 +558,7 @@ function MainApp({
 
   // Multi-Tab Handlers
   const handleSelectTab = (tabId: string) => {
-    const targetTab = tabs.find((t) => t.id === tabId)
+    const targetTab = tabsRef.current.find((t) => t.id === tabId)
     if (!targetTab) return
 
     // 1. Save currently active request into drafts before switching
@@ -600,10 +606,11 @@ function MainApp({
   }
 
   const handleCloseTab = (tabId: string) => {
-    const tabIndex = tabs.findIndex((t) => t.id === tabId)
+    const currentTabs = tabsRef.current
+    const tabIndex = currentTabs.findIndex((t) => t.id === tabId)
     if (tabIndex === -1) return
 
-    const remaining = tabs.filter((t) => t.id !== tabId)
+    const remaining = currentTabs.filter((t) => t.id !== tabId)
     if (remaining.length === 0) {
       handleNewTab()
       return
@@ -617,7 +624,7 @@ function MainApp({
   }
 
   const handleCloseOtherTabs = (tabId: string) => {
-    const current = tabs.find((t) => t.id === tabId)
+    const current = tabsRef.current.find((t) => t.id === tabId)
     if (!current) return
     setTabs([current])
     setActiveTabId(current.id)
@@ -625,9 +632,9 @@ function MainApp({
   }
 
   const handleCloseTabsToRight = (tabId: string) => {
-    const idx = tabs.findIndex((t) => t.id === tabId)
+    const idx = tabsRef.current.findIndex((t) => t.id === tabId)
     if (idx === -1) return
-    const remaining = tabs.slice(0, idx + 1)
+    const remaining = tabsRef.current.slice(0, idx + 1)
     setTabs(remaining)
     if (!remaining.some((t) => t.id === activeTabId)) {
       setActiveTabId(tabId)
@@ -1243,7 +1250,7 @@ function MainApp({
     const next = deleteRequestFromTree(collections, colId, reqId)
     setCollections(next)
     persist({ collections: next })
-    const openTab = tabs.find((t) => t.requestId === reqId)
+    const openTab = tabsRef.current.find((t) => t.requestId === reqId)
     if (openTab) {
       handleCloseTab(openTab.id)
     }
