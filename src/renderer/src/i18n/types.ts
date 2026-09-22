@@ -427,6 +427,7 @@ export interface TranslationSchema {
   }
   runner: {
     title: string
+    environment: string
     runCollection: string
     runSelected: string
     run: string

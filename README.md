@@ -160,7 +160,7 @@
 
 ### 1. 克隆代码仓库
 ```bash
-git clone https://github.com/your-username/relay.git
+git clone https://github.com/Yokia/relay.git
 cd relay
 ```
 

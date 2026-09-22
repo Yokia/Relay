@@ -426,6 +426,7 @@ export const enUS: TranslationSchema = {
   },
   runner: {
     title: 'Collection & Batch Runner',
+    environment: 'Environment',
     runCollection: 'Run Collection',
     runSelected: 'Run Selected Requests',
     run: 'Start Run',

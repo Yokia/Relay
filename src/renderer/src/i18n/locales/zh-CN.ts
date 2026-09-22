@@ -426,6 +426,7 @@ export const zhCN: TranslationSchema = {
   },
   runner: {
     title: '集合与批量接口运行器 (Runner)',
+    environment: '环境',
     runCollection: '运行集合',
     runSelected: '运行选中请求',
     run: '开始运行',

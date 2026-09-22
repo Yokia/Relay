@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   X,
   Play,
@@ -105,34 +105,45 @@ export const CollectionRunnerModal: React.FC<Props> = ({
   }, [requests])
 
   // Interpolation helper taking selectedEnvId and constants into account
-  const interpolate = (text: string, req?: RequestItem): string => {
-    if (!text) return text
-    let result = text
-    const overrides = req?.constantOverrides || {}
+  const interpolate = useCallback(
+    (text: string, req?: RequestItem): string => {
+      if (!text) return text
+      let result = text
+      const overrides = req?.constantOverrides || {}
 
-    // 1. Replace constants
-    for (const c of constants) {
-      if (c.name) {
-        const effectiveVal = overrides[c.name] !== undefined ? overrides[c.name] : c.currentValue
-        if (effectiveVal) {
-          result = result.replaceAll('{{' + c.name + '}}', effectiveVal)
+      let prev = ''
+      let depth = 0
+      while (prev !== result && depth < 5 && result.includes('{{')) {
+        prev = result
+        depth++
+
+        // 1. Replace constants (request-level overrides take precedence over global currentValue)
+        for (const c of constants) {
+          if (c.name) {
+            const effectiveVal = overrides[c.name] !== undefined ? overrides[c.name] : c.currentValue
+            if (effectiveVal !== undefined && effectiveVal !== null) {
+              result = result.replaceAll('{{' + c.name + '}}', String(effectiveVal))
+            }
+          }
         }
-      }
-    }
 
-    // 2. Replace active environment variables
-    if (selectedEnvId) {
-      const env = environments.find((e) => e.id === selectedEnvId)
-      if (env) {
-        for (const v of env.variables) {
-          if (v.enabled && v.key.trim()) {
-            result = result.replaceAll('{{' + v.key.trim() + '}}', v.value)
+        // 2. Replace active environment variables
+        const envIdToUse = selectedEnvId || activeEnvId
+        if (envIdToUse) {
+          const env = environments.find((e) => e.id === envIdToUse)
+          if (env) {
+            for (const v of env.variables) {
+              if (v.enabled && v.key.trim()) {
+                result = result.replaceAll('{{' + v.key.trim() + '}}', v.value)
+              }
+            }
           }
         }
       }
-    }
-    return result
-  }
+      return result
+    },
+    [constants, environments, selectedEnvId, activeEnvId]
+  )
 
   // Active queue of requests to run
   const runnableRequests = useMemo(() => {
@@ -196,7 +207,8 @@ export const CollectionRunnerModal: React.FC<Props> = ({
 
       setCurrentIndex(i)
       let currentReq = { ...runnableRequests[i] }
-      const activeEnv = activeEnvId ? environments.find((e) => e.id === activeEnvId) : environments[0]
+      const envIdToUse = selectedEnvId || activeEnvId
+      const activeEnv = envIdToUse ? environments.find((e) => e.id === envIdToUse) : environments[0]
 
       // 1. Run Pre-request script in Runner
       if (currentReq.preRequestScript && currentReq.preRequestScript.trim()) {
@@ -299,7 +311,7 @@ export const CollectionRunnerModal: React.FC<Props> = ({
         resResult = {
           id: 'res-' + Date.now() + '-' + i,
           requestId: currentReq.id,
-          requestName: currentReq.name || currentReq.url || t('common.untitled'),
+          requestName: currentReq.name || processedUrl || t('common.untitled'),
           method: currentReq.method,
           url: processedUrl,
           status: res.status,
@@ -319,7 +331,7 @@ export const CollectionRunnerModal: React.FC<Props> = ({
         resResult = {
           id: 'res-' + Date.now() + '-' + i,
           requestId: currentReq.id,
-          requestName: currentReq.name || currentReq.url || t('common.untitled'),
+          requestName: currentReq.name || processedUrl || t('common.untitled'),
           method: currentReq.method,
           url: processedUrl,
           status: 0,
@@ -575,7 +587,7 @@ export const CollectionRunnerModal: React.FC<Props> = ({
           <div className="flex items-center gap-4 flex-wrap">
             {/* Environment select */}
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-400">{t('sidebar.constants')}:</span>
+              <span className="text-slate-400">{t('runner.environment')}:</span>
               <select
                 value={selectedEnvId}
                 disabled={isRunning}
@@ -761,35 +773,45 @@ export const CollectionRunnerModal: React.FC<Props> = ({
                       <div
                         key={req.id}
                         onClick={() => handleToggleReq(req.id)}
-                        className={`px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs cursor-pointer transition-colors ${
+                        className={`px-3.5 py-2.5 flex items-start gap-3 text-xs cursor-pointer transition-colors ${
                           isSelected
                             ? 'bg-slate-900/60 hover:bg-slate-800/60'
                             : 'opacity-50 hover:opacity-75 bg-slate-950/20'
                         }`}
                       >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            disabled={isRunning}
-                            onChange={() => handleToggleReq(req.id)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="rounded border-slate-700 bg-slate-950 text-sky-500 focus:ring-0 cursor-pointer"
-                          />
-                          <span className="text-slate-500 font-mono text-[11px] w-6">{idx + 1}.</span>
-                          <span
-                            className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                              methodBadgeColor[req.method] || 'text-slate-400'
-                            }`}
-                          >
-                            {req.method}
-                          </span>
-                          <span className="font-medium text-slate-200 truncate max-w-xs" title={req.name}>
-                            {req.name || t('common.untitled')}
-                          </span>
-                          <span className="text-slate-400 truncate text-[11px] font-mono flex-1" title={req.url}>
-                            {req.url}
-                          </span>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={isRunning}
+                          onChange={() => handleToggleReq(req.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-1 rounded border-slate-700 bg-slate-950 text-sky-500 focus:ring-0 cursor-pointer shrink-0"
+                        />
+                        <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                          {/* Row 1: Index, Method, Title */}
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-slate-500 font-mono text-[11px] w-5 shrink-0">{idx + 1}.</span>
+                            <span
+                              className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${
+                                methodBadgeColor[req.method] || 'text-slate-400'
+                              }`}
+                            >
+                              {req.method}
+                            </span>
+                            <span className="font-semibold text-slate-200 truncate text-xs" title={req.name}>
+                              {req.name || t('common.untitled')}
+                            </span>
+                          </div>
+
+                          {/* Row 2: Address with highlighted background */}
+                          <div className="flex items-center pl-7 min-w-0">
+                            <span
+                              className="inline-block max-w-full truncate text-[11px] font-mono text-slate-300 bg-slate-950/80 border border-slate-800/90 rounded px-2.5 py-0.5 hover:border-slate-700 hover:text-sky-300 transition-colors"
+                              title={interpolate(req.url, req)}
+                            >
+                              {interpolate(req.url, req)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     )
@@ -966,39 +988,49 @@ export const CollectionRunnerModal: React.FC<Props> = ({
                       <div key={r.id} className="flex flex-col">
                         <div
                           onClick={() => toggleExpand(r.id)}
-                          className={`px-3.5 py-2.5 flex items-center justify-between gap-3 text-xs cursor-pointer hover:bg-slate-800/40 transition-colors ${
+                          className={`px-3.5 py-2.5 flex items-start justify-between gap-3 text-xs cursor-pointer hover:bg-slate-800/40 transition-colors ${
                             !isPass ? 'bg-rose-950/10' : ''
                           }`}
                         >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <span className="text-slate-500 hover:text-slate-300">
+                          <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                            <span className="text-slate-500 hover:text-slate-300 mt-1 shrink-0">
                               {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                             </span>
 
                             {isPass ? (
-                              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                             ) : (
-                              <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                              <XCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                             )}
 
-                            <span
-                              className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${
-                                methodBadgeColor[r.method] || 'text-slate-400'
-                              }`}
-                            >
-                              {r.method}
-                            </span>
+                            <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                              {/* Row 1: Method badge + Title */}
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className={`font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${
+                                    methodBadgeColor[r.method] || 'text-slate-400'
+                                  }`}
+                                >
+                                  {r.method}
+                                </span>
+                                <span className="font-semibold text-slate-200 truncate text-xs" title={r.requestName}>
+                                  {r.requestName}
+                                </span>
+                              </div>
 
-                            <span className="font-semibold text-slate-200 truncate max-w-xs" title={r.requestName}>
-                              {r.requestName}
-                            </span>
-
-                            <span className="text-slate-400 truncate text-[11px] font-mono flex-1" title={r.url}>
-                              {r.url}
-                            </span>
+                              {/* Row 2: URL with highlighted background */}
+                              <div className="flex items-center min-w-0">
+                                <span
+                                  className="inline-block max-w-full truncate text-[11px] font-mono text-slate-300 bg-slate-950/80 border border-slate-800/90 rounded px-2.5 py-0.5 hover:border-slate-700 hover:text-sky-300 transition-colors"
+                                  title={r.url}
+                                >
+                                  {r.url}
+                                </span>
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="flex items-center gap-3 shrink-0 font-mono text-[11px]">
+                          <div className="flex items-center gap-3 shrink-0 font-mono text-[11px] mt-0.5">
                             {/* Status badge */}
                             <span
                               className={`px-2 py-0.5 rounded font-bold ${
