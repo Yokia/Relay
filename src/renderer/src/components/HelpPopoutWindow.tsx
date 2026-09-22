@@ -28,6 +28,7 @@ import { Theme, Language } from '../types'
 import { I18nProvider, useI18n } from '../i18n'
 import { ThemeProvider, useTheme } from '../theme'
 import { getHelpDoc } from '../i18n/locales/help'
+import { APP_VERSION } from '../data/changelog'
 
 interface HelpSection {
   id: string
@@ -758,7 +759,7 @@ function HelpContent() {
           <div className="p-3 border-t border-slate-800 bg-slate-950/40 text-[11px] text-slate-500 space-y-1 text-center">
             <div>{helpDoc.footerHint}</div>
             <div className="pt-1 flex items-center justify-center gap-1.5 text-slate-400 font-mono text-[10px]">
-              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-sky-400 font-semibold">v1.1.0</span>
+              <span className="px-1.5 py-0.2 rounded bg-slate-800 text-sky-400 font-semibold">v{APP_VERSION}</span>
               <span>·</span>
               <button
                 type="button"

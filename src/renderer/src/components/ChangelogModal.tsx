@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   X,
   Sparkles,
@@ -25,6 +25,19 @@ export const ChangelogModal: React.FC<Props> = ({ isOpen, onClose }) => {
   const [selectedVersion, setSelectedVersion] = useState<string>(APP_VERSION)
   const activeRelease: ReleaseNote =
     CHANGELOG_DATA.find((r) => r.version === selectedVersion) || CHANGELOG_DATA[0]
+
+  const sortedChanges = useMemo(() => {
+    const TYPE_ORDER: Record<ChangeType, number> = {
+      feat: 0,
+      perf: 1,
+      fix: 2
+    }
+    return [...activeRelease.changes].sort((a, b) => {
+      const orderA = TYPE_ORDER[a.type] ?? 99
+      const orderB = TYPE_ORDER[b.type] ?? 99
+      return orderA - orderB
+    })
+  }, [activeRelease])
 
   if (!isOpen) return null
 
@@ -156,7 +169,7 @@ export const ChangelogModal: React.FC<Props> = ({ isOpen, onClose }) => {
             </div>
 
             <div className="divide-y divide-slate-800/60 rounded-xl border border-slate-800 bg-slate-950/40 overflow-hidden">
-              {activeRelease.changes.map((item, index) => (
+              {sortedChanges.map((item, index) => (
                 <div
                   key={index}
                   className="p-3 hover:bg-slate-800/30 transition-colors flex items-start gap-3 text-xs"

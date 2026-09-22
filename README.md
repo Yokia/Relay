@@ -7,7 +7,7 @@
 ### 专为开发者打造的轻量、极速、无 CORS 拦截的高性能 API 客户端
 ### *A fast, lightweight, and clean API client built for developers*
 
-[![Version](https://img.shields.io/badge/version-1.1.0-sky.svg?style=flat-square)](./package.json)
+[![Version](https://img.shields.io/badge/version-1.2.0-sky.svg?style=flat-square)](./package.json)
 [![Electron](https://img.shields.io/badge/Electron-33.x-47848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -229,15 +229,24 @@ Relay/
 
 请查阅应用内关于面板的 **版本更新说明** 或查看源码 [`src/renderer/src/data/changelog.ts`](./src/renderer/src/data/changelog.ts)。
 
+- **v1.2.0** (2026-09-22)
+  - **新功能**：URL 地址栏与 Params 参数表格实现实时双向同步，智能解析带参链接，编辑表格实时回写 URL。
+  - **新功能**：集成基于 GitHub Releases 的应用内检测更新与一键覆盖安装，支持更新日志与实时下载进度显示。
+  - **新功能**：帮助页面文档全面扩充，同步前置脚本、测试断言、代码片段、DevToys 及应用内更新说明。
+  - **优化**：请求发送端排除 URL 已存在的 Query 键，防止底层 Axios 重复拼接多余参数。
+  - **优化**：参数与请求头表格（KeyValueEditor）取消固定高度限制，自动向下占满剩余空白空间并支持表头吸顶。
+  - **优化**：集合测试器（Runner）优化界面布局为标题第一行、地址第二行突出显示，测试时将变量替换为真实请求值。
+  - **修复**：修复全局 Ctrl+Enter 快捷发送请求在各种焦点状态下的失效问题，并在发送按钮后追加按键提示。
 - **v1.1.0** (2026-09-22)
-  - 优化预览页媒体（视频、图片、音频、PDF）保存文件名提取逻辑，优先从 URL / Content-Disposition 解析。
-  - 修复 Windows 保存文件对话框媒体类型过滤器问题。
-  - 输入参数区域（Params/Headers/Body等）支持记住上次选中的标签页。
-  - 开发者工具箱新增多引擎文本/代码翻译及变量风格转换工具。
-  - 转义工具支持换行符 `\n` 与制表符 `\t` 一键展开格式化与折叠压缩。
-  - 支持从浏览器 DevTools 一键批量粘贴导入 Headers。
-  - 集合支持生成包含真实 cURL 命令的离线 HTML / Markdown 接口文档。
-  - 修复新建标签页白屏及批量拖动请求等异常。
+  - **新功能**：开发者工具箱新增多引擎文本/代码翻译及变量风格转换工具。
+  - **新功能**：转义工具支持换行符 `\n` 与制表符 `\t` 一键展开格式化与折叠压缩。
+  - **新功能**：支持从浏览器 DevTools 一键批量粘贴导入 Headers。
+  - **新功能**：集合支持生成包含真实 cURL 命令的离线 HTML / Markdown 接口文档。
+  - **优化**：优化预览页媒体（视频、图片、音频、PDF）保存文件名提取逻辑，优先从 URL / Content-Disposition 解析。
+  - **优化**：输入参数区域（Params/Headers/Body等）支持记住上次选中的标签页。
+  - **优化**：URL 地址栏与变量弹窗优先展示常量选项的自定义中文备注（optionNotes）。
+  - **修复**：修复 Windows 保存文件对话框媒体类型过滤器问题。
+  - **修复**：修复新建标签页白屏及批量拖动请求等异常。
 - **v1.0.0** (2026-09-18)
   - Relay 首发正式版：轻量、极速的高性能本地 API 客户端。
 
