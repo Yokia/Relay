@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { Language, Theme, AppSettings } from '../types'
 import { useI18n } from '../i18n'
+import { APP_VERSION } from '../data/changelog'
 
 export type { AppSettings }
 
@@ -30,6 +31,7 @@ interface Props {
   onClose: () => void
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void
   onOpenDataTransfer?: () => void
+  onOpenChangelog?: () => void
 }
 
 export const SettingsModal: React.FC<Props> = ({
@@ -38,7 +40,8 @@ export const SettingsModal: React.FC<Props> = ({
   initialCategory = 'general',
   onClose,
   onUpdateSettings,
-  onOpenDataTransfer
+  onOpenDataTransfer,
+  onOpenChangelog
 }) => {
   const { t } = useI18n()
   const [activeCategory, setActiveCategory] = useState<SettingCategory>(initialCategory)
@@ -442,30 +445,43 @@ export const SettingsModal: React.FC<Props> = ({
                   <h3 className="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
                     Relay
                     <span className="px-2 py-0.5 text-xs rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono font-medium">
-                      v1.0.0
+                      v{APP_VERSION}
                     </span>
                   </h3>
                   <p className="text-xs text-slate-400 max-w-sm mt-1.5 leading-relaxed">
                     {t('settings.aboutTagline')}
                   </p>
 
-                  <div className="flex items-center gap-2.5 mt-4">
+                  <div className="flex items-center gap-2 mt-4 flex-wrap justify-center">
                     <button
                       type="button"
                       onClick={() => {
                         window.electronAPI?.openExternal?.('https://www.yokiasoft.com')
                       }}
-                      className="px-3.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-sky-500/20 transition-all cursor-pointer"
+                      className="px-3 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-sky-500/20 transition-all cursor-pointer"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                       <span>{t('settings.aboutWebsiteBtn')}</span>
                     </button>
+                    {onOpenChangelog && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose()
+                          onOpenChangelog()
+                        }}
+                        className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>{t('settings.aboutWhatsNewBtn')}</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
                         window.electronAPI?.openHelpWindow?.()
                       }}
-                      className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <BookOpen className="w-3.5 h-3.5 text-sky-400" />
                       <span>{t('settings.aboutOpenDocsBtn')}</span>
@@ -478,7 +494,7 @@ export const SettingsModal: React.FC<Props> = ({
                   <div className="p-3 flex items-center justify-between">
                     <span className="text-slate-400">{t('settings.aboutVersion')}</span>
                     <span className="font-mono text-slate-200 font-semibold bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                      1.0.0
+                      {APP_VERSION}
                     </span>
                   </div>
                   <div className="p-3 flex items-center justify-between">

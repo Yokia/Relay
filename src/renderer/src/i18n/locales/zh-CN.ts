@@ -248,6 +248,7 @@ export const zhCN: TranslationSchema = {
     aboutWebsite: '官方网址',
     aboutWebsiteBtn: '访问官方网站',
     aboutOpenDocsBtn: '查看使用文档',
+    aboutWhatsNewBtn: '版本更新说明',
     aboutRuntime: '内核与环境',
     aboutTechStack: '技术栈',
     aboutCopyright: '版权所有 © 2026 yokiasoft. 保留所有权利。'
@@ -714,6 +715,15 @@ export const zhCN: TranslationSchema = {
     saveEngineConfig: '保存引擎设置',
     engineConfigSaved: '翻译引擎设置已保存',
     swapLang: '互换源与目标语言'
+  },
+  changelog: {
+    title: '版本更新说明',
+    whatsNew: '了解最新变化',
+    history: '历史版本',
+    latest: '最新版本',
+    details: '变更详情',
+    gotIt: '我知道了',
+    autoLoadedNotice: '已自动为您载入最新版本'
   },
   helpDoc: helpDocZh
 }

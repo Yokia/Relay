@@ -248,6 +248,7 @@ export const enUS: TranslationSchema = {
     aboutWebsite: 'Official Website',
     aboutWebsiteBtn: 'Visit Official Website',
     aboutOpenDocsBtn: 'Documentation',
+    aboutWhatsNewBtn: "What's New",
     aboutRuntime: 'Runtime & Environment',
     aboutTechStack: 'Tech Stack',
     aboutCopyright: 'Copyright © 2026 yokiasoft. All rights reserved.'
@@ -714,6 +715,15 @@ export const enUS: TranslationSchema = {
     saveEngineConfig: 'Save Engine Settings',
     engineConfigSaved: 'Translation settings saved',
     swapLang: 'Swap Source and Target'
+  },
+  changelog: {
+    title: "What's New in Relay",
+    whatsNew: 'Discover Latest Changes',
+    history: 'Releases',
+    latest: 'Latest',
+    details: 'Change Details',
+    gotIt: 'Got it',
+    autoLoadedNotice: 'You are using the latest version of Relay'
   },
   helpDoc: helpDocEn
 }

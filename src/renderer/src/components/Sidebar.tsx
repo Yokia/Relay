@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { CollectionItem, HistoryItem, Environment, RequestItem, HttpMethod, ConstantItem } from '../types'
 import { SettingCategory } from './SettingsModal'
+import { APP_VERSION } from '../data/changelog'
 import {
   findCollectionInTree,
   countAllRequests,
@@ -77,6 +78,7 @@ interface Props {
   onSwitchConstant: (name: string, value: string) => void
   dirtyIds?: Set<string>
   onOpenSettings: (category?: SettingCategory) => void
+  onOpenChangelog?: () => void
   onOpenDevToys?: () => void
   onOpenDataTransfer?: (tab?: 'export' | 'import', targetColId?: string, format?: 'json' | 'html' | 'markdown') => void
   onRunCollection?: (col: CollectionItem) => void
@@ -153,6 +155,7 @@ export const Sidebar: React.FC<Props> = ({
   onSwitchConstant,
   dirtyIds,
   onOpenSettings,
+  onOpenChangelog,
   onOpenDevToys,
   onOpenDataTransfer,
   onRunCollection,
@@ -725,11 +728,14 @@ export const Sidebar: React.FC<Props> = ({
           <span>Relay</span>
           <button
             type="button"
-            onClick={() => onOpenSettings('about')}
-            title={`${t('settings.aboutTitle')} (v1.0.0)`}
-            className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 border border-sky-500/20 transition-colors cursor-pointer ml-0.5"
+            onClick={() => {
+              if (onOpenChangelog) onOpenChangelog()
+              else onOpenSettings('about')
+            }}
+            title={`${t('changelog.title')} (v${APP_VERSION})`}
+            className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 border border-sky-500/20 transition-colors cursor-pointer ml-0.5 flex items-center gap-1"
           >
-            v1.0.0
+            v{APP_VERSION}
           </button>
         </div>
         <div className="flex items-center gap-1">

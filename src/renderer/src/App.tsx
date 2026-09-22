@@ -13,6 +13,8 @@ import { CommandPaletteModal } from './components/CommandPaletteModal'
 import { CodeSnippetModal } from './components/CodeSnippetModal'
 import { CollectionRunnerModal } from './components/CollectionRunnerModal'
 import { DevToysModal } from './components/DevToysModal'
+import { ChangelogModal } from './components/ChangelogModal'
+import { APP_VERSION } from './data/changelog'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastContainer, ToastMessage } from './components/Toast'
 import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme, WorkspaceTab } from './types'
@@ -223,7 +225,29 @@ function MainApp({
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false)
   const [isConstantModalOpen, setIsConstantModalOpen] = useState(false)
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false)
   const [settingsCategory, setSettingsCategory] = useState<SettingCategory | undefined>(undefined)
+
+  // Auto-display changelog on version update
+  useEffect(() => {
+    try {
+      const lastSeenVersion = localStorage.getItem('relay_last_seen_version')
+      if (lastSeenVersion !== APP_VERSION) {
+        setIsChangelogOpen(true)
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const handleCloseChangelog = () => {
+    setIsChangelogOpen(false)
+    try {
+      localStorage.setItem('relay_last_seen_version', APP_VERSION)
+    } catch {
+      // ignore
+    }
+  }
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false)
   const [isCodeSnippetOpen, setIsCodeSnippetOpen] = useState(false)
   const [curlModalState, setCurlModalState] = useState<{ isOpen: boolean; mode: 'import' | 'export' }>({
@@ -1716,6 +1740,7 @@ function MainApp({
           setSettingsCategory(cat || 'general')
           setIsSettingsModalOpen(true)
         }}
+        onOpenChangelog={() => setIsChangelogOpen(true)}
         onOpenDevToys={handleOpenDevToys}
         onSelectEnv={(id) => {
           setActiveEnvId(id || undefined)
@@ -1859,6 +1884,14 @@ function MainApp({
               initialTab: 'export'
             })
           }
+          onOpenChangelog={() => setIsChangelogOpen(true)}
+        />
+      )}
+
+      {isChangelogOpen && (
+        <ChangelogModal
+          isOpen={isChangelogOpen}
+          onClose={handleCloseChangelog}
         />
       )}
 

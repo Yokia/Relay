@@ -250,6 +250,7 @@ export interface TranslationSchema {
     aboutWebsite: string
     aboutWebsiteBtn: string
     aboutOpenDocsBtn: string
+    aboutWhatsNewBtn: string
     aboutRuntime: string
     aboutTechStack: string
     aboutCopyright: string
@@ -715,6 +716,15 @@ export interface TranslationSchema {
     saveEngineConfig: string
     engineConfigSaved: string
     swapLang: string
+  }
+  changelog: {
+    title: string
+    whatsNew: string
+    history: string
+    latest: string
+    details: string
+    gotIt: string
+    autoLoadedNotice: string
   }
   helpDoc: HelpDocSchema
 }

@@ -1,6 +1,6 @@
 {
   "name": "relay",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A fast, lightweight, and clean API client built with Electron and React.",
   "main": "./out/main/index.js",
   "author": "yokiasoft",
