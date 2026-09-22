@@ -56,7 +56,7 @@ export const KeyValueEditor: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col gap-2 p-2">
-      <div className="flex items-center justify-between text-xs text-slate-400 font-medium px-2 pb-1 border-b border-slate-800">
+      <div className="sticky top-0 bg-slate-950/95 backdrop-blur-sm z-10 flex items-center justify-between text-xs text-slate-400 font-medium px-2 py-1.5 border-b border-slate-800">
         <span className="w-8">{t('editor.colActive')}</span>
         <span className="flex-1">{t('editor.colKey')}</span>
         <span className="flex-1">{t('editor.colValue')}</span>
@@ -68,7 +68,7 @@ export const KeyValueEditor: React.FC<Props> = ({
           {t('editor.paramKeyPlaceholder')} / {t('editor.colKey')}
         </div>
       ) : (
-        <div className="flex flex-col gap-1.5 max-h-[260px] overflow-y-auto pr-1">
+        <div className="flex flex-col gap-1.5 pr-1">
           {items.map((item, idx) => (
             <div
               key={idx}
