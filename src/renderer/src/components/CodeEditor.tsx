@@ -526,7 +526,7 @@ export const CodeEditor: React.FC<Props> = ({
             highlightSelectionMatches: true,
             closeBracketsKeymap: true,
             defaultKeymap: true,
-            searchKeymap: true,
+            searchKeymap: false,
             historyKeymap: true,
             foldKeymap: true,
             completionKeymap: true,

@@ -87,6 +87,7 @@ export const ResponseViewer: React.FC<Props> = ({
   const [searchWholeWord, setSearchWholeWord] = useState(false)
   const [searchRegex, setSearchRegex] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [jsonPath, setJsonPath] = useState('')
   const [isJsonPathFocused, setIsJsonPathFocused] = useState(false)
   const [jsonPathSuggestionIndex, setJsonPathSuggestionIndex] = useState(0)
@@ -117,12 +118,61 @@ export const ResponseViewer: React.FC<Props> = ({
     }
   }, [displayResponse, searchTerm, searchCaseSensitive, searchWholeWord, searchRegex])
 
+  const openSearch = () => {
+    if (activeTab !== 'body') {
+      setActiveTab('body')
+    }
+    setIsSearchOpen(true)
+    if (document.activeElement !== searchInputRef.current) {
+      const sel = window.getSelection()?.toString()?.trim()
+      if (sel && !sel.includes('\n') && sel.length <= 100) {
+        setSearchTerm(sel)
+      }
+    }
+    if (searchInputRef.current) {
+      searchInputRef.current.focus()
+      searchInputRef.current.select()
+    } else {
+      setTimeout(() => {
+        searchInputRef.current?.focus()
+        searchInputRef.current?.select()
+      }, 0)
+    }
+  }
+
+  const closeSearch = () => {
+    setIsSearchOpen(false)
+    setSearchTerm('')
+  }
+
   useEffect(() => {
     if (isSearchOpen) {
       searchInputRef.current?.focus()
       searchInputRef.current?.select()
     }
   }, [isSearchOpen])
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        const activeEl = document.activeElement as HTMLElement | null
+        const isOtherInput =
+          activeEl &&
+          (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') &&
+          !containerRef.current?.contains(activeEl)
+        if (isOtherInput) return
+
+        const isInside = containerRef.current?.contains(activeEl)
+        if (isInside || isSearchOpen) {
+          e.preventDefault()
+          e.stopPropagation()
+          openSearch()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown, true)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown, true)
+  }, [isSearchOpen, activeTab])
 
   useEffect(() => {
     setSearchActiveIndex(0)
@@ -156,12 +206,6 @@ export const ResponseViewer: React.FC<Props> = ({
   const isSuccess = displayResponse.status >= 200 && displayResponse.status < 300
   const isRedirect = displayResponse.status >= 300 && displayResponse.status < 400
   const isError = displayResponse.status >= 400 || displayResponse.status === 0
-
-  const openSearch = () => setIsSearchOpen(true)
-  const closeSearch = () => {
-    setIsSearchOpen(false)
-    setSearchTerm('')
-  }
 
   let statusBadgeClass = 'bg-slate-800 text-slate-200 border border-slate-700 font-semibold'
   if (isSuccess) statusBadgeClass = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 font-semibold'
@@ -328,11 +372,13 @@ export const ResponseViewer: React.FC<Props> = ({
 
   return (
     <div
+      ref={containerRef}
       className="relative flex flex-col h-full overflow-hidden bg-slate-950/60"
       tabIndex={0}
       onKeyDownCapture={(event) => {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
           event.preventDefault()
+          event.stopPropagation()
           openSearch()
         }
       }}
@@ -564,7 +610,12 @@ export const ResponseViewer: React.FC<Props> = ({
                 onChange={(event) => setSearchTerm(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') closeSearch()
-                  if (event.key === 'Enter' && searchMatchCount > 0) setSearchActiveIndex((current) => (current + (event.shiftKey ? -1 : 1) + searchMatchCount) % searchMatchCount)
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    if (searchMatchCount > 0) {
+                      setSearchActiveIndex((current) => (current + (event.shiftKey ? -1 : 1) + searchMatchCount) % searchMatchCount)
+                    }
+                  }
                 }}
                 placeholder={t('response.searchPlaceholder')}
                 className="w-72 bg-slate-800 border border-slate-700 rounded px-2 py-1 pr-24 text-xs text-slate-200 focus:outline-none focus:border-sky-500"

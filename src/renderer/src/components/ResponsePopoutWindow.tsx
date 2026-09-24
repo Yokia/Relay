@@ -154,8 +154,38 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
   useEffect(() => { if (isSearchOpen) { searchInputRef.current?.focus(); searchInputRef.current?.select() } }, [isSearchOpen])
   useEffect(() => { setSearchActiveIndex(0) }, [searchTerm, searchCaseSensitive, searchWholeWord, searchRegex])
 
-  const openSearch = () => setIsSearchOpen(true)
+  const openSearch = () => {
+    setIsSearchOpen(true)
+    if (document.activeElement !== searchInputRef.current) {
+      const sel = window.getSelection()?.toString()?.trim()
+      if (sel && !sel.includes('\n') && sel.length <= 100) {
+        setSearchTerm(sel)
+      }
+    }
+    if (searchInputRef.current) {
+      searchInputRef.current.focus()
+      searchInputRef.current.select()
+    } else {
+      setTimeout(() => {
+        searchInputRef.current?.focus()
+        searchInputRef.current?.select()
+      }, 0)
+    }
+  }
   const closeSearch = () => { setIsSearchOpen(false); setSearchTerm('') }
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        e.stopPropagation()
+        openSearch()
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown, true)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown, true)
+  }, [])
+
   const selectJsonPathSuggestion = (value: string) => { setJsonPath(value); setIsJsonPathFocused(false) }
 
   const handleCopyBody = () => {
@@ -212,6 +242,7 @@ const PopoutContent: React.FC<{ data: PopoutData }> = ({ data }) => {
       onKeyDownCapture={(event) => {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
           event.preventDefault()
+          event.stopPropagation()
           openSearch()
         }
       }}

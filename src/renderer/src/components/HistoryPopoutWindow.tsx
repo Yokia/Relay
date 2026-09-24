@@ -204,6 +204,46 @@ function HistoryPopoutContent() {
   useEffect(() => { setResponseSearchIndex(0) }, [responseSearch, responseSearchCaseSensitive, responseSearchWholeWord, responseSearchRegex])
   useEffect(() => { if (isResponseSearchOpen) { responseSearchInputRef.current?.focus(); responseSearchInputRef.current?.select() } }, [isResponseSearchOpen])
 
+  const openResponseSearch = () => {
+    if (activeDetailTab !== 'response') {
+      setActiveDetailTab('response')
+    }
+    setIsResponseSearchOpen(true)
+    if (document.activeElement !== responseSearchInputRef.current) {
+      const sel = window.getSelection()?.toString()?.trim()
+      if (sel && !sel.includes('\n') && sel.length <= 100) {
+        setResponseSearch(sel)
+      }
+    }
+    if (responseSearchInputRef.current) {
+      responseSearchInputRef.current.focus()
+      responseSearchInputRef.current.select()
+    } else {
+      setTimeout(() => {
+        responseSearchInputRef.current?.focus()
+        responseSearchInputRef.current?.select()
+      }, 0)
+    }
+  }
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        const activeEl = document.activeElement as HTMLElement | null
+        const isHistorySearchFocused = activeEl && activeEl.getAttribute('placeholder') === t('historyWindow.searchPlaceholder')
+        if (isHistorySearchFocused) return
+
+        if (activeDetailTab === 'response' || isResponseSearchOpen) {
+          e.preventDefault()
+          e.stopPropagation()
+          openResponseSearch()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown, true)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown, true)
+  }, [activeDetailTab, isResponseSearchOpen, t])
+
   // Delete single history item
   const handleDeleteItem = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -323,7 +363,7 @@ function HistoryPopoutContent() {
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-slate-900 text-slate-200 select-none overflow-hidden font-sans" tabIndex={0} onKeyDownCapture={(event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f' && activeDetailTab === 'response') { event.preventDefault(); setIsResponseSearchOpen(true) } }}>
+    <div className="h-screen w-screen flex flex-col bg-slate-900 text-slate-200 select-none overflow-hidden font-sans" tabIndex={0} onKeyDownCapture={(event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f' && (activeDetailTab === 'response' || isResponseSearchOpen)) { event.preventDefault(); event.stopPropagation(); openResponseSearch() } }}>
       {/* Top Header */}
       <header className="h-11 px-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2.5 font-bold text-sm text-slate-100">
@@ -707,7 +747,7 @@ function HistoryPopoutContent() {
                               {copiedResponse ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                               <span>{copiedResponse ? t('historyWindow.responseCopied') : t('historyWindow.copyResponse')}</span>
                             </button>
-                            <button type="button" onClick={() => setIsResponseSearchOpen(true)} className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded border transition-colors ${isResponseSearchOpen ? 'bg-sky-500/20 text-sky-300 border-sky-500/40' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'}`} title={t('response.searchTooltip')}>
+                            <button type="button" onClick={openResponseSearch} className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded border transition-colors ${isResponseSearchOpen ? 'bg-sky-500/20 text-sky-300 border-sky-500/40' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'}`} title={t('response.searchTooltip')}>
                               <Search className="w-3.5 h-3.5" />
                               <span>{t('response.searchResponse')}</span>
                             </button>
@@ -740,7 +780,7 @@ function HistoryPopoutContent() {
 
                         {/* Response Body Viewer */}
                         <div className="relative flex-1 min-h-[300px] border border-slate-800 rounded-lg overflow-hidden flex flex-col p-2">
-                          {isResponseSearchOpen && <div className="absolute top-2 right-2 z-20 flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 shadow-2xl"><div className="relative"><input ref={responseSearchInputRef} value={responseSearch} onChange={(event) => setResponseSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') setIsResponseSearchOpen(false); if (event.key === 'Enter' && responseSearchMatchCount > 0) setResponseSearchIndex((current) => (current + (event.shiftKey ? -1 : 1) + responseSearchMatchCount) % responseSearchMatchCount) }} placeholder={t('response.searchPlaceholder')} className="w-72 bg-slate-800 border border-slate-700 rounded px-2 py-1 pr-24 text-xs text-slate-200 focus:outline-none focus:border-sky-500" /><div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center"><button type="button" onClick={() => setResponseSearchCaseSensitive((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${responseSearchCaseSensitive ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title={t('response.caseSensitive')}>Aa</button><button type="button" onClick={() => setResponseSearchWholeWord((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${responseSearchWholeWord ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title={t('response.wholeWord')}>ab</button><button type="button" onClick={() => setResponseSearchRegex((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs font-mono ${responseSearchRegex ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title={t('response.regex')}>.*</button></div></div><span className="min-w-12 text-center text-[11px] text-slate-400">{responseSearchMatchCount ? `${responseSearchIndex + 1} / ${responseSearchMatchCount}` : '0 / 0'}</span><button type="button" onClick={() => responseSearchMatchCount && setResponseSearchIndex((current) => (current - 1 + responseSearchMatchCount) % responseSearchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title={t('response.prevMatch')}><ChevronUp className="w-4 h-4" /></button><button type="button" onClick={() => responseSearchMatchCount && setResponseSearchIndex((current) => (current + 1) % responseSearchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title={t('response.nextMatch')}><ChevronDown className="w-4 h-4" /></button><button type="button" onClick={() => setIsResponseSearchOpen(false)} className="p-1 text-slate-400 hover:text-slate-100" title={t('common.close')}><X className="w-4 h-4" /></button></div>}
+                          {isResponseSearchOpen && <div className="absolute top-2 right-2 z-20 flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 shadow-2xl"><div className="relative"><input ref={responseSearchInputRef} value={responseSearch} onChange={(event) => setResponseSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') setIsResponseSearchOpen(false); if (event.key === 'Enter') { event.preventDefault(); if (responseSearchMatchCount > 0) setResponseSearchIndex((current) => (current + (event.shiftKey ? -1 : 1) + responseSearchMatchCount) % responseSearchMatchCount) } }} placeholder={t('response.searchPlaceholder')} className="w-72 bg-slate-800 border border-slate-700 rounded px-2 py-1 pr-24 text-xs text-slate-200 focus:outline-none focus:border-sky-500" /><div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center"><button type="button" onClick={() => setResponseSearchCaseSensitive((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${responseSearchCaseSensitive ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title={t('response.caseSensitive')}>Aa</button><button type="button" onClick={() => setResponseSearchWholeWord((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs ${responseSearchWholeWord ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title={t('response.wholeWord')}>ab</button><button type="button" onClick={() => setResponseSearchRegex((value) => !value)} className={`px-1.5 py-0.5 rounded text-xs font-mono ${responseSearchRegex ? 'bg-sky-500/20 text-sky-300' : 'text-slate-400 hover:text-slate-200'}`} title={t('response.regex')}>.*</button></div></div><span className="min-w-12 text-center text-[11px] text-slate-400">{responseSearchMatchCount ? `${responseSearchIndex + 1} / ${responseSearchMatchCount}` : '0 / 0'}</span><button type="button" onClick={() => responseSearchMatchCount && setResponseSearchIndex((current) => (current - 1 + responseSearchMatchCount) % responseSearchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title={t('response.prevMatch')}><ChevronUp className="w-4 h-4" /></button><button type="button" onClick={() => responseSearchMatchCount && setResponseSearchIndex((current) => (current + 1) % responseSearchMatchCount)} className="p-1 text-slate-400 hover:text-slate-100" title={t('response.nextMatch')}><ChevronDown className="w-4 h-4" /></button><button type="button" onClick={() => setIsResponseSearchOpen(false)} className="p-1 text-slate-400 hover:text-slate-100" title={t('common.close')}><X className="w-4 h-4" /></button></div>}
                           <div className="relative shrink-0 mb-2"><input value={jsonPath} onChange={(event) => { setJsonPath(event.target.value); setIsJsonPathFocused(true) }} onFocus={() => setIsJsonPathFocused(true)} onBlur={() => window.setTimeout(() => setIsJsonPathFocused(false), 120)} onKeyDown={(event) => { if (event.key === 'ArrowDown' && jsonPathSuggestions.length) { event.preventDefault(); setJsonPathSuggestionIndex((value) => (value + 1) % jsonPathSuggestions.length) } else if (event.key === 'ArrowUp' && jsonPathSuggestions.length) { event.preventDefault(); setJsonPathSuggestionIndex((value) => (value - 1 + jsonPathSuggestions.length) % jsonPathSuggestions.length) } else if ((event.key === 'Enter' || event.key === 'Tab') && jsonPathSuggestions.length) { event.preventDefault(); setJsonPath(jsonPathSuggestions[jsonPathSuggestionIndex]); setIsJsonPathFocused(false) } }} placeholder={t('response.jsonPathPlaceholder')} className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 pr-7 text-[11px] text-slate-200 focus:outline-none focus:border-sky-500" />{jsonPath && <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => setJsonPath('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200" title={t('response.clearJsonPath')}><X className="w-3.5 h-3.5" /></button>}{isJsonPathFocused && jsonPath.trim() && jsonPathSuggestions.length > 0 && <div className="absolute top-full left-0 right-0 z-30 mt-1 max-h-56 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 shadow-2xl text-[11px] font-mono">{jsonPathSuggestions.map((path, index) => <button key={path} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { setJsonPath(path); setIsJsonPathFocused(false) }} className={`block w-full text-left px-2 py-1.5 rounded truncate ${index === jsonPathSuggestionIndex ? 'bg-sky-500/15 text-sky-300' : 'text-slate-300 hover:bg-sky-500/15 hover:text-sky-300'}`}>{path}</button>)}</div>}</div>
                           <div className="flex-1 min-h-0"><CodeEditor value={displayedResponseBody} onChange={() => {}} readOnly={true} language={selectedItem.response.contentType?.includes('json') ? 'json' : 'text'} searchTerm={responseSearch} searchActiveIndex={responseSearchIndex} searchCaseSensitive={responseSearchCaseSensitive} searchWholeWord={responseSearchWholeWord} searchRegex={responseSearchRegex} /></div>
                         </div>
