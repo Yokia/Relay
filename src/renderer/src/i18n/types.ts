@@ -340,6 +340,16 @@ export interface TranslationSchema {
     settingsDesc: string
     toggleTheme: string
     toggleThemeDesc: string
+    openDevToys: string
+    openDevToysDesc: string
+    resetAll: string
+    resetItem: string
+    resetAllConfirm: string
+    recordTip: string
+    recording: string
+    cancelRecord: string
+    conflictWarn: string
+    conflictDesc: string
   }
   dataTransfer: {
     title: string

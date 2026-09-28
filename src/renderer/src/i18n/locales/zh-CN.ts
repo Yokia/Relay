@@ -337,7 +337,17 @@ export const zhCN: TranslationSchema = {
     settings: '首选项与设置',
     settingsDesc: '快速打开应用设置中心',
     toggleTheme: '切换界面深/浅主题',
-    toggleThemeDesc: '在深色暗夜模式与浅色清爽模式间切换'
+    toggleThemeDesc: '在深色暗夜模式与浅色清爽模式间切换',
+    openDevToys: '打开开发者工具箱 & 便签',
+    openDevToysDesc: '快速呼出包含临时便签本、加解密、时间戳的 DevToys 弹窗',
+    resetAll: '恢复全部默认快捷键',
+    resetItem: '重置',
+    resetAllConfirm: '确定要将所有快捷键重置为默认值吗？',
+    recordTip: '请在键盘上按下想要绑定的新快捷组合键...',
+    recording: '正在录制按键...',
+    cancelRecord: '按 Esc 取消录制',
+    conflictWarn: '快捷键冲突',
+    conflictDesc: '该组合键已绑定至另一项功能'
   },
   dataTransfer: {
     title: '配置与数据迁移',

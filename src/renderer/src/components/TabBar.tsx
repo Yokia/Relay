@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Plus, X, Layers, Pin, PinOff, Check } from 'lucide-react'
-import { WorkspaceTab, HttpMethod, TabColor } from '../types'
+import { WorkspaceTab, HttpMethod, TabColor, CustomKeybindings } from '../types'
 import { useI18n } from '../i18n'
+import { getEffectiveKeybindings, formatKeybindingString } from '../utils/keybindingUtils'
 
 interface Props {
   tabs: WorkspaceTab[]
@@ -15,6 +16,7 @@ interface Props {
   onNewTab: () => void
   onTogglePinTab?: (tabId: string) => void
   onSetTabColor?: (tabId: string, color?: TabColor) => void
+  keybindings?: Partial<CustomKeybindings>
   extraRight?: React.ReactNode
 }
 
@@ -70,9 +72,14 @@ export const TabBar: React.FC<Props> = ({
   onNewTab,
   onTogglePinTab,
   onSetTabColor,
+  keybindings,
   extraRight
 }) => {
   const { t } = useI18n()
+  const effectiveKeybindings = getEffectiveKeybindings(keybindings)
+  const closeTabShortcutStr = formatKeybindingString(effectiveKeybindings.closeTab)
+  const newTabShortcutStr = formatKeybindingString(effectiveKeybindings.newTab)
+
   const [contextMenu, setContextMenu] = useState<{
     x: number
     y: number
@@ -199,7 +206,7 @@ export const TabBar: React.FC<Props> = ({
         <button
           type="button"
           onClick={() => onNewTab()}
-          title={t('tabs.newTab') + ' (Ctrl+T)'}
+          title={newTabShortcutStr ? `${t('tabs.newTab')} (${newTabShortcutStr})` : t('tabs.newTab')}
           className="p-1.5 mx-1 text-slate-400 hover:text-sky-400 hover:bg-slate-800/80 rounded transition-colors shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />
@@ -299,7 +306,9 @@ export const TabBar: React.FC<Props> = ({
               className="px-2.5 py-1.5 text-left hover:bg-sky-500/20 hover:text-sky-300 rounded flex items-center justify-between transition-colors cursor-pointer"
             >
               <span>{t('tabs.closeTab')}</span>
-              <span className="text-[10px] text-slate-500 font-mono">Ctrl+W</span>
+              {closeTabShortcutStr && (
+                <span className="text-[10px] text-slate-500 font-mono">{closeTabShortcutStr}</span>
+              )}
             </button>
             <button
               type="button"

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   X,
   Settings,
@@ -16,11 +16,22 @@ import {
   BookOpen,
   Info,
   RefreshCw,
-  Loader2
+  Loader2,
+  RotateCcw,
+  Edit2,
+  AlertCircle
 } from 'lucide-react'
-import { Language, Theme, AppSettings } from '../types'
+import { Language, Theme, AppSettings, ShortcutActionId, KeybindingItem, CustomKeybindings } from '../types'
 import { useI18n } from '../i18n'
 import { APP_VERSION } from '../data/changelog'
+import {
+  DEFAULT_KEYBINDINGS,
+  getEffectiveKeybindings,
+  formatKeybinding,
+  areKeybindingsEqual,
+  eventToKeybinding,
+  findConflictingAction
+} from '../utils/keybindingUtils'
 
 export type { AppSettings }
 
@@ -38,8 +49,7 @@ interface Props {
   isCheckingUpdates?: boolean
 }
 
-export const SettingsModal: React.FC<Props> = ({
-  isOpen,
+const SettingsModalContent: React.FC<Omit<Props, 'isOpen'>> = ({
   settings,
   initialCategory = 'general',
   onClose,
@@ -52,8 +62,6 @@ export const SettingsModal: React.FC<Props> = ({
   const { t } = useI18n()
   const [activeCategory, setActiveCategory] = useState<SettingCategory>(initialCategory)
 
-  if (!isOpen) return null
-
   const categories: { id: SettingCategory; label: string; icon: React.ReactNode }[] = [
     { id: 'general', label: t('settings.catGeneral'), icon: <Sliders className="w-3.5 h-3.5" /> },
     { id: 'workspace', label: t('settings.catWorkspace'), icon: <Layers className="w-3.5 h-3.5" /> },
@@ -63,15 +71,76 @@ export const SettingsModal: React.FC<Props> = ({
     { id: 'about', label: t('settings.catAbout'), icon: <Info className="w-3.5 h-3.5" /> }
   ]
 
-  const shortcutsList = [
-    { key: ['Ctrl', 'Enter'], name: t('shortcuts.sendRequest'), desc: t('shortcuts.sendRequestDesc') },
-    { key: ['Ctrl', 'S'], name: t('shortcuts.saveRequest'), desc: t('shortcuts.saveRequestDesc') },
-    { key: ['Ctrl', 'P'], name: t('shortcuts.quickOpen'), desc: t('shortcuts.quickOpenDesc') },
-    { key: ['Ctrl', 'D'], name: t('shortcuts.duplicate'), desc: t('shortcuts.duplicateDesc') },
-    { key: ['Ctrl', 'T'], name: t('shortcuts.newTab'), desc: t('shortcuts.newTabDesc') },
-    { key: ['Ctrl', 'W'], name: t('shortcuts.closeTab'), desc: t('shortcuts.closeTabDesc') },
-    { key: ['Ctrl', ','], name: t('shortcuts.settings'), desc: t('shortcuts.settingsDesc') },
+  const effectiveKeybindings = getEffectiveKeybindings(settings.keybindings)
+  const [recordingAction, setRecordingAction] = useState<ShortcutActionId | null>(null)
+  const [conflictWarning, setConflictWarning] = useState<string | null>(null)
+
+  const shortcutActions: { id: ShortcutActionId; name: string; desc: string }[] = [
+    { id: 'sendRequest', name: t('shortcuts.sendRequest'), desc: t('shortcuts.sendRequestDesc') },
+    { id: 'saveRequest', name: t('shortcuts.saveRequest'), desc: t('shortcuts.saveRequestDesc') },
+    { id: 'quickOpen', name: t('shortcuts.quickOpen'), desc: t('shortcuts.quickOpenDesc') },
+    { id: 'duplicateRequest', name: t('shortcuts.duplicate'), desc: t('shortcuts.duplicateDesc') },
+    { id: 'newTab', name: t('shortcuts.newTab'), desc: t('shortcuts.newTabDesc') },
+    { id: 'closeTab', name: t('shortcuts.closeTab'), desc: t('shortcuts.closeTabDesc') },
+    { id: 'openDevToys', name: t('shortcuts.openDevToys'), desc: t('shortcuts.openDevToysDesc') },
+    { id: 'openSettings', name: t('shortcuts.settings'), desc: t('shortcuts.settingsDesc') }
   ]
+
+  // Key recording listener
+  useEffect(() => {
+    if (!recordingAction) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      if (e.key === 'Escape') {
+        setRecordingAction(null)
+        setConflictWarning(null)
+        return
+      }
+
+      const binding = eventToKeybinding(e)
+      if (!binding) return
+
+      // Conflict check
+      const conflictId = findConflictingAction(recordingAction, binding, effectiveKeybindings)
+      if (conflictId) {
+        const otherAction = shortcutActions.find((a) => a.id === conflictId)
+        setConflictWarning(
+          `${t('shortcuts.conflictWarn')}: ${t('shortcuts.conflictDesc')} [${otherAction?.name || conflictId}]`
+        )
+      } else {
+        setConflictWarning(null)
+      }
+
+      const nextKeybindings = {
+        ...(settings.keybindings || {}),
+        [recordingAction]: binding
+      }
+      onUpdateSettings({ keybindings: nextKeybindings })
+      setRecordingAction(null)
+    }
+
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [recordingAction, effectiveKeybindings, settings.keybindings])
+
+  const handleResetSingle = (actionId: ShortcutActionId) => {
+    const nextKeybindings = { ...(settings.keybindings || {}) }
+    delete nextKeybindings[actionId]
+    onUpdateSettings({ keybindings: nextKeybindings })
+    if (recordingAction === actionId) setRecordingAction(null)
+    setConflictWarning(null)
+  }
+
+  const handleResetAll = () => {
+    if (window.confirm(t('shortcuts.resetAllConfirm'))) {
+      onUpdateSettings({ keybindings: {} })
+      setRecordingAction(null)
+      setConflictWarning(null)
+    }
+  }
 
   return (
     <div
@@ -370,35 +439,120 @@ export const SettingsModal: React.FC<Props> = ({
             {/* 4. SHORTCUTS CATEGORY */}
             {activeCategory === 'shortcuts' && (
               <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    {t('shortcuts.title')}
-                  </span>
-                  <span className="text-[11px] text-slate-400">{t('shortcuts.desc')}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                      {t('shortcuts.title')}
+                    </span>
+                    <span className="text-[11px] text-slate-400">{t('shortcuts.desc')}</span>
+                  </div>
+                  {settings.keybindings && Object.keys(settings.keybindings).length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleResetAll}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs transition-colors cursor-pointer shrink-0"
+                    >
+                      <RotateCcw className="w-3 h-3 text-slate-400" />
+                      <span>{t('shortcuts.resetAll')}</span>
+                    </button>
+                  )}
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  {shortcutsList.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/50 border border-slate-800/90"
+                {/* Conflict warning banner */}
+                {conflictWarning && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span className="flex-1">{conflictWarning}</span>
+                    <button
+                      type="button"
+                      onClick={() => setConflictWarning(null)}
+                      className="text-amber-400 hover:text-amber-200"
                     >
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-semibold text-xs text-slate-200">{item.name}</span>
-                        <span className="text-[11px] text-slate-400">{item.desc}</span>
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-2">
+                  {shortcutActions.map((item) => {
+                    const isRecording = recordingAction === item.id
+                    const currentBinding = effectiveKeybindings[item.id]
+                    const defaultBinding = DEFAULT_KEYBINDINGS[item.id]
+                    const hasCustom = !areKeybindingsEqual(currentBinding, defaultBinding)
+                    const keyLabels = formatKeybinding(currentBinding)
+
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex items-center justify-between p-2.5 rounded-lg border transition-all ${
+                          isRecording
+                            ? 'bg-sky-500/10 border-sky-500 ring-1 ring-sky-500/50 shadow-md'
+                            : 'bg-slate-950/50 border-slate-800/90 hover:border-slate-700'
+                        }`}
+                      >
+                        <div className="flex flex-col gap-0.5 min-w-0 pr-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-xs text-slate-200">{item.name}</span>
+                            {hasCustom && (
+                              <span className="px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300 text-[10px] font-medium border border-sky-500/30">
+                                Modified
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[11px] text-slate-400 truncate">{item.desc}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isRecording ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-sky-400 animate-pulse font-medium">
+                                {t('shortcuts.recording')}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setRecordingAction(null)}
+                                className="px-2 py-1 rounded bg-slate-800 text-[10px] text-slate-400 hover:text-slate-200 hover:bg-slate-700 border border-slate-700 cursor-pointer"
+                              >
+                                {t('shortcuts.cancelRecord')}
+                              </button>
+                            </div>
+                          ) : (
+                            <div
+                              onClick={() => {
+                                setConflictWarning(null)
+                                setRecordingAction(item.id)
+                              }}
+                              className="group flex items-center gap-1.5 px-2 py-1 rounded bg-slate-900 border border-slate-700/80 hover:border-sky-500/80 cursor-pointer transition-colors shadow-sm"
+                              title={t('shortcuts.recordTip')}
+                            >
+                              <div className="flex items-center gap-1">
+                                {keyLabels.map((k, kIdx) => (
+                                  <React.Fragment key={kIdx}>
+                                    {kIdx > 0 && <span className="text-slate-600 text-xs">+</span>}
+                                    <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200 font-mono text-[11px] font-semibold group-hover:text-sky-300">
+                                      {k}
+                                    </kbd>
+                                  </React.Fragment>
+                                ))}
+                              </div>
+                              <Edit2 className="w-3 h-3 text-slate-500 group-hover:text-sky-400 ml-1 opacity-60 group-hover:opacity-100" />
+                            </div>
+                          )}
+
+                          {hasCustom && !isRecording && (
+                            <button
+                              type="button"
+                              onClick={() => handleResetSingle(item.id)}
+                              className="p-1 rounded text-slate-500 hover:text-amber-400 hover:bg-slate-800 transition-colors cursor-pointer"
+                              title={t('shortcuts.resetItem')}
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0 ml-3">
-                        {item.key.map((k, kIdx) => (
-                          <React.Fragment key={kIdx}>
-                            {kIdx > 0 && <span className="text-slate-600 text-xs">+</span>}
-                            <kbd className="px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-slate-300 font-mono text-[11px] shadow-sm font-semibold">
-                              {k}
-                            </kbd>
-                          </React.Fragment>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -580,3 +734,9 @@ export const SettingsModal: React.FC<Props> = ({
     </div>
   )
 }
+
+export const SettingsModal: React.FC<Props> = (props) => {
+  if (!props.isOpen) return null
+  return <SettingsModalContent {...props} />
+}
+

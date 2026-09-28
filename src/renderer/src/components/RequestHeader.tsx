@@ -16,8 +16,9 @@ import {
   Search,
   History
 } from 'lucide-react'
-import { HttpMethod, RequestItem, ConstantItem } from '../types'
+import { HttpMethod, RequestItem, ConstantItem, CustomKeybindings } from '../types'
 import { useI18n } from '../i18n'
+import { getEffectiveKeybindings, formatKeybindingString } from '../utils/keybindingUtils'
 
 interface Props {
   request: RequestItem
@@ -39,6 +40,7 @@ interface Props {
   onOpenHistoryWindow?: () => void
   historyCount?: number
   collectionPath?: string
+  keybindings?: Partial<CustomKeybindings>
 }
 
 interface UrlSegment {
@@ -135,9 +137,15 @@ export const RequestHeader: React.FC<Props> = ({
   onOpenCommandPalette,
   onOpenHistoryWindow,
   historyCount,
-  collectionPath
+  collectionPath,
+  keybindings
 }) => {
   const { t } = useI18n()
+  const effectiveKeybindings = getEffectiveKeybindings(keybindings)
+  const sendShortcutStr = formatKeybindingString(effectiveKeybindings.sendRequest)
+  const saveShortcutStr = formatKeybindingString(effectiveKeybindings.saveRequest)
+  const quickOpenShortcutStr = formatKeybindingString(effectiveKeybindings.quickOpen)
+
   const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
   const [showVarPicker, setShowVarPicker] = useState(false)
   const [copiedPreview, setCopiedPreview] = useState(false)
@@ -442,9 +450,11 @@ export const RequestHeader: React.FC<Props> = ({
             >
               <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-400 transition-colors" />
               <span className="text-[11px] font-medium">{t('commandPalette.globalSearch')}</span>
-              <kbd className="px-1.5 py-0.2 text-[10px] bg-slate-900/90 text-slate-400 rounded border border-slate-700/80 font-mono">
-                Ctrl+P
-              </kbd>
+              {quickOpenShortcutStr && (
+                <kbd className="px-1.5 py-0.2 text-[10px] bg-slate-900/90 text-slate-400 rounded border border-slate-700/80 font-mono">
+                  {quickOpenShortcutStr}
+                </kbd>
+              )}
             </button>
           )}
 
@@ -501,7 +511,7 @@ export const RequestHeader: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => onSave()}
-            title={`${t('header.save')} (Ctrl+S)`}
+            title={saveShortcutStr ? `${t('header.save')} (${saveShortcutStr})` : t('header.save')}
             className={"flex items-center gap-1 text-xs px-3 py-1 rounded transition-colors active:scale-95 shadow-sm " +
               (isDirty && !autoSave
                 ? "bg-sky-500 hover:bg-sky-600 text-white font-medium ring-1 ring-sky-400/50"
@@ -875,14 +885,16 @@ export const RequestHeader: React.FC<Props> = ({
           type="button"
           onClick={() => onSend()}
           disabled={isLoading || !request.url?.trim()}
-          title={`${t('header.send')} (${typeof navigator !== 'undefined' && /mac/i.test(navigator.userAgent) ? '⌘+Enter' : 'Ctrl+Enter'})`}
+          title={sendShortcutStr ? `${t('header.send')} (${sendShortcutStr})` : t('header.send')}
           className="flex items-center gap-2 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-medium px-3.5 py-1.5 rounded transition-all shadow-sm active:scale-95 shrink-0 cursor-pointer disabled:cursor-not-allowed"
         >
           <Send className={"w-3.5 h-3.5 " + (isLoading ? "animate-pulse" : "")} />
           <span>{isLoading ? t('header.sending') : t('header.send')}</span>
-          <kbd className="px-1.5 py-0.2 text-[10px] bg-sky-600/70 text-sky-100 rounded border border-sky-400/40 font-mono leading-none select-none">
-            {typeof navigator !== 'undefined' && /mac/i.test(navigator.userAgent) ? '⌘+Enter' : 'Ctrl+Enter'}
-          </kbd>
+          {sendShortcutStr && (
+            <kbd className="px-1.5 py-0.2 text-[10px] bg-sky-600/70 text-sky-100 rounded border border-sky-400/40 font-mono leading-none select-none">
+              {sendShortcutStr}
+            </kbd>
+          )}
         </button>
       </div>
 

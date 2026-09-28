@@ -337,7 +337,17 @@ export const enUS: TranslationSchema = {
     settings: 'Preferences & Settings',
     settingsDesc: 'Quickly open application settings modal',
     toggleTheme: 'Toggle Dark / Light Theme',
-    toggleThemeDesc: 'Switch between Dark and Light color themes'
+    toggleThemeDesc: 'Switch between Dark and Light color themes',
+    openDevToys: 'Open DevToys & Scratchpad',
+    openDevToysDesc: 'Quickly toggle DevToys modal with scratchpad, crypto, and timestamp tools',
+    resetAll: 'Reset All to Defaults',
+    resetItem: 'Reset',
+    resetAllConfirm: 'Are you sure you want to reset all keyboard shortcuts to default values?',
+    recordTip: 'Press desired key combination on your keyboard...',
+    recording: 'Recording shortcut...',
+    cancelRecord: 'Press Esc to cancel',
+    conflictWarn: 'Shortcut Conflict',
+    conflictDesc: 'This combination is already bound to another action'
   },
   dataTransfer: {
     title: 'Configuration & Data Transfer',

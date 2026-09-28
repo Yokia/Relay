@@ -25,6 +25,7 @@ import { mergeCollections, mergeConstants, mergeEnvironments, ParsedImportData }
 import { executePreRequestScript, executeTestScript } from './utils/scriptEngine'
 import { queryJsonPath } from './utils/jsonPath'
 import { parseUrlToParams, buildUrlWithParams, areParamsEquivalent } from './utils/urlParamsUtils'
+import { getEffectiveKeybindings, matchesKeybinding, formatKeybindingString } from './utils/keybindingUtils'
 import { I18nProvider, useI18n } from './i18n'
 import { ThemeProvider } from './theme'
 import { createDefaultHeaders } from './utils/headerConstants'
@@ -1773,8 +1774,10 @@ function MainApp({
         (target && (target.closest('.fixed.inset-0') || target.closest('[role="dialog"]')))
       )
 
-      // Ctrl+Enter / Cmd+Enter: Send Request (when no modal dialog is open)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      const effectiveKeybindings = getEffectiveKeybindings(settings.keybindings)
+
+      // Send Request (when no modal dialog is open)
+      if (matchesKeybinding(e, effectiveKeybindings.sendRequest)) {
         if (!isModalOpen) {
           e.preventDefault()
           e.stopPropagation()
@@ -1783,21 +1786,21 @@ function MainApp({
         return
       }
 
-      // Ctrl+S: Save
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      // Save Request
+      if (matchesKeybinding(e, effectiveKeybindings.saveRequest)) {
         if (!isModalOpen) {
           e.preventDefault()
           handleSaveRef.current()
         }
         return
       }
-      // Ctrl+P: Quick Open Command Palette
-      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+      // Quick Open Command Palette
+      else if (matchesKeybinding(e, effectiveKeybindings.quickOpen)) {
         e.preventDefault()
         setIsCommandPaletteOpen(true)
       }
-      // Ctrl+D: Duplicate current request
-      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+      // Duplicate current request
+      else if (matchesKeybinding(e, effectiveKeybindings.duplicateRequest)) {
         if (isCodeEditorFocused || isModalOpen) return
         e.preventDefault()
         const found = findRequestInTree(collections, currentRequest.id)
@@ -1813,27 +1816,27 @@ function MainApp({
           addToast(t('toast.requestDuplicatedViaShortcut'), 'success')
         }
       }
-      // Ctrl+Shift+T: Open DevToys / Scratchpad
-      else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 't') {
+      // Open DevToys / Scratchpad
+      else if (matchesKeybinding(e, effectiveKeybindings.openDevToys)) {
         e.preventDefault()
         handleOpenDevToys()
       }
-      // Ctrl+T: New Tab
-      else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 't') {
+      // New Tab
+      else if (matchesKeybinding(e, effectiveKeybindings.newTab)) {
         if (isModalOpen) return
         e.preventDefault()
         handleNewTab()
       }
-      // Ctrl+W: Close Active Tab
-      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'w') {
+      // Close Active Tab
+      else if (matchesKeybinding(e, effectiveKeybindings.closeTab)) {
         if (isModalOpen) return
         e.preventDefault()
         if (settings.enableMultiTabs !== false) {
           handleCloseTab(activeTabId)
         }
       }
-      // Ctrl+,: Open Settings Modal
-      else if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+      // Open Settings Modal
+      else if (matchesKeybinding(e, effectiveKeybindings.openSettings)) {
         e.preventDefault()
         setSettingsCategory('general')
         setIsSettingsModalOpen(true)
@@ -1846,6 +1849,7 @@ function MainApp({
     collections,
     activeTabId,
     settings.enableMultiTabs,
+    settings.keybindings,
     isSettingsModalOpen,
     isConstantModalOpen,
     isEnvModalOpen,
@@ -2093,6 +2097,7 @@ function MainApp({
             onNewTab={() => handleNewTab()}
             onTogglePinTab={handleTogglePinTab}
             onSetTabColor={handleSetTabColor}
+            keybindings={settings.keybindings}
             extraRight={renderTopRightToolbar()}
           />
         ) : (
@@ -2136,6 +2141,7 @@ function MainApp({
             }
           }}
           historyCount={history.length}
+          keybindings={settings.keybindings}
         />
 
         {/* Split Container for Request & Response */}
@@ -2184,22 +2190,24 @@ function MainApp({
       )}
 
       {isSettingsModalOpen && (
-        <SettingsModal
-          isOpen={isSettingsModalOpen}
-          initialCategory={settingsCategory}
-          settings={settings}
-          onClose={() => setIsSettingsModalOpen(false)}
-          onUpdateSettings={handleUpdateSettings}
-          onOpenDataTransfer={() =>
-            setDataTransferState({
-              isOpen: true,
-              initialTab: 'export'
-            })
-          }
-          onOpenChangelog={() => setIsChangelogOpen(true)}
-          onCheckUpdates={() => handleCheckForUpdates(true)}
-          isCheckingUpdates={isCheckingUpdates}
-        />
+        <ErrorBoundary>
+          <SettingsModal
+            isOpen={isSettingsModalOpen}
+            initialCategory={settingsCategory}
+            settings={settings}
+            onClose={() => setIsSettingsModalOpen(false)}
+            onUpdateSettings={handleUpdateSettings}
+            onOpenDataTransfer={() =>
+              setDataTransferState({
+                isOpen: true,
+                initialTab: 'export'
+              })
+            }
+            onOpenChangelog={() => setIsChangelogOpen(true)}
+            onCheckUpdates={() => handleCheckForUpdates(true)}
+            isCheckingUpdates={isCheckingUpdates}
+          />
+        </ErrorBoundary>
       )}
 
       {tabCloseConfirm && (

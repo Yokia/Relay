@@ -121,6 +121,26 @@ export type Language = 'zh-CN' | 'en-US'
 
 export type Theme = 'dark' | 'light'
 
+export type ShortcutActionId =
+  | 'sendRequest'
+  | 'saveRequest'
+  | 'quickOpen'
+  | 'duplicateRequest'
+  | 'newTab'
+  | 'closeTab'
+  | 'openDevToys'
+  | 'openSettings'
+
+export interface KeybindingItem {
+  ctrl?: boolean
+  shift?: boolean
+  alt?: boolean
+  meta?: boolean
+  key: string
+}
+
+export type CustomKeybindings = Record<ShortcutActionId, KeybindingItem>
+
 export interface AppSettings {
   autoSave: boolean
   timeout: number
@@ -131,6 +151,7 @@ export interface AppSettings {
   enableMultiTabs?: boolean
   showCollectionPath?: boolean
   responseStorageLimitMB?: number
+  keybindings?: Partial<CustomKeybindings>
 }
 
 export type TabColor = 'red' | 'orange' | 'amber' | 'emerald' | 'sky' | 'purple' | 'rose'
