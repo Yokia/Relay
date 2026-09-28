@@ -7,7 +7,7 @@
 ### 专为开发者打造的轻量、极速、无 CORS 拦截的高性能 API 客户端
 ### *A fast, lightweight, and clean API client built for developers*
 
-[![Version](https://img.shields.io/badge/version-1.2.0-sky.svg?style=flat-square)](./package.json)
+[![Version](https://img.shields.io/badge/version-1.3.0-sky.svg?style=flat-square)](./package.json)
 [![Electron](https://img.shields.io/badge/Electron-33.x-47848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-18.x-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -229,6 +229,16 @@ Relay/
 
 请查阅应用内关于面板的 **版本更新说明** 或查看源码 [`src/renderer/src/data/changelog.ts`](./src/renderer/src/data/changelog.ts)。
 
+- **v1.3.0** (2026-09-28)
+  - **新功能**：**WebSocket (WS / WSS) 实时双向调试**，基于 Node.js 原生主进程套接字内核，支持自定义握手 Header、子协议、SSL 证书校验、心跳保活探测与断线重连。
+  - **新功能**：**WebSocket 消息智能屏蔽过滤**，支持根据自定义参数名或关键词隐藏消息（支持字符串与深层 JSON 键名），具备工具栏快捷总开关与各规则独立勾选机制。
+  - **新功能**：**轻量接口压测与性能基准测试模式 (Benchmark Mode)**，集合测试器支持高并发性能压测，实时统计 RPS/QPS、P50/P90/P99 延迟分位数与耗时分布看板。
+  - **新功能**：**设置中心自定义快捷键管理**，支持 8 项高频操作交互式按键录制、按键冲突检测提示、单项重置与全局恢复默认，界面按键提示动态同步。
+  - **新功能**：**DevToys 全能加解密与签名工具箱**，涵盖 MD5/SHA 摘要、HMAC 签名校验、AES/DES 对称加解密与 Hex 进制互转，并在脚本沙箱中内置 `CryptoJS` 与全局 `crypto` 辅助对象。
+  - **新功能**：**工作区标签固定 (Pin Tab) 与 7 种主题颜色标记**，固定标签靠左排列且免受批量关闭误伤，提升多接口并发调试效率。
+  - **新功能**：**JSON 语法实时波浪线诊断与一键修复**，参数输入区实时标注语法错误，悬浮气泡支持一键删除尾随逗号。
+  - **新功能**：**标签页关闭保护与关闭左侧标签**，右键菜单支持“关闭左侧标签页”，关闭未保存修改的标签时弹出确认与快速入库弹窗。
+  - **优化**：优化响应查看器与独立弹窗中连续按 Ctrl+F 时的搜索框焦点重获与划词带入逻辑，消除原生快捷键事件冲突。
 - **v1.2.0** (2026-09-22)
   - **新功能**：URL 地址栏与 Params 参数表格实现实时双向同步，智能解析带参链接，编辑表格实时回写 URL。
   - **新功能**：集成基于 GitHub Releases 的应用内检测更新与一键覆盖安装，支持更新日志与实时下载进度显示。

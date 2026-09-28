@@ -16,9 +16,69 @@ export interface ReleaseNote {
   changes: ChangeItem[]
 }
 
-export const APP_VERSION = '1.2.0'
+export const APP_VERSION = '1.3.0'
 
 export const CHANGELOG_DATA: ReleaseNote[] = [
+  {
+    version: '1.3.0',
+    date: '2026-09-28',
+    titleZh: 'WebSocket 实时双向调试与消息过滤、轻量接口压测基准测试、自定义快捷键、加解密工具箱与标签管理升级',
+    titleEn: 'WebSocket Realtime Debugger & Filtering, Benchmark Mode, Custom Shortcuts, Crypto Tools & Tab Pinning',
+    descriptionZh: '本次 v1.3.0 重磅更新：新增 WebSocket (WS/WSS) 协议实时双向通信调试与智能参数消息屏蔽过滤、集合运行器全新引入压测基准测试模式（Benchmark Mode）、设置中心支持交互式自定义快捷键录制与冲突检测、DevToys 上线全能加解密工具箱，并全面升级多标签固定防误关与颜色标记。',
+    descriptionEn: 'Major release v1.3.0 introduces real-time WebSocket (WS/WSS) debugging with custom parameter message filtering, Benchmark performance mode in Collection Runner, interactive custom shortcut recorder with conflict detection, comprehensive Crypto toolbox in DevToys, and tab pinning with 7-color badges.',
+    changes: [
+      {
+        type: 'feat',
+        textZh: '新增 WebSocket (WS / WSS) 实时双向调试功能，Node.js 原生主进程套接字内核，支持自定义握手请求头（Headers）、子协议与 SSL 证书校验',
+        textEn: 'Added WebSocket (WS/WSS) real-time debugger backed by native Node.js socket engine with custom handshake headers, subprotocols, and SSL verification options'
+      },
+      {
+        type: 'feat',
+        textZh: 'WebSocket 支持实时消息流分类查看（全部/接收/发送/系统事件）、JSON 语法高亮与格式化、心跳保活探测、断线重连与常用消息预设模板',
+        textEn: 'WebSocket message timeline supports directional filters, JSON formatting, configurable heartbeats (Ping/Pong), auto-reconnect, and reusable message presets'
+      },
+      {
+        type: 'feat',
+        textZh: 'WebSocket 支持消息自定义参数与关键词屏蔽过滤，支持子串与深层 JSON 键名智能匹配，提供快捷总开关与各规则独立勾选生效机制',
+        textEn: 'Added WebSocket message blocking filter supporting custom parameters and keywords, deep JSON key matching, toolbar master switch, and per-rule checkboxes'
+      },
+      {
+        type: 'feat',
+        textZh: '集合测试器（Runner）新增压测与性能基准测试模式（Benchmark Mode），支持高并发请求模拟、按请求数或持续时长压测，实时统计 RPS、分位数（P50/P90/P99）与耗时分布',
+        textEn: 'Introduced Benchmark Mode in Collection Runner for lightweight performance testing with concurrency, duration, RPS metrics, and latency percentiles (P50/P90/P99)'
+      },
+      {
+        type: 'feat',
+        textZh: '设置中心新增自定义快捷键管理，支持 8 项高频核心操作交互式按键录制、按键冲突检测提示、单项重置与全局恢复默认，界面按键提示动态同步',
+        textEn: 'Added custom keybinding manager in Settings with interactive shortcut recorder, conflict detection, single-reset, and global defaults'
+      },
+      {
+        type: 'feat',
+        textZh: 'DevToys 开发者工具箱新增全能加解密与签名工具，涵盖 MD5/SHA 哈希摘要、HMAC 签名校验、AES/DES 对称加解密及 Hex 进制互转，并在脚本沙箱中注入 CryptoJS 与 crypto 全局对象',
+        textEn: 'Added comprehensive Crypto Tools in DevToys (Hash, HMAC, AES/DES cipher, Hex) and injected CryptoJS & crypto helper into pre/test script sandboxes'
+      },
+      {
+        type: 'feat',
+        textZh: '标签栏新增固定标签（Pin Tab）与 7 种主题颜色标记，固定标签靠左排列并免受批量关闭误伤，提升多接口并发排查效率',
+        textEn: 'Added Tab Pinning and 7-color labels, keeping pinned tabs on the left and protected from batch closure operations'
+      },
+      {
+        type: 'feat',
+        textZh: '参数输入区域（Params/Headers/Body）支持 JSON 格式与语法错误实时红色波浪线高亮标注，并在错误气泡中提供一键快速修复',
+        textEn: 'CodeEditor now highlights JSON syntax errors with real-time red wavy underlines and offers one-click quick fix in hover tooltips'
+      },
+      {
+        type: 'feat',
+        textZh: '标签页右键菜单新增“关闭左侧标签页”，并在关闭包含未保存修改的草稿标签时弹出确认与快速入库弹窗，防止误关丢失数据',
+        textEn: 'Added "Close Tabs to the Left" in tab context menu and introduced an unsaved changes confirmation modal to prevent accidental loss'
+      },
+      {
+        type: 'perf',
+        textZh: '优化响应查看器与弹窗中重复按下 Ctrl+F 时的搜索框焦点重获与划词带入逻辑，消除原生快捷键事件冲突',
+        textEn: 'Optimized search bar focus and text selection populating on repeated Ctrl+F triggers across all response viewports'
+      }
+    ]
+  },
   {
     version: '1.2.0',
     date: '2026-09-22',
