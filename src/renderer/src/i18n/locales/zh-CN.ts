@@ -271,7 +271,18 @@ export const zhCN: TranslationSchema = {
     requestNameLabel: '请求名称',
     dontSave: '不保存',
     saveAndClose: '保存并关闭',
-    autoCreateCollectionNotice: '当前暂无集合，将自动为您创建 "My Collection"'
+    autoCreateCollectionNotice: '当前暂无集合，将自动为您创建 "My Collection"',
+    pinTab: '固定标签页',
+    unpinTab: '取消固定',
+    tabColor: '设置标签颜色',
+    clearColor: '清除颜色',
+    colorRed: '红色',
+    colorOrange: '橙色',
+    colorAmber: '黄色',
+    colorEmerald: '绿色',
+    colorSky: '天蓝',
+    colorPurple: '紫色',
+    colorRose: '粉红'
   },
   codeSnippet: {
     title: '生成客户端代码 (Code Snippets)',

@@ -274,6 +274,17 @@ export interface TranslationSchema {
     dontSave: string
     saveAndClose: string
     autoCreateCollectionNotice: string
+    pinTab: string
+    unpinTab: string
+    tabColor: string
+    clearColor: string
+    colorRed: string
+    colorOrange: string
+    colorAmber: string
+    colorEmerald: string
+    colorSky: string
+    colorPurple: string
+    colorRose: string
   }
   codeSnippet: {
     title: string

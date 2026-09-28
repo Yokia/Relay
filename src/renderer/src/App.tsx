@@ -19,7 +19,7 @@ import { CloseTabConfirmModal } from './components/CloseTabConfirmModal'
 import { APP_VERSION } from './data/changelog'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastContainer, ToastMessage } from './components/Toast'
-import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme, WorkspaceTab, UpdateCheckResult } from './types'
+import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme, WorkspaceTab, TabColor, UpdateCheckResult } from './types'
 import { stripJsonComments } from './utils/jsonUtils'
 import { mergeCollections, mergeConstants, mergeEnvironments, ParsedImportData } from './utils/dataTransferUtils'
 import { executePreRequestScript, executeTestScript } from './utils/scriptEngine'
@@ -852,16 +852,35 @@ function MainApp({
     executeCloseTab(tabId)
   }
 
+  const handleTogglePinTab = (tabId: string) => {
+    setTabs((prev) => {
+      const target = prev.find((t) => t.id === tabId)
+      if (!target) return prev
+      const nextIsPinned = !target.isPinned
+      const updated = prev.map((t) => (t.id === tabId ? { ...t, isPinned: nextIsPinned } : t))
+      // Stable partition: pinned tabs stay first, unpinned tabs stay after
+      const pinned = updated.filter((t) => t.isPinned)
+      const unpinned = updated.filter((t) => !t.isPinned)
+      return [...pinned, ...unpinned]
+    })
+  }
+
+  const handleSetTabColor = (tabId: string, color?: TabColor) => {
+    setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, color } : t)))
+  }
+
   const handleCloseOtherTabs = (tabId: string) => {
     const current = tabsRef.current.find((t) => t.id === tabId)
     if (!current) return
-    const tabsToClose = tabsRef.current.filter((t) => t.id !== tabId)
+    // Pinned tabs are protected from closing
+    const tabsToClose = tabsRef.current.filter((t) => t.id !== tabId && !t.isPinned)
     const dirtyTab = tabsToClose.find((t) => isTabDirty(t))
     if (dirtyTab) {
       handleCloseTab(dirtyTab.id)
       return
     }
-    setTabs([current])
+    const remaining = tabsRef.current.filter((t) => t.id === tabId || t.isPinned)
+    setTabs(remaining)
     setActiveTabId(current.id)
     handleSelectTab(current.id)
   }
@@ -869,13 +888,14 @@ function MainApp({
   const handleCloseTabsToLeft = (tabId: string) => {
     const idx = tabsRef.current.findIndex((t) => t.id === tabId)
     if (idx <= 0) return
-    const tabsToClose = tabsRef.current.slice(0, idx)
+    // Pinned tabs are protected
+    const tabsToClose = tabsRef.current.slice(0, idx).filter((t) => !t.isPinned)
     const dirtyTab = tabsToClose.find((t) => isTabDirty(t))
     if (dirtyTab) {
       handleCloseTab(dirtyTab.id)
       return
     }
-    const remaining = tabsRef.current.slice(idx)
+    const remaining = tabsRef.current.filter((t, i) => i >= idx || t.isPinned)
     setTabs(remaining)
     if (!remaining.some((t) => t.id === activeTabId)) {
       setActiveTabId(tabId)
@@ -886,13 +906,14 @@ function MainApp({
   const handleCloseTabsToRight = (tabId: string) => {
     const idx = tabsRef.current.findIndex((t) => t.id === tabId)
     if (idx === -1) return
-    const tabsToClose = tabsRef.current.slice(idx + 1)
+    // Pinned tabs are protected
+    const tabsToClose = tabsRef.current.slice(idx + 1).filter((t) => !t.isPinned)
     const dirtyTab = tabsToClose.find((t) => isTabDirty(t))
     if (dirtyTab) {
       handleCloseTab(dirtyTab.id)
       return
     }
-    const remaining = tabsRef.current.slice(0, idx + 1)
+    const remaining = tabsRef.current.filter((t, i) => i <= idx || t.isPinned)
     setTabs(remaining)
     if (!remaining.some((t) => t.id === activeTabId)) {
       setActiveTabId(tabId)
@@ -901,11 +922,31 @@ function MainApp({
   }
 
   const handleCloseAllTabs = () => {
-    const dirtyTab = tabsRef.current.find((t) => isTabDirty(t))
-    if (dirtyTab) {
-      handleCloseTab(dirtyTab.id)
-      return
+    // If there are pinned tabs, only close unpinned tabs
+    const unpinnedTabs = tabsRef.current.filter((t) => !t.isPinned)
+    if (unpinnedTabs.length > 0) {
+      const dirtyTab = unpinnedTabs.find((t) => isTabDirty(t))
+      if (dirtyTab) {
+        handleCloseTab(dirtyTab.id)
+        return
+      }
+      const pinnedTabs = tabsRef.current.filter((t) => t.isPinned)
+      if (pinnedTabs.length > 0) {
+        setTabs(pinnedTabs)
+        if (!pinnedTabs.some((t) => t.id === activeTabId)) {
+          setActiveTabId(pinnedTabs[0].id)
+          handleSelectTab(pinnedTabs[0].id)
+        }
+        return
+      }
+    } else {
+      const dirtyTab = tabsRef.current.find((t) => isTabDirty(t))
+      if (dirtyTab) {
+        handleCloseTab(dirtyTab.id)
+        return
+      }
     }
+
     const freshReq: RequestItem = {
       ...defaultNewRequest,
       id: 'req-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
@@ -2050,6 +2091,8 @@ function MainApp({
             onCloseTabsToRight={handleCloseTabsToRight}
             onCloseAllTabs={handleCloseAllTabs}
             onNewTab={() => handleNewTab()}
+            onTogglePinTab={handleTogglePinTab}
+            onSetTabColor={handleSetTabColor}
             extraRight={renderTopRightToolbar()}
           />
         ) : (

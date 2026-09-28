@@ -133,6 +133,8 @@ export interface AppSettings {
   responseStorageLimitMB?: number
 }
 
+export type TabColor = 'red' | 'orange' | 'amber' | 'emerald' | 'sky' | 'purple' | 'rose'
+
 export interface WorkspaceTab {
   id: string
   requestId: string
@@ -140,6 +142,8 @@ export interface WorkspaceTab {
   requestName?: string
   method: HttpMethod
   isDirty?: boolean
+  isPinned?: boolean
+  color?: TabColor
 }
 
 export interface RunnerRequestResult {

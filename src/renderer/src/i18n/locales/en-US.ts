@@ -271,7 +271,18 @@ export const enUS: TranslationSchema = {
     requestNameLabel: 'Request Name',
     dontSave: "Don't Save",
     saveAndClose: 'Save & Close',
-    autoCreateCollectionNotice: 'No collection exists. "My Collection" will be created automatically'
+    autoCreateCollectionNotice: 'No collection exists. "My Collection" will be created automatically',
+    pinTab: 'Pin Tab',
+    unpinTab: 'Unpin Tab',
+    tabColor: 'Set Tab Color',
+    clearColor: 'Clear Color',
+    colorRed: 'Red',
+    colorOrange: 'Orange',
+    colorAmber: 'Amber',
+    colorEmerald: 'Green',
+    colorSky: 'Sky Blue',
+    colorPurple: 'Purple',
+    colorRose: 'Rose'
   },
   codeSnippet: {
     title: 'Generate Client Code (Code Snippets)',
