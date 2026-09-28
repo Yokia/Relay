@@ -167,7 +167,10 @@ export const enUS: TranslationSchema = {
     noHeadersDetected: 'No valid headers detected. Please check the pasted text.',
     confirmImport: 'Confirm Import ({count} items)',
     clipboardReadSuccess: 'Successfully parsed and imported {count} headers from clipboard!',
-    clipboardEmpty: 'Clipboard is empty or contains no valid headers'
+    clipboardEmpty: 'Clipboard is empty or contains no valid headers',
+    lintTrailingComma: 'Trailing comma is not allowed in JSON',
+    lintSyntaxError: 'JSON format error',
+    lintFixTrailingComma: 'Remove trailing comma'
   },
   response: {
     emptyTitle: 'No response yet',

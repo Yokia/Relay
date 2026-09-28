@@ -167,7 +167,10 @@ export const zhCN: TranslationSchema = {
     noHeadersDetected: '未检测到有效请求头格式，请检查粘贴文本',
     confirmImport: '确认导入 ({count} 项)',
     clipboardReadSuccess: '已成功从剪贴板解析并导入 {count} 个请求头！',
-    clipboardEmpty: '剪贴板内容为空或未包含有效请求头'
+    clipboardEmpty: '剪贴板内容为空或未包含有效请求头',
+    lintTrailingComma: 'JSON 不允许使用尾随逗号 (Trailing comma)',
+    lintSyntaxError: 'JSON 格式错误',
+    lintFixTrailingComma: '删除尾随逗号'
   },
   response: {
     emptyTitle: '尚未发起请求',

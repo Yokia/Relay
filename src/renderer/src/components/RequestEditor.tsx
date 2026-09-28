@@ -376,6 +376,7 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
                   onChange={(val) => onChange({ bodyRaw: val })}
                   wrap={wrapLines}
                   placeholder={request.bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Raw text content...'}
+                  language={request.bodyType === 'json' ? 'json' : 'text'}
                 />
               </div>
             )}

@@ -153,3 +153,85 @@
   color: #0369a1 !important;
   text-decoration-color: #0369a1 !important;
 }
+
+/* CodeMirror Lint Styles - Crisp Red Wavy Underline & Diagnostics */
+.cm-lintRange-error {
+  background-image: none !important;
+  text-decoration: underline wavy #ef4444 !important;
+  text-decoration-thickness: 1.5px !important;
+  text-underline-offset: 3.5px !important;
+}
+
+@supports not (text-decoration-style: wavy) {
+  .cm-lintRange-error {
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="6" height="3">%3Cpath d="m0 2.5 l2 -2 l2 2 l2 -2" fill="none" stroke="%23ef4444" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/%3E</svg>') !important;
+    background-position: left bottom !important;
+    background-repeat: repeat-x !important;
+    padding-bottom: 2px !important;
+  }
+}
+
+.cm-tooltip-lint {
+  border-radius: 6px !important;
+  font-family: inherit !important;
+  font-size: 11px !important;
+  overflow: hidden !important;
+  z-index: 100 !important;
+}
+
+.dark .cm-tooltip-lint,
+[data-theme="dark"] .cm-tooltip-lint {
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  background-color: #0f172a !important;
+  color: #fca5a5 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+}
+
+.light .cm-tooltip-lint,
+[data-theme="light"] .cm-tooltip-lint {
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  background-color: #ffffff !important;
+  color: #b91c1c !important;
+  box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.15) !important;
+}
+
+.cm-diagnostic {
+  padding: 5px 9px !important;
+  border-left: 3px solid #ef4444 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+}
+
+.cm-diagnosticAction {
+  margin-left: 8px !important;
+  padding: 1px 6px !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  border-radius: 4px !important;
+  color: #f87171 !important;
+  font-size: 10px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.cm-diagnosticAction:hover {
+  background: rgba(239, 68, 68, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.cm-gutter-lint {
+  width: 14px !important;
+}
+
+.cm-lint-marker-error {
+  display: inline-block !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  background-color: #ef4444 !important;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6) !important;
+  margin-left: 3px !important;
+  vertical-align: middle !important;
+}

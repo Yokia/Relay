@@ -6,8 +6,9 @@ import { tags } from '@lezer/highlight'
 import { RangeSetBuilder, Prec } from '@codemirror/state'
 import { MatchDecorator, ViewPlugin, Decoration, EditorView, DecorationSet, ViewUpdate, keymap } from '@codemirror/view'
 import { copyLineDown, moveLineUp, moveLineDown } from '@codemirror/commands'
+import { linter, lintGutter } from '@codemirror/lint'
 import { ExternalLink, Plus, Copy, Check } from 'lucide-react'
-import { findCommentRanges } from '../utils/jsonUtils'
+import { findCommentRanges, lintJsonDoc } from '../utils/jsonUtils'
 import { useTheme } from '../theme'
 import { useI18n } from '../i18n'
 
@@ -47,6 +48,8 @@ interface Props {
   searchCaseSensitive?: boolean
   searchWholeWord?: boolean
   searchRegex?: boolean
+  language?: string
+  enableLint?: boolean
 }
 
 interface ContextMenuState {
@@ -346,7 +349,9 @@ export const CodeEditor: React.FC<Props> = ({
   searchActiveIndex = 0,
   searchCaseSensitive = false,
   searchWholeWord = false,
-  searchRegex = false
+  searchRegex = false,
+  language = 'json',
+  enableLint = true
 }) => {
   const { theme } = useTheme()
   const { t } = useI18n()
@@ -356,8 +361,36 @@ export const CodeEditor: React.FC<Props> = ({
     return theme === 'light' ? relayLight : relayDark
   }, [theme])
 
+  const isJson = language === 'json'
+  const shouldLint = !readOnly && enableLint && isJson
+
   const extensions = useMemo(() => {
-    const exts = [json(), clickableLinkPlugin, jsonCommentPlugin, createSearchPlugin(searchTerm, searchActiveIndex, searchCaseSensitive, searchWholeWord, searchRegex), commentTheme, ...activeThemeExts]
+    const exts: any[] = [
+      isJson ? json() : [],
+      clickableLinkPlugin,
+      isJson ? jsonCommentPlugin : [],
+      createSearchPlugin(searchTerm, searchActiveIndex, searchCaseSensitive, searchWholeWord, searchRegex),
+      commentTheme,
+      ...activeThemeExts
+    ]
+
+    if (shouldLint) {
+      exts.push(
+        lintGutter(),
+        linter(
+          (view) => {
+            const docText = view.state.doc.toString()
+            return lintJsonDoc(docText, {
+              trailingComma: t('editor.lintTrailingComma'),
+              syntaxError: t('editor.lintSyntaxError'),
+              fixTrailingComma: t('editor.lintFixTrailingComma')
+            }) as any
+          },
+          { delay: 250 }
+        )
+      )
+    }
+
     if (!readOnly) {
       exts.unshift(Prec.highest(keymap.of([
         { key: 'Mod-/', run: toggleEditorLineComments },
@@ -376,7 +409,7 @@ export const CodeEditor: React.FC<Props> = ({
     }
     if (wrap) exts.push(EditorView.lineWrapping)
     return exts
-  }, [wrap, readOnly, activeThemeExts, searchTerm, searchActiveIndex, searchCaseSensitive, searchWholeWord, searchRegex])
+  }, [wrap, readOnly, isJson, shouldLint, activeThemeExts, searchTerm, searchActiveIndex, searchCaseSensitive, searchWholeWord, searchRegex, t])
 
   useEffect(() => {
     const view = editorViewRef.current

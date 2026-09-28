@@ -92,6 +92,7 @@ export const ScriptEditor: React.FC<Props> = ({
             onChange={onChange}
             placeholder={placeholder || '// Enter custom JavaScript here...'}
             wrap={true}
+            language="javascript"
           />
         </div>
       </div>

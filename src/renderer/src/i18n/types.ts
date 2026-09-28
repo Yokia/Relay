@@ -170,6 +170,9 @@ export interface TranslationSchema {
     confirmImport: string
     clipboardReadSuccess: string
     clipboardEmpty: string
+    lintTrailingComma: string
+    lintSyntaxError: string
+    lintFixTrailingComma: string
   }
   response: {
     emptyTitle: string
