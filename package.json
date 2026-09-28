@@ -11,7 +11,8 @@
     "build": "electron-vite build",
     "pack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win",
-    "preview": "electron-vite preview"
+    "preview": "electron-vite preview",
+    "ws-server": "node scripts/test-ws-server.js"
   },
   "dependencies": {
     "@codemirror/lang-json": "^6.0.2",
