@@ -22,13 +22,15 @@
     "crypto-js": "^4.2.0",
     "js-yaml": "^4.3.2",
     "lucide-react": "^0.475.0",
-    "tailwind-merge": "^3.0.1"
+    "tailwind-merge": "^3.0.1",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@types/crypto-js": "^4.2.2",
     "@types/node": "^20.17.19",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "electron": "^33.2.1",

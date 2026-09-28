@@ -59,7 +59,8 @@ const methodBadgeColor: Record<HttpMethod, string> = {
   DELETE: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
   PATCH: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
   HEAD: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
-  OPTIONS: 'text-slate-400 bg-slate-500/10 border-slate-500/20'
+  OPTIONS: 'text-slate-400 bg-slate-500/10 border-slate-500/20',
+  WS: 'text-teal-400 bg-teal-500/10 border-teal-500/20'
 }
 
 export const CollectionRunnerModal: React.FC<Props> = ({

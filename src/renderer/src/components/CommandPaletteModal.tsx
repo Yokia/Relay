@@ -23,7 +23,8 @@ const methodColor: Record<HttpMethod, string> = {
   DELETE: 'text-rose-500 dark:text-rose-400 bg-rose-500/10',
   PATCH: 'text-purple-500 dark:text-purple-400 bg-purple-500/10',
   HEAD: 'text-cyan-500 dark:text-cyan-400 bg-cyan-500/10',
-  OPTIONS: 'text-slate-500 dark:text-slate-400 bg-slate-500/10'
+  OPTIONS: 'text-slate-500 dark:text-slate-400 bg-slate-500/10',
+  WS: 'text-teal-500 dark:text-teal-400 bg-teal-500/10'
 }
 
 function extractAllRequests(cols: CollectionItem[], prefix = ''): FlattenedRequest[] {

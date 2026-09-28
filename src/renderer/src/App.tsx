@@ -3,6 +3,9 @@ import { Sidebar } from './components/Sidebar'
 import { RequestHeader } from './components/RequestHeader'
 import { RequestEditor } from './components/RequestEditor'
 import { ResponseViewer } from './components/ResponseViewer'
+import { WebSocketPane } from './components/WebSocketPane'
+import { useWebSocket } from './utils/useWebSocket'
+import { wsManager } from './utils/wsManager'
 import { EnvironmentModal } from './components/EnvironmentModal'
 import { CurlModal } from './components/CurlModal'
 import { ConstantManagerModal } from './components/ConstantManagerModal'
@@ -155,7 +158,8 @@ const cloneCleanRequest = (r: RequestItem): RequestItem => {
     preRequestScript: r.preRequestScript || '',
     testScript: r.testScript || '',
     responseExtractions: Array.isArray(r.responseExtractions) ? r.responseExtractions : undefined,
-    constantOverrides: r.constantOverrides ? { ...r.constantOverrides } : undefined
+    constantOverrides: r.constantOverrides ? { ...r.constantOverrides } : undefined,
+    wsConfig: r.wsConfig ? JSON.parse(JSON.stringify(r.wsConfig)) : undefined
   }
 }
 
@@ -181,6 +185,7 @@ function MainApp({
   const [dirtyIds, setDirtyIds] = useState<Set<string>>(new Set())
 
   const [currentRequest, setCurrentRequest] = useState<RequestItem>(defaultNewRequest)
+  const currentWs = useWebSocket(currentRequest.id)
   const [response, setResponse] = useState<ResponseData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isDataLoaded, setIsDataLoaded] = useState(false)
@@ -763,6 +768,7 @@ function MainApp({
     const tabToClose = currentTabs[tabIndex]
 
     if (tabToClose?.requestId) {
+      wsManager.disconnect(tabToClose.requestId)
       setDrafts((prev) => {
         const next = { ...prev }
         delete next[tabToClose.requestId]
@@ -1552,6 +1558,31 @@ function MainApp({
     addToast(t('toast.requestAdded'), 'success')
   }
 
+  // Add new WebSocket request into specific collection or sub-collection
+  const handleNewWsRequestInCollection = (colId: string, name = 'New WebSocket Request') => {
+    const newReq: RequestItem = {
+      ...defaultNewRequest,
+      id: 'ws-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+      name,
+      method: 'WS',
+      url: 'wss://echo.websocket.org',
+      headers: [],
+      wsConfig: {
+        heartbeat: false,
+        heartbeatInterval: 30,
+        presets: [
+          { id: 'pre-1', name: 'Echo Hello', payload: '{"message": "Hello WebSocket!"}', format: 'json' },
+          { id: 'pre-2', name: 'Ping', payload: '{"type": "ping"}', format: 'json' }
+        ]
+      }
+    }
+    const next = addRequestToCollection(collections, colId, newReq)
+    setCollections(next)
+    persist({ collections: next })
+    handleSelectRequest(newReq)
+    addToast(t('toast.requestAdded'), 'success')
+  }
+
   // Add new sub-collection into a parent collection
   const handleCreateSubCollection = (parentColId: string, name = 'New Sub-collection') => {
     const newSubCol: CollectionItem = {
@@ -2062,6 +2093,7 @@ function MainApp({
         onCreateSubCollection={handleCreateSubCollection}
         onMoveCollection={handleMoveCollection}
         onNewRequestInCollection={handleNewRequestInCollection}
+        onNewWsRequestInCollection={handleNewWsRequestInCollection}
         onRenameRequest={handleRenameRequest}
         onDuplicateRequest={handleDuplicateRequest}
         onDeleteRequest={handleDeleteRequest}
@@ -2175,41 +2207,70 @@ function MainApp({
           }}
           historyCount={history.length}
           keybindings={settings.keybindings}
+          wsStatus={currentRequest.method === 'WS' ? currentWs.status : undefined}
+          onWsToggleConnect={() => {
+            if (currentWs.status === 'connected' || currentWs.status === 'connecting') {
+              currentWs.disconnect()
+            } else {
+              const headersMap: Record<string, string> = {}
+              ;(currentRequest.headers || []).forEach((h) => {
+                if (h.enabled && h.key) {
+                  headersMap[h.key] = h.value || ''
+                }
+              })
+              currentWs.connect({
+                url: interpolate(currentRequest.url, currentRequest),
+                headers: headersMap,
+                protocols: currentRequest.wsConfig?.protocols,
+                wsConfig: currentRequest.wsConfig
+              })
+            }
+          }}
         />
 
-        {/* Split Container for Request & Response */}
-        <div id="split-container" className="flex-1 flex min-h-0 overflow-hidden relative">
-          {/* Left / Top: Request Editor */}
-          <div style={{ width: (splitRatio * 100) + '%' }} className="h-full flex flex-col min-w-[280px]">
-            <RequestEditor
-              request={currentRequest}
-              onChange={handleRequestChange}
-            />
-          </div>
+        {/* Main Content: WebSocket Debugger or HTTP Split Container */}
+        {currentRequest.method === 'WS' ? (
+          <WebSocketPane
+            key={currentRequest.id}
+            request={currentRequest}
+            resolvedUrl={interpolate(currentRequest.url, currentRequest)}
+            onChange={handleRequestChange}
+            onToast={addToast}
+          />
+        ) : (
+          <div id="split-container" className="flex-1 flex min-h-0 overflow-hidden relative">
+            {/* Left / Top: Request Editor */}
+            <div style={{ width: (splitRatio * 100) + '%' }} className="h-full flex flex-col min-w-[280px]">
+              <RequestEditor
+                request={currentRequest}
+                onChange={handleRequestChange}
+              />
+            </div>
 
-          {/* Draggable Divider */}
-          <div
-            onMouseDown={handleSplitMouseDown}
-            className="w-1.5 hover:w-1.5 bg-slate-800 hover:bg-sky-500 cursor-col-resize flex items-center justify-center transition-colors group select-none shrink-0 z-10"
-          >
-            <div className="w-0.5 h-6 bg-slate-600 group-hover:bg-white rounded-full transition-colors" />
-          </div>
+            {/* Draggable Divider */}
+            <div
+              onMouseDown={handleSplitMouseDown}
+              className="w-1.5 hover:w-1.5 bg-slate-800 hover:bg-sky-500 cursor-col-resize flex items-center justify-center transition-colors group select-none shrink-0 z-10"
+            >
+              <div className="w-0.5 h-6 bg-slate-600 group-hover:bg-white rounded-full transition-colors" />
+            </div>
 
-          {/* Right / Bottom: Response Viewer */}
-          <div style={{ width: ((1 - splitRatio) * 100) + '%' }} className="h-full flex flex-col min-w-[280px]">
-            <ResponseViewer
-              response={response}
-              isLoading={isLoading}
-              runs={responseHistoryMap[currentRequest.id] || []}
-              selectedRunId={selectedRunIdMap[currentRequest.id]}
-              onSelectRun={(runId) => setSelectedRunIdMap((prev) => ({ ...prev, [currentRequest.id]: runId }))}
-              onOpenUrlInRelay={handleOpenUrlInRelay}
-              requestUrl={interpolate(currentRequest.url)}
-              requestMethod={currentRequest.method}
-              requestName={currentRequest.name}
-            />
+            {/* Right / Bottom: Response Viewer */}
+            <div style={{ width: ((1 - splitRatio) * 100) + '%' }} className="h-full flex flex-col min-w-[280px]">
+              <ResponseViewer
+                response={response}
+                isLoading={isLoading}
+                runs={responseHistoryMap[currentRequest.id] || []}
+                selectedRunId={selectedRunIdMap[currentRequest.id]}
+                onSelectRun={(runId) => setSelectedRunIdMap((prev) => ({ ...prev, [currentRequest.id]: runId }))}
+                onOpenUrlInRelay={handleOpenUrlInRelay}
+                requestUrl={interpolate(currentRequest.url)}
+                requestMethod={currentRequest.method}
+                requestName={currentRequest.name}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Modals */}

@@ -35,7 +35,8 @@ const methodColorMap: Record<HttpMethod, string> = {
   DELETE: 'text-rose-400 bg-rose-500/10 border-rose-500/30',
   PATCH: 'text-purple-400 bg-purple-500/10 border-purple-500/30',
   HEAD: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30',
-  OPTIONS: 'text-slate-400 bg-slate-500/10 border-slate-500/30'
+  OPTIONS: 'text-slate-400 bg-slate-500/10 border-slate-500/30',
+  WS: 'text-teal-400 bg-teal-500/10 border-teal-500/30'
 }
 
 function HistoryPopoutContent() {

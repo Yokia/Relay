@@ -14,9 +14,12 @@ import {
   Pencil,
   Plus,
   Search,
-  History
+  History,
+  Wifi,
+  WifiOff,
+  RefreshCw
 } from 'lucide-react'
-import { HttpMethod, RequestItem, ConstantItem, CustomKeybindings } from '../types'
+import { HttpMethod, RequestItem, ConstantItem, CustomKeybindings, WebSocketConnectionStatus } from '../types'
 import { useI18n } from '../i18n'
 import { getEffectiveKeybindings, formatKeybindingString } from '../utils/keybindingUtils'
 
@@ -42,6 +45,8 @@ interface Props {
   historyCount?: number
   collectionPath?: string
   keybindings?: Partial<CustomKeybindings>
+  wsStatus?: WebSocketConnectionStatus
+  onWsToggleConnect?: () => void
 }
 
 interface UrlSegment {
@@ -74,7 +79,8 @@ const methodColors: Record<HttpMethod, string> = {
   DELETE: 'text-rose-400 font-bold',
   PATCH: 'text-purple-400 font-bold',
   HEAD: 'text-cyan-400 font-bold',
-  OPTIONS: 'text-slate-400 font-bold'
+  OPTIONS: 'text-slate-400 font-bold',
+  WS: 'text-teal-400 font-bold'
 }
 
 function parseUrlSegments(url: string): UrlSegment[] {
@@ -140,7 +146,9 @@ export const RequestHeader: React.FC<Props> = ({
   onOpenHistoryWindow,
   historyCount,
   collectionPath,
-  keybindings
+  keybindings,
+  wsStatus,
+  onWsToggleConnect
 }) => {
   const { t } = useI18n()
   const effectiveKeybindings = getEffectiveKeybindings(keybindings)
@@ -148,7 +156,7 @@ export const RequestHeader: React.FC<Props> = ({
   const saveShortcutStr = formatKeybindingString(effectiveKeybindings.saveRequest)
   const quickOpenShortcutStr = formatKeybindingString(effectiveKeybindings.quickOpen)
 
-  const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
+  const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'WS']
   const [showVarPicker, setShowVarPicker] = useState(false)
   const [copiedPreview, setCopiedPreview] = useState(false)
   const [isEditingUrl, setIsEditingUrl] = useState(false)
@@ -580,7 +588,7 @@ export const RequestHeader: React.FC<Props> = ({
                   }
                 }}
                 autoFocus
-                placeholder={t('header.urlPlaceholder')}
+                placeholder={request.method === 'WS' ? 'ws://localhost:8080 or wss://echo.websocket.org' : t('header.urlPlaceholder')}
                 className="w-full bg-slate-900 border border-sky-500 rounded px-3 py-1.5 pr-16 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none transition-colors shadow-inner min-h-[34px]"
               />
 
@@ -690,7 +698,7 @@ export const RequestHeader: React.FC<Props> = ({
             >
               {!request.url ? (
                 <span className="text-slate-500 italic select-none">
-                  {t('header.urlPlaceholder')}
+                  {request.method === 'WS' ? 'ws://localhost:8080 or wss://echo.websocket.org' : t('header.urlPlaceholder')}
                 </span>
               ) : (
                 urlSegments.map((seg, idx) => {
@@ -882,25 +890,56 @@ export const RequestHeader: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Send Button */}
-        <button
-          type="button"
-          onClick={() => onSend()}
-          disabled={isLoading || !request.url?.trim()}
-          title={sendShortcutStr ? `${t('header.send')} (${sendShortcutStr})` : t('header.send')}
-          className="flex items-center gap-2 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-medium px-3.5 py-1.5 rounded transition-all shadow-sm active:scale-95 shrink-0 cursor-pointer disabled:cursor-not-allowed"
-        >
-          <Send className={"w-3.5 h-3.5 " + (isLoading ? "animate-pulse" : "")} />
-          <span>{isLoading ? t('header.sending') : t('header.send')}</span>
-          {sendShortcutStr && (
-            <kbd className="px-1.5 py-0.2 text-[10px] bg-sky-600/70 text-sky-100 rounded border border-sky-400/40 font-mono leading-none select-none">
-              {sendShortcutStr}
-            </kbd>
-          )}
-        </button>
+        {/* Send or Connect Button */}
+        {request.method === 'WS' ? (
+          <button
+            type="button"
+            onClick={onWsToggleConnect}
+            disabled={!request.url?.trim() || wsStatus === 'disconnecting'}
+            title={wsStatus === 'connected' ? t('websocket.disconnect') : t('websocket.connect')}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3.5 py-1.5 rounded transition-all shadow-sm active:scale-95 shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+              wsStatus === 'connected'
+                ? 'bg-rose-600 hover:bg-rose-500 text-white'
+                : wsStatus === 'connecting'
+                ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                : 'bg-teal-600 hover:bg-teal-500 text-white'
+            }`}
+          >
+            {wsStatus === 'connecting' ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : wsStatus === 'connected' ? (
+              <WifiOff className="w-3.5 h-3.5" />
+            ) : (
+              <Wifi className="w-3.5 h-3.5" />
+            )}
+            <span>
+              {wsStatus === 'connected'
+                ? t('websocket.disconnect')
+                : wsStatus === 'connecting'
+                ? t('websocket.connecting')
+                : t('websocket.connect')}
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onSend()}
+            disabled={isLoading || !request.url?.trim()}
+            title={sendShortcutStr ? `${t('header.send')} (${sendShortcutStr})` : t('header.send')}
+            className="flex items-center gap-2 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-medium px-3.5 py-1.5 rounded transition-all shadow-sm active:scale-95 shrink-0 cursor-pointer disabled:cursor-not-allowed"
+          >
+            <Send className={"w-3.5 h-3.5 " + (isLoading ? "animate-pulse" : "")} />
+            <span>{isLoading ? t('header.sending') : t('header.send')}</span>
+            {sendShortcutStr && (
+              <kbd className="px-1.5 py-0.2 text-[10px] bg-sky-600/70 text-sky-100 rounded border border-sky-400/40 font-mono leading-none select-none">
+                {sendShortcutStr}
+              </kbd>
+            )}
+          </button>
+        )}
 
-        {/* Benchmark Button */}
-        {onBenchmark && (
+        {/* Benchmark Button (HTTP only) */}
+        {onBenchmark && request.method !== 'WS' && (
           <button
             type="button"
             onClick={onBenchmark}

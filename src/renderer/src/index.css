@@ -39,6 +39,9 @@
   --color-blue-400: 96 165 250;
   --color-purple-400: 192 132 252;
   --color-cyan-400: 34 211 238;
+  --color-teal-300: 94 234 212;
+  --color-teal-400: 45 212 191;
+  --color-teal-700: 15 118 110;
 
   /* Scrollbars Dark */
   --scrollbar-thumb: #334155;
@@ -71,6 +74,9 @@
   --color-blue-400: 37 99 235;      /* #2563eb */
   --color-purple-400: 147 51 234;   /* #9333ea */
   --color-cyan-400: 8 145 178;      /* #0891b2 */
+  --color-teal-300: 15 118 110;     /* #0f766e - deep dark teal */
+  --color-teal-400: 13 148 136;     /* #0d9488 - rich AAA contrast */
+  --color-teal-700: 17 94 89;       /* #115e59 - ultra high contrast */
 
   /* Scrollbars Light */
   --scrollbar-thumb: #cbd5e1;

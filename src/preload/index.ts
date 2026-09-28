@@ -39,6 +39,19 @@ export const api = {
     const listener = (_: any, installerPath: string) => callback(installerPath)
     ipcRenderer.on('relay:update-download-complete', listener)
     return () => ipcRenderer.removeListener('relay:update-download-complete', listener)
+  },
+  wsConnect: (payload: { connectionId: string; url: string; headers?: Record<string, string>; protocols?: string[]; rejectUnauthorized?: boolean; handshakeTimeout?: number }) =>
+    ipcRenderer.invoke('relay:ws-connect', payload),
+  wsDisconnect: (payload: { connectionId: string; code?: number; reason?: string }) =>
+    ipcRenderer.invoke('relay:ws-disconnect', payload),
+  wsSend: (payload: { connectionId: string; data: string; isBinary?: boolean }) =>
+    ipcRenderer.invoke('relay:ws-send', payload),
+  wsPing: (payload: { connectionId: string; data?: string }) =>
+    ipcRenderer.invoke('relay:ws-ping', payload),
+  onWsEvent: (callback: (event: any) => void) => {
+    const listener = (_: any, event: any) => callback(event)
+    ipcRenderer.on('relay:ws-event', listener)
+    return () => ipcRenderer.removeListener('relay:ws-event', listener)
   }
 }
 

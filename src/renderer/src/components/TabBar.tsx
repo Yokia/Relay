@@ -27,7 +27,8 @@ const methodColor: Record<HttpMethod, string> = {
   DELETE: 'text-rose-500 dark:text-rose-400',
   PATCH: 'text-purple-500 dark:text-purple-400',
   HEAD: 'text-cyan-500 dark:text-cyan-400',
-  OPTIONS: 'text-slate-500 dark:text-slate-400'
+  OPTIONS: 'text-slate-500 dark:text-slate-400',
+  WS: 'text-teal-500 dark:text-teal-400'
 }
 
 const tabColorBorder: Record<TabColor, string> = {

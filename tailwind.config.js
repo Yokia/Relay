@@ -44,6 +44,11 @@ module.exports = {
         cyan: {
           400: 'rgb(var(--color-cyan-400) / <alpha-value>)',
         },
+        teal: {
+          300: 'rgb(var(--color-teal-300) / <alpha-value>)',
+          400: 'rgb(var(--color-teal-400) / <alpha-value>)',
+          700: 'rgb(var(--color-teal-700) / <alpha-value>)',
+        },
         background: 'rgb(var(--color-slate-950) / <alpha-value>)',
         surface: 'rgb(var(--color-slate-900) / <alpha-value>)',
         surfaceHover: 'rgb(var(--color-slate-800) / <alpha-value>)',

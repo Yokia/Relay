@@ -849,5 +849,52 @@ export interface TranslationSchema {
     cancel: string
     speed: string
   }
+  websocket: {
+    title: string
+    connect: string
+    disconnect: string
+    connecting: string
+    connected: string
+    disconnected: string
+    disconnecting: string
+    connectedDuration: string
+    messages: string
+    params: string
+    headers: string
+    config: string
+    presets: string
+    composer: string
+    send: string
+    sendShortcut: string
+    ctrlEnterShortcut: string
+    filterPlaceholder: string
+    filterAll: string
+    filterInbound: string
+    filterOutbound: string
+    filterSystem: string
+    clearMessages: string
+    autoScroll: string
+    exportLog: string
+    formatJson: string
+    compactJson: string
+    clearComposer: string
+    sendPing: string
+    heartbeat: string
+    heartbeatInterval: string
+    heartbeatPayload: string
+    autoReconnect: string
+    reconnectInterval: string
+    subprotocols: string
+    addPreset: string
+    presetName: string
+    noMessages: string
+    msgCopied: string
+    logExported: string
+    loadToComposer: string
+    statsSummary: string
+    newWsRequest: string
+    enterPayloadPlaceholder: string
+    addPresetTitle: string
+  }
   helpDoc: HelpDocSchema
 }

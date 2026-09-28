@@ -1,6 +1,37 @@
-export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS'
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS' | 'WS'
 
 export type AuthType = 'none' | 'bearer' | 'basic' | 'api-key' | 'oauth2'
+
+export interface WebSocketMessagePreset {
+  id: string
+  name: string
+  payload: string
+  format?: 'json' | 'text'
+}
+
+export interface WebSocketConfig {
+  protocols?: string[]
+  reconnect?: boolean
+  reconnectInterval?: number
+  heartbeat?: boolean
+  heartbeatInterval?: number
+  heartbeatMessage?: string
+  presets?: WebSocketMessagePreset[]
+}
+
+export type WebSocketConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting'
+
+export interface WebSocketTimelineItem {
+  id: string
+  type: 'open' | 'close' | 'error' | 'message' | 'ping' | 'pong'
+  direction: 'in' | 'out' | 'system'
+  data: string
+  size?: number
+  isBinary?: boolean
+  code?: number
+  reason?: string
+  timestamp: number
+}
 
 export interface AuthConfig {
   type: AuthType
@@ -49,6 +80,7 @@ export interface RequestItem {
   testScript?: string
   auth?: AuthConfig
   responseExtractions?: ResponseExtraction[]
+  wsConfig?: WebSocketConfig
 }
 
 export interface TestResultItem {

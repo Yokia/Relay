@@ -30,7 +30,8 @@ import {
   FolderDown,
   Play,
   BookOpen,
-  Sparkles
+  Sparkles,
+  Radio
 } from 'lucide-react'
 import { CollectionItem, HistoryItem, Environment, RequestItem, HttpMethod, ConstantItem } from '../types'
 import { SettingCategory } from './SettingsModal'
@@ -63,6 +64,7 @@ interface Props {
   onDeleteCollection: (id: string) => void
   onMoveCollection: (sourceColId: string, targetColId: string | null, position: 'before' | 'after' | 'inside') => void
   onNewRequestInCollection: (colId: string) => void
+  onNewWsRequestInCollection?: (colId: string) => void
   onRenameRequest: (colId: string, reqId: string, newName: string) => void
   onDuplicateRequest: (colId: string, reqId: string) => void
   onDeleteRequest: (colId: string, reqId: string) => void
@@ -96,7 +98,8 @@ const methodBadgeColor: Record<HttpMethod, string> = {
   DELETE: 'text-rose-400',
   PATCH: 'text-purple-400',
   HEAD: 'text-cyan-400',
-  OPTIONS: 'text-slate-400'
+  OPTIONS: 'text-slate-400',
+  WS: 'text-teal-400'
 }
 
 interface ContextMenuState {
@@ -144,6 +147,7 @@ export const Sidebar: React.FC<Props> = ({
   onDeleteCollection,
   onMoveCollection,
   onNewRequestInCollection,
+  onNewWsRequestInCollection,
   onRenameRequest,
   onDuplicateRequest,
   onDeleteRequest,
@@ -1008,6 +1012,22 @@ export const Sidebar: React.FC<Props> = ({
               >
                 <Plus className="w-3.5 h-3.5 text-emerald-400" />
                 <span>{t('sidebar.addRequest')}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (onNewWsRequestInCollection) {
+                    onNewWsRequestInCollection(contextMenu.colId)
+                  } else {
+                    onNewRequestInCollection(contextMenu.colId)
+                  }
+                  setContextMenu(null)
+                }}
+                className="px-2.5 py-1.5 text-left hover:bg-teal-500/20 hover:text-teal-300 rounded flex items-center gap-2 transition-colors"
+              >
+                <Radio className="w-3.5 h-3.5 text-teal-400" />
+                <span>{t('websocket.newWsRequest')}</span>
               </button>
 
               <button

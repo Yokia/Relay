@@ -5,6 +5,7 @@ import { executeRequest, RequestPayload } from './httpService'
 import { executeTranslation, TranslateParams } from './translateService'
 import { StorageService } from './storage'
 import { updateService } from './updateService'
+import { wsService, WsConnectOptions } from './wsService'
 
 let storage: StorageService
 let mainWindow: BrowserWindow | null = null
@@ -440,11 +441,32 @@ app.whenReady().then(() => {
     return updateService.installAndRestart(installerPath)
   })
 
+  // WebSocket IPC handlers
+  ipcMain.handle('relay:ws-connect', (_, options: WsConnectOptions) => {
+    return wsService.connect(options)
+  })
+
+  ipcMain.handle('relay:ws-send', (_, { connectionId, data, isBinary }: { connectionId: string; data: string; isBinary?: boolean }) => {
+    return wsService.send(connectionId, data, isBinary)
+  })
+
+  ipcMain.handle('relay:ws-ping', (_, { connectionId, data }: { connectionId: string; data?: string }) => {
+    return wsService.ping(connectionId, data)
+  })
+
+  ipcMain.handle('relay:ws-disconnect', (_, { connectionId, code, reason }: { connectionId: string; code?: number; reason?: string }) => {
+    return wsService.disconnect(connectionId, code, reason)
+  })
+
   createWindow()
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+app.on('before-quit', () => {
+  wsService.cleanupAll()
 })
 
 app.on('window-all-closed', () => {
