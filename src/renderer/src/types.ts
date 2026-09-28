@@ -187,6 +187,19 @@ export interface RunnerRequestResult {
   testResults?: TestResultItem[]
 }
 
+export type RunnerExecutionMode = 'functional' | 'benchmark'
+
+export type BenchmarkStopCondition = 'requests' | 'duration'
+
+export interface BenchmarkConfig {
+  concurrency: number
+  stopCondition: BenchmarkStopCondition
+  totalRequests: number
+  durationSeconds: number
+  delayMs: number
+  stopOnError: boolean
+}
+
 export interface RunnerReport {
   title: string
   startTime: number

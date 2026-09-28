@@ -83,6 +83,8 @@ interface Props {
   onOpenDataTransfer?: (tab?: 'export' | 'import', targetColId?: string, format?: 'json' | 'html' | 'markdown') => void
   onRunCollection?: (col: CollectionItem) => void
   onRunRequests?: (requests: RequestItem[], title: string) => void
+  onBenchmarkCollection?: (col: CollectionItem) => void
+  onBenchmarkRequests?: (requests: RequestItem[], title?: string) => void
   updateAvailable?: boolean
   onOpenUpdateModal?: () => void
 }
@@ -162,6 +164,8 @@ export const Sidebar: React.FC<Props> = ({
   onOpenDataTransfer,
   onRunCollection,
   onRunRequests,
+  onBenchmarkCollection,
+  onBenchmarkRequests,
   updateAvailable,
   onOpenUpdateModal
 }) => {
@@ -962,6 +966,23 @@ export const Sidebar: React.FC<Props> = ({
                 </button>
               )}
 
+              {onBenchmarkCollection && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const col = findCollectionInTree(collections, contextMenu.colId)
+                    if (col) {
+                      onBenchmarkCollection(col)
+                    }
+                    setContextMenu(null)
+                  }}
+                  className="px-2.5 py-1.5 text-left hover:bg-amber-500/20 hover:text-amber-700 dark:hover:text-amber-300 rounded flex items-center gap-2 transition-colors font-medium text-amber-600 dark:text-amber-400"
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
+                  <span>{t('sidebar.benchmarkCollection')}</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => {
@@ -1098,6 +1119,29 @@ export const Sidebar: React.FC<Props> = ({
                     <span>{t('sidebar.runInRunner')}</span>
                   </button>
                 )
+              )}
+
+              {onBenchmarkRequests && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedReqIds.size > 1 && selectedReqIds.has(contextMenu.request!.id)) {
+                      const selectedList = flatRequestList.filter((r) => selectedReqIds.has(r.id))
+                      onBenchmarkRequests(selectedList, `${selectedList.length} Requests`)
+                    } else if (contextMenu.request) {
+                      onBenchmarkRequests([contextMenu.request], contextMenu.request.name || 'Request')
+                    }
+                    setContextMenu(null)
+                  }}
+                  className="px-2.5 py-1.5 text-left hover:bg-amber-500/20 hover:text-amber-700 dark:hover:text-amber-300 rounded flex items-center gap-2 transition-colors text-amber-600 dark:text-amber-400 font-medium"
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" />
+                  <span>
+                    {selectedReqIds.size > 1 && selectedReqIds.has(contextMenu.request!.id)
+                      ? `${t('sidebar.benchmarkRequest')} (${selectedReqIds.size})`
+                      : t('sidebar.benchmarkRequest')}
+                  </span>
+                </button>
               )}
 
               <button

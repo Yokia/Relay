@@ -19,7 +19,7 @@ import { CloseTabConfirmModal } from './components/CloseTabConfirmModal'
 import { APP_VERSION } from './data/changelog'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ToastContainer, ToastMessage } from './components/Toast'
-import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme, WorkspaceTab, TabColor, UpdateCheckResult } from './types'
+import { RequestItem, CollectionItem, HistoryItem, Environment, ResponseData, ConstantItem, ResponseRun, Language, Theme, WorkspaceTab, TabColor, UpdateCheckResult, RunnerExecutionMode } from './types'
 import { stripJsonComments } from './utils/jsonUtils'
 import { mergeCollections, mergeConstants, mergeEnvironments, ParsedImportData } from './utils/dataTransferUtils'
 import { executePreRequestScript, executeTestScript } from './utils/scriptEngine'
@@ -288,10 +288,12 @@ function MainApp({
     isOpen: boolean
     title: string
     requests: RequestItem[]
+    initialMode?: RunnerExecutionMode
   }>({
     isOpen: false,
     title: '',
-    requests: []
+    requests: [],
+    initialMode: 'functional'
   })
   const [isDevToysOpen, setIsDevToysOpen] = useState(false)
   const [updateInfo, setUpdateInfo] = useState<UpdateCheckResult | null>(null)
@@ -1118,7 +1120,8 @@ function MainApp({
     setRunnerState({
       isOpen: true,
       title: col.name,
-      requests: allReqs
+      requests: allReqs,
+      initialMode: 'functional'
     })
   }
 
@@ -1128,7 +1131,34 @@ function MainApp({
     setRunnerState({
       isOpen: true,
       title: title || `${reqs.length} Requests`,
-      requests: reqs
+      requests: reqs,
+      initialMode: 'functional'
+    })
+  }
+
+  // Open Benchmark for entire collection
+  const handleBenchmarkCollection = (col: CollectionItem) => {
+    const allReqs = collectAllRequests(col)
+    if (allReqs.length === 0) {
+      addToast(t('runner.noRequests'), 'info')
+      return
+    }
+    setRunnerState({
+      isOpen: true,
+      title: `${col.name} (Benchmark)`,
+      requests: allReqs,
+      initialMode: 'benchmark'
+    })
+  }
+
+  // Open Benchmark for specific requests (single or multi)
+  const handleBenchmarkRequests = (reqs: RequestItem[], title?: string) => {
+    if (reqs.length === 0) return
+    setRunnerState({
+      isOpen: true,
+      title: title || (reqs.length === 1 ? reqs[0].name || 'Request' : `${reqs.length} Requests`),
+      requests: reqs,
+      initialMode: 'benchmark'
     })
   }
 
@@ -2068,6 +2098,8 @@ function MainApp({
         }
         onRunCollection={handleRunCollection}
         onRunRequests={handleRunSelectedRequests}
+        onBenchmarkCollection={handleBenchmarkCollection}
+        onBenchmarkRequests={handleBenchmarkRequests}
         updateAvailable={!!updateInfo?.updateAvailable}
         onOpenUpdateModal={() => setIsUpdateModalOpen(true)}
       />
@@ -2123,6 +2155,7 @@ function MainApp({
           onChange={handleRequestChange}
           onSend={handleSend}
           onSave={handleSave}
+          onBenchmark={() => handleBenchmarkRequests([currentRequest], currentRequest.name)}
           onExportCurl={() => setCurlModalState({ isOpen: true, mode: 'export' })}
           onOpenCodeSnippet={() => setIsCodeSnippetOpen(true)}
           isLoading={isLoading}
@@ -2330,6 +2363,7 @@ function MainApp({
           environments={environments}
           activeEnvId={activeEnvId}
           settings={settings}
+          initialMode={runnerState.initialMode}
           onClose={() => setRunnerState((prev) => ({ ...prev, isOpen: false }))}
           onToast={(msg, type) => addToast(msg, type || 'success')}
         />

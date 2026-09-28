@@ -78,6 +78,8 @@ export interface TranslationSchema {
     deleteColCannotUndo: string
     subCollectionsUnit: string
     requestsUnit: string
+    benchmarkCollection: string
+    benchmarkRequest: string
     switchActiveValue: string
     editOptions: string
     noConstants: string
@@ -92,6 +94,7 @@ export interface TranslationSchema {
     send: string
     sending: string
     save: string
+    benchmarkRequest: string
     urlPlaceholder: string
     autoSave: string
     autoSaveOnTip: string
@@ -504,6 +507,45 @@ export interface TranslationSchema {
     markdownAbnormalTitle: string
     markdownAllPassed: string
     duration: string
+    mode: string
+    modeFunctional: string
+    modeBenchmark: string
+    benchmarkTitle: string
+    concurrency: string
+    concurrencyTip: string
+    stopCondition: string
+    stopConditionRequests: string
+    stopConditionDuration: string
+    totalRequestsLabel: string
+    durationSecondsLabel: string
+    warmupOrThrottle: string
+    startBenchmark: string
+    stopBenchmark: string
+    benchmarkRunning: string
+    benchmarkCompleted: string
+    benchmarkAborted: string
+    realtimeQps: string
+    avgQps: string
+    successRate: string
+    errorRate: string
+    latencyStats: string
+    latencyHistogram: string
+    minLatency: string
+    avgLatency: string
+    maxLatency: string
+    p50Latency: string
+    p90Latency: string
+    p95Latency: string
+    p99Latency: string
+    totalTransferred: string
+    failedSamples: string
+    noFailedSamples: string
+    exportBenchmarkReport: string
+    copyBenchmarkMarkdown: string
+    copiedBenchmarkMarkdown: string
+    requestsUnitSuffix: string
+    benchmarkTargetTip: string
+    benchmarkQuickEntry: string
   }
   historyWindow: {
     title: string

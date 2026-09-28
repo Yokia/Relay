@@ -25,6 +25,7 @@ interface Props {
   onChange: (updates: Partial<RequestItem>) => void
   onSend: () => void
   onSave: () => void
+  onBenchmark?: () => void
   onExportCurl?: () => void
   onOpenCodeSnippet?: () => void
   isLoading: boolean
@@ -124,6 +125,7 @@ export const RequestHeader: React.FC<Props> = ({
   onChange,
   onSend,
   onSave,
+  onBenchmark,
   onExportCurl,
   onOpenCodeSnippet,
   isLoading,
@@ -896,6 +898,20 @@ export const RequestHeader: React.FC<Props> = ({
             </kbd>
           )}
         </button>
+
+        {/* Benchmark Button */}
+        {onBenchmark && (
+          <button
+            type="button"
+            onClick={onBenchmark}
+            disabled={isLoading || !request.url?.trim()}
+            title={t('header.benchmarkRequest')}
+            className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/15 to-orange-500/15 hover:from-amber-500/25 hover:to-orange-500/25 text-amber-400 border border-amber-500/30 text-xs font-medium px-2.5 py-1.5 rounded transition-all shadow-sm active:scale-95 shrink-0 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400/20" />
+            <span className="hidden sm:inline">{t('header.benchmarkRequest')}</span>
+          </button>
+        )}
       </div>
 
       {/* 2. Direct Preview Row: Right below the address bar */}

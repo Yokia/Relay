@@ -20,7 +20,8 @@ import {
   FileJson,
   CheckSquare,
   Square as SquareEmpty,
-  ExternalLink
+  ExternalLink,
+  Zap
 } from 'lucide-react'
 import {
   RequestItem,
@@ -30,11 +31,13 @@ import {
   RunnerRequestResult,
   RunnerReport,
   HttpMethod,
-  ResponseData
+  ResponseData,
+  RunnerExecutionMode
 } from '../types'
 import { executePreRequestScript, executeTestScript } from '../utils/scriptEngine'
 import { queryJsonPath } from '../utils/jsonPath'
 import { useI18n } from '../i18n'
+import { BenchmarkPanel } from './BenchmarkPanel'
 
 interface Props {
   isOpen: boolean
@@ -44,6 +47,7 @@ interface Props {
   environments: Environment[]
   activeEnvId?: string
   settings: AppSettings
+  initialMode?: RunnerExecutionMode
   onClose: () => void
   onToast: (msg: string, type?: 'success' | 'error' | 'info') => void
 }
@@ -66,10 +70,19 @@ export const CollectionRunnerModal: React.FC<Props> = ({
   environments,
   activeEnvId,
   settings,
+  initialMode = 'functional',
   onClose,
   onToast
 }) => {
   const { t } = useI18n()
+
+  const [runnerMode, setRunnerMode] = useState<RunnerExecutionMode>(initialMode || 'functional')
+
+  useEffect(() => {
+    if (isOpen && initialMode) {
+      setRunnerMode(initialMode)
+    }
+  }, [isOpen, initialMode])
 
   // Runner Configuration State
   const [selectedReqIds, setSelectedReqIds] = useState<Set<string>>(() => new Set(requests.map((r) => r.id)))
@@ -570,20 +583,92 @@ export const CollectionRunnerModal: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* Mode Switcher */}
+            <div className="flex items-center gap-1 bg-slate-950/70 p-1 rounded-lg border border-slate-800">
+              <button
+                type="button"
+                disabled={isRunning}
+                onClick={() => setRunnerMode('functional')}
+                className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  runnerMode === 'functional'
+                    ? 'bg-sky-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>{t('runner.modeFunctional')}</span>
+              </button>
+              <button
+                type="button"
+                disabled={isRunning}
+                onClick={() => setRunnerMode('benchmark')}
+                className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  runnerMode === 'benchmark'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>{t('runner.modeBenchmark')}</span>
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={onClose}
               disabled={isRunning}
-              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-lg transition-colors disabled:opacity-40"
+              className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-lg transition-colors disabled:opacity-40 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Configuration Bar */}
-        <div className="px-5 py-2.5 bg-slate-900 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+        {runnerMode === 'benchmark' ? (
+          <BenchmarkPanel
+            title={title}
+            requests={requests}
+            selectedReqIds={selectedReqIds}
+            onToggleReq={handleToggleReq}
+            onSelectAll={handleSelectAll}
+            onDeselectAll={handleDeselectAll}
+            constants={constants}
+            environments={environments}
+            selectedEnvId={selectedEnvId}
+            onChangeEnvId={setSelectedEnvId}
+            interpolate={interpolate}
+            settings={settings}
+            onToast={onToast}
+            onOpenPopout={(r) => {
+              if (window.electronAPI?.openResponseWindow) {
+                const resData: ResponseData = {
+                  status: r.status,
+                  statusText: r.statusText,
+                  headers: r.headers || {},
+                  data: r.data,
+                  size: r.size,
+                  time: r.time,
+                  contentType: 'application/json',
+                  error: r.error,
+                  timestamp: r.timestamp
+                }
+                window.electronAPI.openResponseWindow({
+                  response: resData,
+                  url: r.url,
+                  method: r.method,
+                  name: r.requestName,
+                  timestamp: r.timestamp,
+                  language: settings.language || 'zh-CN',
+                  theme: settings.theme || 'dark'
+                })
+              }
+            }}
+          />
+        ) : (
+          <>
+            {/* Configuration Bar */}
+            <div className="px-5 py-2.5 bg-slate-900 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-4 flex-wrap">
             {/* Environment select */}
             <div className="flex items-center gap-1.5">
@@ -1180,7 +1265,9 @@ export const CollectionRunnerModal: React.FC<Props> = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </>
+    )}
+  </div>
+</div>
   )
 }
