@@ -608,6 +608,9 @@ export interface TranslationSchema {
     snipSetEnvFromResponse: string
     snipResponseTime: string
     snipStatus2xx: string
+    snipHmacSha256: string
+    snipMd5Hash: string
+    snipAesEncrypt: string
   }
   devtoys: {
     title: string
@@ -618,6 +621,7 @@ export interface TranslationSchema {
     base64: string
     jwt: string
     hash: string
+    crypto: string
     uuid: string
     translate: string
     scratchpadDesc: string
@@ -627,6 +631,26 @@ export interface TranslationSchema {
     base64Desc: string
     jwtDesc: string
     hashDesc: string
+    cryptoDesc: string
+    tabHash: string
+    tabHmac: string
+    tabCipher: string
+    tabHex: string
+    hmacKey: string
+    hmacKeyPlaceholder: string
+    cipherMode: string
+    cipherPadding: string
+    cipherKey: string
+    cipherKeyPlaceholder: string
+    cipherIv: string
+    cipherIvPlaceholder: string
+    encrypt: string
+    decrypt: string
+    outputFormat: string
+    inputFormat: string
+    verifySignature: string
+    signatureMatch: string
+    signatureMismatch: string
     uuidDesc: string
     translateDesc: string
     inputPlaceholder: string

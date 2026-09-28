@@ -1,7 +1,19 @@
-/**
- * Utility functions for DevToys / Scratchpad
- * Includes MD5, Web Crypto SHA, UTF-8 Base64, URL encode/decode, and JWT inspection.
- */
+import CryptoJS from 'crypto-js'
+
+export type HashAlgorithm = 'MD5' | 'SHA-1' | 'SHA-224' | 'SHA-256' | 'SHA-384' | 'SHA-512' | 'SHA-3' | 'RIPEMD160'
+export type HmacAlgorithm = 'MD5' | 'SHA-1' | 'SHA-256' | 'SHA-512'
+export type CipherAlgorithm = 'AES' | 'DES' | 'TripleDES'
+export type CipherMode = 'CBC' | 'ECB' | 'CTR' | 'CFB' | 'OFB'
+export type CipherPadding = 'Pkcs7' | 'ZeroPadding' | 'NoPadding' | 'AnsiX923' | 'Iso10126'
+export type OutputEncoding = 'base64' | 'hex'
+
+export interface CipherOptions {
+  mode?: CipherMode
+  padding?: CipherPadding
+  iv?: string
+  outputEncoding?: OutputEncoding
+  inputEncoding?: OutputEncoding
+}
 
 // --- 1. Pure JS MD5 Implementation ---
 function safeAdd(x: number, y: number): number {
@@ -316,3 +328,249 @@ export function formatRelativeTime(targetDate: Date, lang: 'zh-CN' | 'en-US' = '
     return isPast ? `${absSec} second${absSec > 1 ? 's' : ''} ago` : `in ${absSec} second${absSec > 1 ? 's' : ''}`
   }
 }
+
+// --- 6. Extended CryptoJS Hash & HMAC Operations ---
+
+/**
+ * Compute Hash with multiple algorithms using CryptoJS
+ */
+export function computeCryptoHash(text: string, algorithm: HashAlgorithm): string {
+  if (!text) return ''
+  switch (algorithm) {
+    case 'MD5':
+      return CryptoJS.MD5(text).toString()
+    case 'SHA-1':
+      return CryptoJS.SHA1(text).toString()
+    case 'SHA-224':
+      return CryptoJS.SHA224(text).toString()
+    case 'SHA-256':
+      return CryptoJS.SHA256(text).toString()
+    case 'SHA-384':
+      return CryptoJS.SHA384(text).toString()
+    case 'SHA-512':
+      return CryptoJS.SHA512(text).toString()
+    case 'SHA-3':
+      return CryptoJS.SHA3(text).toString()
+    case 'RIPEMD160':
+      return CryptoJS.RIPEMD160(text).toString()
+    default:
+      return CryptoJS.SHA256(text).toString()
+  }
+}
+
+/**
+ * Compute HMAC Signature with output format (hex / base64)
+ */
+export function computeHmac(
+  text: string,
+  secretKey: string,
+  algorithm: HmacAlgorithm = 'SHA-256',
+  outputEncoding: OutputEncoding = 'hex'
+): string {
+  if (!text) return ''
+  let hmacResult: CryptoJS.lib.WordArray
+  switch (algorithm) {
+    case 'MD5':
+      hmacResult = CryptoJS.HmacMD5(text, secretKey)
+      break
+    case 'SHA-1':
+      hmacResult = CryptoJS.HmacSHA1(text, secretKey)
+      break
+    case 'SHA-256':
+      hmacResult = CryptoJS.HmacSHA256(text, secretKey)
+      break
+    case 'SHA-512':
+      hmacResult = CryptoJS.HmacSHA512(text, secretKey)
+      break
+    default:
+      hmacResult = CryptoJS.HmacSHA256(text, secretKey)
+  }
+
+  if (outputEncoding === 'base64') {
+    return hmacResult.toString(CryptoJS.enc.Base64)
+  }
+  return hmacResult.toString(CryptoJS.enc.Hex)
+}
+
+// --- 7. Symmetric Encryption & Decryption (AES / DES / TripleDES) ---
+
+function getCryptoMode(mode?: CipherMode) {
+  switch (mode) {
+    case 'ECB':
+      return CryptoJS.mode.ECB
+    case 'CTR':
+      return CryptoJS.mode.CTR
+    case 'CFB':
+      return CryptoJS.mode.CFB
+    case 'OFB':
+      return CryptoJS.mode.OFB
+    case 'CBC':
+    default:
+      return CryptoJS.mode.CBC
+  }
+}
+
+function getCryptoPadding(padding?: CipherPadding) {
+  switch (padding) {
+    case 'ZeroPadding':
+      return CryptoJS.pad.ZeroPadding
+    case 'NoPadding':
+      return CryptoJS.pad.NoPadding
+    case 'AnsiX923':
+      return CryptoJS.pad.AnsiX923
+    case 'Iso10126':
+      return CryptoJS.pad.Iso10126
+    case 'Pkcs7':
+    default:
+      return CryptoJS.pad.Pkcs7
+  }
+}
+
+/**
+ * Encrypt plaintext using AES / DES / TripleDES
+ */
+export function encryptCipher(
+  plainText: string,
+  keyText: string,
+  algorithm: CipherAlgorithm = 'AES',
+  options: CipherOptions = {}
+): string {
+  if (!plainText) return ''
+  const key = CryptoJS.enc.Utf8.parse(keyText)
+  const cipherConfig: any = {
+    mode: getCryptoMode(options.mode),
+    padding: getCryptoPadding(options.padding)
+  }
+
+  if (options.mode !== 'ECB' && options.iv) {
+    cipherConfig.iv = CryptoJS.enc.Utf8.parse(options.iv)
+  }
+
+  let encrypted: CryptoJS.lib.CipherParams
+  if (algorithm === 'DES') {
+    encrypted = CryptoJS.DES.encrypt(plainText, key, cipherConfig)
+  } else if (algorithm === 'TripleDES') {
+    encrypted = CryptoJS.TripleDES.encrypt(plainText, key, cipherConfig)
+  } else {
+    encrypted = CryptoJS.AES.encrypt(plainText, key, cipherConfig)
+  }
+
+  if (options.outputEncoding === 'hex') {
+    return encrypted.ciphertext.toString(CryptoJS.enc.Hex)
+  }
+  return encrypted.toString() // Default Base64
+}
+
+/**
+ * Decrypt ciphertext using AES / DES / TripleDES
+ */
+export function decryptCipher(
+  cipherText: string,
+  keyText: string,
+  algorithm: CipherAlgorithm = 'AES',
+  options: CipherOptions = {}
+): string {
+  if (!cipherText) return ''
+  const key = CryptoJS.enc.Utf8.parse(keyText)
+  const cipherConfig: any = {
+    mode: getCryptoMode(options.mode),
+    padding: getCryptoPadding(options.padding)
+  }
+
+  if (options.mode !== 'ECB' && options.iv) {
+    cipherConfig.iv = CryptoJS.enc.Utf8.parse(options.iv)
+  }
+
+  let cipherParams: CryptoJS.lib.CipherParams | string = cipherText
+  if (options.inputEncoding === 'hex') {
+    const ciphertext = CryptoJS.enc.Hex.parse(cipherText)
+    cipherParams = CryptoJS.lib.CipherParams.create({ ciphertext })
+  }
+
+  let decrypted: CryptoJS.lib.WordArray
+  if (algorithm === 'DES') {
+    decrypted = CryptoJS.DES.decrypt(cipherParams as any, key, cipherConfig)
+  } else if (algorithm === 'TripleDES') {
+    decrypted = CryptoJS.TripleDES.decrypt(cipherParams as any, key, cipherConfig)
+  } else {
+    decrypted = CryptoJS.AES.decrypt(cipherParams as any, key, cipherConfig)
+  }
+
+  const result = decrypted.toString(CryptoJS.enc.Utf8)
+  if (!result && cipherText.length > 0) {
+    throw new Error('Decryption failed: invalid key, IV, or corrupted ciphertext')
+  }
+  return result
+}
+
+// --- 8. Encoding Utilities (Hex <-> Utf8 <-> Base64) ---
+
+export function textToHex(text: string): string {
+  if (!text) return ''
+  return CryptoJS.enc.Hex.stringify(CryptoJS.enc.Utf8.parse(text))
+}
+
+export function hexToText(hex: string): string {
+  if (!hex) return ''
+  const cleanHex = hex.replace(/\s+/g, '')
+  return CryptoJS.enc.Utf8.stringify(CryptoJS.enc.Hex.parse(cleanHex))
+}
+
+export function base64ToHex(b64: string): string {
+  if (!b64) return ''
+  return CryptoJS.enc.Hex.stringify(CryptoJS.enc.Base64.parse(b64.trim()))
+}
+
+export function hexToBase64(hex: string): string {
+  if (!hex) return ''
+  const cleanHex = hex.replace(/\s+/g, '')
+  return CryptoJS.enc.Base64.stringify(CryptoJS.enc.Hex.parse(cleanHex))
+}
+
+// --- 9. Script Sandbox Helper Object ---
+
+export interface CryptoHelper {
+  md5: (text: string) => string
+  sha1: (text: string) => string
+  sha256: (text: string) => string
+  sha512: (text: string) => string
+  hmacMd5: (text: string, secret: string, outputFormat?: OutputEncoding) => string
+  hmacSha1: (text: string, secret: string, outputFormat?: OutputEncoding) => string
+  hmacSha256: (text: string, secret: string, outputFormat?: OutputEncoding) => string
+  hmacSha512: (text: string, secret: string, outputFormat?: OutputEncoding) => string
+  aesEncrypt: (text: string, key: string, options?: CipherOptions) => string
+  aesDecrypt: (ciphertext: string, key: string, options?: CipherOptions) => string
+  base64Encode: (text: string, urlSafe?: boolean) => string
+  base64Decode: (encoded: string, urlSafe?: boolean) => string
+  hexEncode: (text: string) => string
+  hexDecode: (hex: string) => string
+}
+
+/**
+ * Creates a lightweight, developer-friendly crypto object for pre-request / test scripts
+ */
+export function createCryptoHelper(): CryptoHelper {
+  return {
+    md5: (text: string) => CryptoJS.MD5(text).toString(),
+    sha1: (text: string) => CryptoJS.SHA1(text).toString(),
+    sha256: (text: string) => CryptoJS.SHA256(text).toString(),
+    sha512: (text: string) => CryptoJS.SHA512(text).toString(),
+    hmacMd5: (text: string, secret: string, outputFormat: OutputEncoding = 'hex') =>
+      computeHmac(text, secret, 'MD5', outputFormat),
+    hmacSha1: (text: string, secret: string, outputFormat: OutputEncoding = 'hex') =>
+      computeHmac(text, secret, 'SHA-1', outputFormat),
+    hmacSha256: (text: string, secret: string, outputFormat: OutputEncoding = 'hex') =>
+      computeHmac(text, secret, 'SHA-256', outputFormat),
+    hmacSha512: (text: string, secret: string, outputFormat: OutputEncoding = 'hex') =>
+      computeHmac(text, secret, 'SHA-512', outputFormat),
+    aesEncrypt: (text: string, key: string, options?: CipherOptions) =>
+      encryptCipher(text, key, 'AES', options),
+    aesDecrypt: (ciphertext: string, key: string, options?: CipherOptions) =>
+      decryptCipher(ciphertext, key, 'AES', options),
+    base64Encode: (text: string, urlSafe = false) => encodeBase64(text, urlSafe),
+    base64Decode: (encoded: string, urlSafe = false) => decodeBase64(encoded, urlSafe),
+    hexEncode: (text: string) => textToHex(text),
+    hexDecode: (hex: string) => hexToText(hex)
+  }
+}
+

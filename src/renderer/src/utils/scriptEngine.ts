@@ -1,4 +1,6 @@
 import { RequestItem, ResponseData, TestResultItem, KeyValueItem, Environment } from '../types'
+import CryptoJS from 'crypto-js'
+import { createCryptoHelper } from './cryptoUtils'
 
 export interface ScriptExecutionContext {
   request: RequestItem
@@ -204,8 +206,9 @@ export function executePreRequestScript(
   }
 
   try {
-    const sandboxFn = new Function('pm', 'console', 'btoa', 'atob', scriptCode)
-    sandboxFn(pm, customConsole, window.btoa.bind(window), window.atob.bind(window))
+    const cryptoHelper = createCryptoHelper()
+    const sandboxFn = new Function('pm', 'console', 'btoa', 'atob', 'CryptoJS', 'crypto', scriptCode)
+    sandboxFn(pm, customConsole, window.btoa.bind(window), window.atob.bind(window), CryptoJS, cryptoHelper)
 
     result.modifiedRequest = {
       url: currentUrl,
@@ -337,8 +340,9 @@ export function executeTestScript(
   }
 
   try {
-    const sandboxFn = new Function('pm', 'console', 'btoa', 'atob', scriptCode)
-    sandboxFn(pm, customConsole, window.btoa.bind(window), window.atob.bind(window))
+    const cryptoHelper = createCryptoHelper()
+    const sandboxFn = new Function('pm', 'console', 'btoa', 'atob', 'CryptoJS', 'crypto', scriptCode)
+    sandboxFn(pm, customConsole, window.btoa.bind(window), window.atob.bind(window), CryptoJS, cryptoHelper)
   } catch (err: any) {
     result.error = err?.message || String(err)
     result.logs.push(`[Script Error]: ${result.error}`)

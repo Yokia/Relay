@@ -39,6 +39,18 @@ export const ScriptEditor: React.FC<Props> = ({
     {
       title: t('script.snipAddHeader') || 'Dynamically add request header',
       code: `pm.request.headers.add({ key: "X-Request-Id", value: "req-" + Date.now() });\n`
+    },
+    {
+      title: t('script.snipHmacSha256') || 'Generate HMAC-SHA256 signature',
+      code: `// Generate HMAC-SHA256 signature (built-in crypto or CryptoJS)\nconst timestamp = Date.now().toString();\nconst secretKey = pm.environment.get("appSecret") || "your_secret_key";\nconst signPayload = timestamp + "&" + pm.request.url.get();\nconst signature = crypto.hmacSha256(signPayload, secretKey);\n\npm.request.headers.upsert({ key: "X-Timestamp", value: timestamp });\npm.request.headers.upsert({ key: "X-Signature", value: signature });\nconsole.log("Calculated HMAC-SHA256 signature:", signature);\n`
+    },
+    {
+      title: t('script.snipMd5Hash') || 'Compute MD5 / SHA256 hash',
+      code: `// Compute hash using crypto or CryptoJS\nconst bodyStr = pm.request.body.get() || "";\nconst bodyMd5 = crypto.md5(bodyStr);\nconst bodySha256 = crypto.sha256(bodyStr);\nconsole.log("Body MD5:", bodyMd5, "SHA-256:", bodySha256);\npm.request.headers.upsert({ key: "Content-MD5", value: bodyMd5 });\n`
+    },
+    {
+      title: t('script.snipAesEncrypt') || 'AES encrypt request body',
+      code: `// Encrypt body using AES-CBC (Pkcs7)\nconst plainBody = pm.request.body.get() || "";\nconst aesKey = pm.environment.get("aesKey") || "1234567890123456";\nconst encrypted = crypto.aesEncrypt(plainBody, aesKey, { mode: "CBC" });\npm.request.body.set(encrypted);\nconsole.log("Encrypted request body:", encrypted);\n`
     }
   ]
 

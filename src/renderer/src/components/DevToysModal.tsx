@@ -24,7 +24,11 @@ import {
   Settings,
   Loader2,
   Sun,
-  Moon
+  Moon,
+  Key,
+  Lock,
+  Unlock,
+  Shield
 } from 'lucide-react'
 import { useI18n } from '../i18n'
 import { useTheme } from '../theme'
@@ -36,7 +40,21 @@ import {
   parseJwt,
   ParsedJwt,
   formatDateTime,
-  formatRelativeTime
+  formatRelativeTime,
+  computeCryptoHash,
+  computeHmac,
+  encryptCipher,
+  decryptCipher,
+  textToHex,
+  hexToText,
+  base64ToHex,
+  hexToBase64,
+  HashAlgorithm,
+  HmacAlgorithm,
+  CipherAlgorithm,
+  CipherMode,
+  CipherPadding,
+  OutputEncoding
 } from '../utils/cryptoUtils'
 import {
   unescapeJsonString,
@@ -419,8 +437,8 @@ export const DevToysContent: React.FC<DevToysContentProps> = ({ onClose, onToast
           <NavItem
             active={activeTab === 'hash'}
             onClick={() => setActiveTab('hash')}
-            icon={<Hash className="w-4 h-4 text-cyan-400" />}
-            label={t('devtoys.hash')}
+            icon={<Key className="w-4 h-4 text-cyan-400" />}
+            label={t('devtoys.crypto')}
           />
           <NavItem
             active={activeTab === 'uuid'}
@@ -439,7 +457,7 @@ export const DevToysContent: React.FC<DevToysContentProps> = ({ onClose, onToast
           {activeTab === 'translate' && <TranslateTool onToast={onToast} />}
           {activeTab === 'base64' && <Base64Tool onToast={onToast} />}
           {activeTab === 'jwt' && <JwtTool onToast={onToast} />}
-          {activeTab === 'hash' && <HashTool onToast={onToast} />}
+          {activeTab === 'hash' && <CryptoTool onToast={onToast} />}
           {activeTab === 'uuid' && <UuidTool onToast={onToast} />}
         </div>
       </div>
@@ -1558,106 +1576,667 @@ const JwtTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error') =>
 }
 
 // ==========================================
-// 7. Hash Tool (哈希计算器)
+// 7. Crypto & Hash Tools (加解密与哈希工具)
 // ==========================================
-const HashTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error') => void }> = ({
+type CryptoSubTab = 'hash' | 'hmac' | 'cipher' | 'hex'
+
+const CryptoTool: React.FC<{ onToast?: (msg: string, type?: 'success' | 'error') => void }> = ({
   onToast
 }) => {
   const { t } = useI18n()
-  const [text, setText] = useState('')
-  const [upperCase, setUpperCase] = useState(false)
-  const [hashes, setHashes] = useState<{
-    md5: string
-    sha1: string
-    sha256: string
-    sha512: string
-  }>({
-    md5: '',
-    sha1: '',
-    sha256: '',
-    sha512: ''
+  const [subTab, setSubTab] = useState<CryptoSubTab>('hash')
+
+  // --- 1. Hash State ---
+  const [hashInput, setHashInput] = useState('')
+  const [hashUpperCase, setHashUpperCase] = useState(false)
+  const [hashes, setHashes] = useState<Record<string, string>>({
+    MD5: '',
+    'SHA-1': '',
+    'SHA-256': '',
+    'SHA-512': '',
+    'SHA-3': '',
+    RIPEMD160: ''
   })
 
   useEffect(() => {
-    if (!text) {
-      setHashes({ md5: '', sha1: '', sha256: '', sha512: '' })
+    if (!hashInput) {
+      setHashes({
+        MD5: '',
+        'SHA-1': '',
+        'SHA-256': '',
+        'SHA-512': '',
+        'SHA-3': '',
+        RIPEMD160: ''
+      })
       return
     }
 
-    let active = true
-    const calculate = async () => {
-      const md5 = computeMD5(text)
-      const sha1 = await computeHash(text, 'SHA-1')
-      const sha256 = await computeHash(text, 'SHA-256')
-      const sha512 = await computeHash(text, 'SHA-512')
-
-      if (active) {
-        setHashes({ md5, sha1, sha256, sha512 })
-      }
+    try {
+      setHashes({
+        MD5: computeCryptoHash(hashInput, 'MD5'),
+        'SHA-1': computeCryptoHash(hashInput, 'SHA-1'),
+        'SHA-256': computeCryptoHash(hashInput, 'SHA-256'),
+        'SHA-512': computeCryptoHash(hashInput, 'SHA-512'),
+        'SHA-3': computeCryptoHash(hashInput, 'SHA-3'),
+        RIPEMD160: computeCryptoHash(hashInput, 'RIPEMD160')
+      })
+    } catch {
+      // ignore
     }
-    calculate()
+  }, [hashInput])
 
-    return () => {
-      active = false
-    }
-  }, [text])
-
-  const copyHash = (val: string) => {
+  const copyHashValue = (val: string) => {
     if (!val) return
-    const formatted = upperCase ? val.toUpperCase() : val.toLowerCase()
+    const formatted = hashUpperCase ? val.toUpperCase() : val.toLowerCase()
     navigator.clipboard.writeText(formatted)
     onToast?.(t('devtoys.copied'), 'success')
   }
 
+  // --- 2. HMAC State ---
+  const [hmacMessage, setHmacMessage] = useState('')
+  const [hmacKey, setHmacKey] = useState('')
+  const [hmacAlgo, setHmacAlgo] = useState<HmacAlgorithm>('SHA-256')
+  const [hmacFormat, setHmacFormat] = useState<OutputEncoding>('hex')
+  const [hmacUpper, setHmacUpper] = useState(false)
+  const [verifySigInput, setVerifySigInput] = useState('')
+
+  const calculatedHmac = useMemo(() => {
+    if (!hmacMessage || !hmacKey) return ''
+    try {
+      const res = computeHmac(hmacMessage, hmacKey, hmacAlgo, hmacFormat)
+      return hmacUpper ? res.toUpperCase() : res.toLowerCase()
+    } catch (e: any) {
+      return `Error: ${e?.message || 'HMAC calculation failed'}`
+    }
+  }, [hmacMessage, hmacKey, hmacAlgo, hmacFormat, hmacUpper])
+
+  const isSignatureMatched = useMemo(() => {
+    if (!verifySigInput || !calculatedHmac || calculatedHmac.startsWith('Error:')) return null
+    return verifySigInput.trim().toLowerCase() === calculatedHmac.trim().toLowerCase()
+  }, [verifySigInput, calculatedHmac])
+
+  // --- 3. Cipher (AES/DES) State ---
+  const [cipherDirection, setCipherDirection] = useState<'encrypt' | 'decrypt'>('encrypt')
+  const [cipherAlgo, setCipherAlgo] = useState<CipherAlgorithm>('AES')
+  const [cipherMode, setCipherMode] = useState<CipherMode>('CBC')
+  const [cipherPadding, setCipherPadding] = useState<CipherPadding>('Pkcs7')
+  const [cipherKey, setCipherKey] = useState('1234567890123456')
+  const [cipherIv, setCipherIv] = useState('1234567890123456')
+  const [cipherFormat, setCipherFormat] = useState<OutputEncoding>('base64')
+  const [cipherInput, setCipherInput] = useState('Hello, Relay!')
+  const [cipherOutput, setCipherOutput] = useState('')
+  const [cipherError, setCipherError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!cipherInput || !cipherKey) {
+      setCipherOutput('')
+      setCipherError(null)
+      return
+    }
+
+    try {
+      if (cipherDirection === 'encrypt') {
+        const encrypted = encryptCipher(cipherInput, cipherKey, cipherAlgo, {
+          mode: cipherMode,
+          padding: cipherPadding,
+          iv: cipherMode === 'ECB' ? undefined : cipherIv,
+          outputEncoding: cipherFormat
+        })
+        setCipherOutput(encrypted)
+        setCipherError(null)
+      } else {
+        const decrypted = decryptCipher(cipherInput, cipherKey, cipherAlgo, {
+          mode: cipherMode,
+          padding: cipherPadding,
+          iv: cipherMode === 'ECB' ? undefined : cipherIv,
+          inputEncoding: cipherFormat
+        })
+        setCipherOutput(decrypted)
+        setCipherError(null)
+      }
+    } catch (err: any) {
+      setCipherOutput('')
+      setCipherError(err?.message || 'Cipher operation failed')
+    }
+  }, [cipherDirection, cipherAlgo, cipherMode, cipherPadding, cipherKey, cipherIv, cipherFormat, cipherInput])
+
+  const handleSwapCipher = () => {
+    if (!cipherOutput) return
+    setCipherInput(cipherOutput)
+    setCipherDirection((prev) => (prev === 'encrypt' ? 'decrypt' : 'encrypt'))
+  }
+
+  // --- 4. Hex State ---
+  const [hexTextInput, setHexTextInput] = useState('Hello Relay')
+  const [hexHexOutput, setHexHexOutput] = useState('')
+  const [hexBase64Input, setHexBase64Input] = useState('')
+  const [hexFromB64Output, setHexFromB64Output] = useState('')
+
+  useEffect(() => {
+    setHexHexOutput(textToHex(hexTextInput))
+  }, [hexTextInput])
+
+  useEffect(() => {
+    if (!hexBase64Input) {
+      setHexFromB64Output('')
+      return
+    }
+    try {
+      setHexFromB64Output(base64ToHex(hexBase64Input))
+    } catch {
+      setHexFromB64Output('')
+    }
+  }, [hexBase64Input])
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold text-slate-400">Input String</span>
-          <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300">
-            <input
-              type="checkbox"
-              checked={upperCase}
-              onChange={(e) => setUpperCase(e.target.checked)}
-              className="rounded text-sky-500 focus:ring-sky-500"
-            />
-            <span>{t('devtoys.upperCase')}</span>
-          </label>
-        </div>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={t('devtoys.inputPlaceholder')}
-          className="h-24 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none"
-        />
+      {/* Sub-Tabs Pills */}
+      <div className="flex items-center gap-1.5 p-1 bg-slate-950/80 border border-slate-800 rounded-xl w-fit">
+        <button
+          type="button"
+          onClick={() => setSubTab('hash')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+            subTab === 'hash'
+              ? 'bg-sky-500 text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+          }`}
+        >
+          {t('devtoys.tabHash')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubTab('hmac')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+            subTab === 'hmac'
+              ? 'bg-sky-500 text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+          }`}
+        >
+          {t('devtoys.tabHmac')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubTab('cipher')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+            subTab === 'cipher'
+              ? 'bg-sky-500 text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+          }`}
+        >
+          {t('devtoys.tabCipher')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubTab('hex')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+            subTab === 'hex'
+              ? 'bg-sky-500 text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+          }`}
+        >
+          {t('devtoys.tabHex')}
+        </button>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <HashRow
-          algorithm="MD5"
-          value={hashes.md5}
-          upperCase={upperCase}
-          onCopy={() => copyHash(hashes.md5)}
-        />
-        <HashRow
-          algorithm="SHA-1"
-          value={hashes.sha1}
-          upperCase={upperCase}
-          onCopy={() => copyHash(hashes.sha1)}
-        />
-        <HashRow
-          algorithm="SHA-256"
-          value={hashes.sha256}
-          upperCase={upperCase}
-          onCopy={() => copyHash(hashes.sha256)}
-        />
-        <HashRow
-          algorithm="SHA-512"
-          value={hashes.sha512}
-          upperCase={upperCase}
-          onCopy={() => copyHash(hashes.sha512)}
-        />
-      </div>
+      {/* --- View 1: Hash Tool --- */}
+      {subTab === 'hash' && (
+        <div className="flex flex-col gap-4 animate-in fade-in duration-100">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-slate-400">Input String</span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setHashInput('')}
+                  className="text-xs text-slate-500 hover:text-rose-400 transition-colors"
+                >
+                  {t('devtoys.clear')}
+                </button>
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={hashUpperCase}
+                    onChange={(e) => setHashUpperCase(e.target.checked)}
+                    className="rounded text-sky-500 focus:ring-sky-500"
+                  />
+                  <span>{t('devtoys.upperCase')}</span>
+                </label>
+              </div>
+            </div>
+            <textarea
+              value={hashInput}
+              onChange={(e) => setHashInput(e.target.value)}
+              placeholder={t('devtoys.inputPlaceholder')}
+              className="h-24 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {Object.entries(hashes).map(([algo, val]) => (
+              <HashRow
+                key={algo}
+                algorithm={algo}
+                value={val}
+                upperCase={hashUpperCase}
+                onCopy={() => copyHashValue(val)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* --- View 2: HMAC Tool --- */}
+      {subTab === 'hmac' && (
+        <div className="flex flex-col gap-4 animate-in fade-in duration-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Message input */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-400">Message / Payload</span>
+              <textarea
+                value={hmacMessage}
+                onChange={(e) => setHmacMessage(e.target.value)}
+                placeholder="Enter string to sign (e.g. timestamp + request path)..."
+                className="h-24 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none"
+              />
+            </div>
+
+            {/* Secret key and controls */}
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px] font-semibold text-slate-400">{t('devtoys.hmacKey')}</span>
+                <div className="relative flex items-center">
+                  <Key className="w-3.5 h-3.5 text-slate-500 absolute left-3" />
+                  <input
+                    type="text"
+                    value={hmacKey}
+                    onChange={(e) => setHmacKey(e.target.value)}
+                    placeholder={t('devtoys.hmacKeyPlaceholder')}
+                    className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-8 pr-3 py-2 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+                  />
+                </div>
+              </div>
+
+              {/* Options */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-1">Algorithm</label>
+                  <select
+                    value={hmacAlgo}
+                    onChange={(e) => setHmacAlgo(e.target.value as HmacAlgorithm)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+                  >
+                    <option value="SHA-256">HMAC-SHA256 (Standard)</option>
+                    <option value="SHA-1">HMAC-SHA1</option>
+                    <option value="SHA-512">HMAC-SHA512</option>
+                    <option value="MD5">HMAC-MD5</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] text-slate-400 block mb-1">{t('devtoys.outputFormat')}</label>
+                  <div className="flex items-center gap-2 h-8">
+                    <label className="flex items-center gap-1 cursor-pointer text-slate-300">
+                      <input
+                        type="radio"
+                        name="hmacFormat"
+                        checked={hmacFormat === 'hex'}
+                        onChange={() => setHmacFormat('hex')}
+                        className="text-sky-500 focus:ring-sky-500"
+                      />
+                      <span>Hex</span>
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer text-slate-300">
+                      <input
+                        type="radio"
+                        name="hmacFormat"
+                        checked={hmacFormat === 'base64'}
+                        onChange={() => setHmacFormat('base64')}
+                        className="text-sky-500 focus:ring-sky-500"
+                      />
+                      <span>Base64</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Generated Result */}
+          <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3">
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="text-[10px] font-bold text-sky-400 uppercase tracking-wider">
+                Generated {hmacAlgo} Signature
+              </span>
+              <span className="font-mono text-xs text-slate-200 break-all select-all">
+                {calculatedHmac || '—'}
+              </span>
+            </div>
+            <button
+              type="button"
+              disabled={!calculatedHmac || calculatedHmac.startsWith('Error:')}
+              onClick={() => {
+                navigator.clipboard.writeText(calculatedHmac)
+                onToast?.(t('devtoys.copied'), 'success')
+              }}
+              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-slate-200 disabled:opacity-30 transition-colors shrink-0 cursor-pointer"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Verify Signature Section */}
+          <div className="bg-slate-950/40 border border-slate-800/80 rounded-xl p-3 flex flex-col gap-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-[11px] font-semibold text-slate-400">{t('devtoys.verifySignature')}</span>
+              {isSignatureMatched !== null && (
+                <span
+                  className={`flex items-center gap-1 text-[11px] font-medium ${
+                    isSignatureMatched ? 'text-emerald-400' : 'text-rose-400'
+                  }`}
+                >
+                  {isSignatureMatched ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{t('devtoys.signatureMatch')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      <span>{t('devtoys.signatureMismatch')}</span>
+                    </>
+                  )}
+                </span>
+              )}
+            </div>
+            <input
+              type="text"
+              value={verifySigInput}
+              onChange={(e) => setVerifySigInput(e.target.value)}
+              placeholder="Paste signature here to verify match..."
+              className="w-full bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-1.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* --- View 3: Symmetric Cipher (AES/DES) Tool --- */}
+      {subTab === 'cipher' && (
+        <div className="flex flex-col gap-4 animate-in fade-in duration-100">
+          {/* Controls Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 bg-slate-950/60 border border-slate-800 rounded-xl p-3 text-xs">
+            <div>
+              <label className="text-[10px] text-slate-400 block mb-1">Direction</label>
+              <div className="flex items-center gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setCipherDirection('encrypt')}
+                  className={`flex-1 py-1 rounded text-center font-medium transition-colors ${
+                    cipherDirection === 'encrypt' ? 'bg-sky-500 text-white' : 'text-slate-400'
+                  }`}
+                >
+                  {t('devtoys.encrypt')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCipherDirection('decrypt')}
+                  className={`flex-1 py-1 rounded text-center font-medium transition-colors ${
+                    cipherDirection === 'decrypt' ? 'bg-sky-500 text-white' : 'text-slate-400'
+                  }`}
+                >
+                  {t('devtoys.decrypt')}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-slate-400 block mb-1">Algorithm</label>
+              <select
+                value={cipherAlgo}
+                onChange={(e) => setCipherAlgo(e.target.value as CipherAlgorithm)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+              >
+                <option value="AES">AES (128/192/256)</option>
+                <option value="DES">DES</option>
+                <option value="TripleDES">TripleDES (3DES)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-slate-400 block mb-1">{t('devtoys.cipherMode')}</label>
+              <select
+                value={cipherMode}
+                onChange={(e) => setCipherMode(e.target.value as CipherMode)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+              >
+                <option value="CBC">CBC (Standard)</option>
+                <option value="ECB">ECB (No IV)</option>
+                <option value="CTR">CTR</option>
+                <option value="CFB">CFB</option>
+                <option value="OFB">OFB</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-slate-400 block mb-1">{t('devtoys.cipherPadding')}</label>
+              <select
+                value={cipherPadding}
+                onChange={(e) => setCipherPadding(e.target.value as CipherPadding)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+              >
+                <option value="Pkcs7">PKCS#7 / PKCS#5</option>
+                <option value="ZeroPadding">Zero Padding</option>
+                <option value="NoPadding">No Padding</option>
+                <option value="AnsiX923">AnsiX923</option>
+                <option value="Iso10126">Iso10126</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] text-slate-400 block mb-1">
+                {cipherDirection === 'encrypt' ? t('devtoys.outputFormat') : t('devtoys.inputFormat')}
+              </label>
+              <div className="flex items-center gap-2 h-7">
+                <label className="flex items-center gap-1 cursor-pointer text-slate-300">
+                  <input
+                    type="radio"
+                    name="cipherFormat"
+                    checked={cipherFormat === 'base64'}
+                    onChange={() => setCipherFormat('base64')}
+                    className="text-sky-500 focus:ring-sky-500"
+                  />
+                  <span>Base64</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer text-slate-300">
+                  <input
+                    type="radio"
+                    name="cipherFormat"
+                    checked={cipherFormat === 'hex'}
+                    onChange={() => setCipherFormat('hex')}
+                    className="text-sky-500 focus:ring-sky-500"
+                  />
+                  <span>Hex</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Key and IV Inputs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] font-semibold text-slate-400">{t('devtoys.cipherKey')}</span>
+              <div className="relative flex items-center">
+                <Lock className="w-3.5 h-3.5 text-slate-500 absolute left-3" />
+                <input
+                  type="text"
+                  value={cipherKey}
+                  onChange={(e) => setCipherKey(e.target.value)}
+                  placeholder={t('devtoys.cipherKeyPlaceholder')}
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <span className="text-[11px] font-semibold text-slate-400">
+                {t('devtoys.cipherIv')} {cipherMode === 'ECB' && '(Not needed for ECB)'}
+              </span>
+              <div className="relative flex items-center">
+                <Shield className="w-3.5 h-3.5 text-slate-500 absolute left-3" />
+                <input
+                  type="text"
+                  disabled={cipherMode === 'ECB'}
+                  value={cipherMode === 'ECB' ? '' : cipherIv}
+                  onChange={(e) => setCipherIv(e.target.value)}
+                  placeholder={cipherMode === 'ECB' ? 'ECB mode ignores IV' : t('devtoys.cipherIvPlaceholder')}
+                  className="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 disabled:opacity-40"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Dual Panel (Input & Output) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Input Panel */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[11px] font-semibold text-slate-400">
+                  {cipherDirection === 'encrypt' ? 'Plaintext (Input)' : 'Ciphertext (Input)'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCipherInput('')}
+                  className="text-slate-500 hover:text-rose-400 transition-colors"
+                >
+                  {t('devtoys.clear')}
+                </button>
+              </div>
+              <textarea
+                value={cipherInput}
+                onChange={(e) => setCipherInput(e.target.value)}
+                placeholder={cipherDirection === 'encrypt' ? 'Enter text to encrypt...' : 'Enter ciphertext to decrypt...'}
+                className="h-32 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none"
+              />
+            </div>
+
+            {/* Output Panel */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[11px] font-semibold text-slate-400">
+                  {cipherDirection === 'encrypt' ? 'Ciphertext (Output)' : 'Plaintext (Output)'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={!cipherOutput}
+                    onClick={handleSwapCipher}
+                    className="flex items-center gap-1 text-slate-400 hover:text-sky-400 disabled:opacity-30 transition-colors cursor-pointer"
+                    title={t('devtoys.swap')}
+                  >
+                    <ArrowRightLeft className="w-3 h-3" />
+                    <span>{t('devtoys.swap')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!cipherOutput}
+                    onClick={() => {
+                      navigator.clipboard.writeText(cipherOutput)
+                      onToast?.(t('devtoys.copied'), 'success')
+                    }}
+                    className="flex items-center gap-1 text-slate-400 hover:text-sky-400 disabled:opacity-30 transition-colors cursor-pointer"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span>{t('devtoys.copy')}</span>
+                  </button>
+                </div>
+              </div>
+              <div className="relative h-32 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 overflow-y-auto">
+                {cipherError ? (
+                  <div className="flex items-center gap-2 text-rose-400 text-xs">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{cipherError}</span>
+                  </div>
+                ) : (
+                  <pre className="font-mono text-xs text-slate-200 break-all select-all whitespace-pre-wrap">
+                    {cipherOutput || <span className="text-slate-600">{t('devtoys.outputPlaceholder')}</span>}
+                  </pre>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- View 4: Hex Convert Tool --- */}
+      {subTab === 'hex' && (
+        <div className="flex flex-col gap-4 animate-in fade-in duration-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-400">Text &lt;-&gt; Hex</span>
+              <textarea
+                value={hexTextInput}
+                onChange={(e) => setHexTextInput(e.target.value)}
+                placeholder="Enter UTF-8 text..."
+                className="h-24 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[11px] font-semibold text-slate-400">Hex Representation</span>
+                <button
+                  type="button"
+                  disabled={!hexHexOutput}
+                  onClick={() => {
+                    navigator.clipboard.writeText(hexHexOutput)
+                    onToast?.(t('devtoys.copied'), 'success')
+                  }}
+                  className="text-slate-400 hover:text-sky-400 transition-colors"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={hexHexOutput}
+                placeholder="Hex output..."
+                className="h-24 w-full bg-slate-950/60 border border-slate-800 rounded-xl p-3 font-mono text-xs text-sky-400 focus:outline-none resize-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-semibold text-slate-400">Base64 &lt;-&gt; Hex</span>
+              <textarea
+                value={hexBase64Input}
+                onChange={(e) => setHexBase64Input(e.target.value)}
+                placeholder="Enter Base64 string..."
+                className="h-24 w-full bg-slate-950/80 border border-slate-800 rounded-xl p-3 font-mono text-xs text-slate-200 focus:outline-none focus:border-sky-500 resize-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-[11px] font-semibold text-slate-400">Hex from Base64</span>
+                <button
+                  type="button"
+                  disabled={!hexFromB64Output}
+                  onClick={() => {
+                    navigator.clipboard.writeText(hexFromB64Output)
+                    onToast?.(t('devtoys.copied'), 'success')
+                  }}
+                  className="text-slate-400 hover:text-sky-400 transition-colors"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={hexFromB64Output}
+                placeholder="Hex output..."
+                className="h-24 w-full bg-slate-950/60 border border-slate-800 rounded-xl p-3 font-mono text-xs text-purple-400 focus:outline-none resize-none"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
