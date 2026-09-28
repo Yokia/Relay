@@ -892,7 +892,16 @@ export const enUS: TranslationSchema = {
     statsSummary: '{total} messages · In {inCount} ({inSize}) · Out {outCount} ({outSize})',
     newWsRequest: 'New WebSocket Request',
     enterPayloadPlaceholder: 'Enter message text or JSON to send...',
-    addPresetTitle: 'Save WebSocket Message Preset'
+    addPresetTitle: 'Save WebSocket Message Preset',
+    filterBlock: 'Block Filter',
+    filterRulesTitle: 'Message Block Rules',
+    filterRulesDesc: 'Messages matching checked parameters or keywords will be hidden (only checked rules take effect)',
+    filterMasterSwitch: 'Master Switch',
+    addFilterRule: 'Add Filter Rule',
+    filterRulePlaceholder: 'Custom param name or keyword (e.g. ticket)',
+    quickAddTicket: '+ Quick add ticket',
+    noFilterRules: 'No filter rules. Click below to add one.',
+    deleteRule: 'Delete rule'
   },
   helpDoc: helpDocEn
 }

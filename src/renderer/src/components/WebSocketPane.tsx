@@ -21,13 +21,17 @@ import {
   CornerDownLeft,
   Bookmark,
   Plus,
-  RefreshCw
+  RefreshCw,
+  Filter,
+  ChevronDown,
+  EyeOff
 } from 'lucide-react'
 import {
   RequestItem,
   WebSocketTimelineItem,
   WebSocketConnectionStatus,
   WebSocketMessagePreset,
+  WebSocketFilterRule,
   KeyValueItem
 } from '../types'
 import { useI18n } from '../i18n'
@@ -100,6 +104,75 @@ export const WebSocketPane: React.FC<Props> = ({
   const [durationStr, setDurationStr] = useState('00:00')
   const [newPresetName, setNewPresetName] = useState('')
   const [isAddingPreset, setIsAddingPreset] = useState(false)
+  const [showFilterRules, setShowFilterRules] = useState(false)
+  const filterRulesRef = useRef<HTMLDivElement>(null)
+
+  const filterEnabled = !!request.wsConfig?.filterEnabled
+  const filterRules = useMemo(() => request.wsConfig?.filterRules || [], [request.wsConfig?.filterRules])
+  const activeRulesCount = useMemo(
+    () => filterRules.filter((r) => r.enabled && r.pattern.trim()).length,
+    [filterRules]
+  )
+
+  // Close filter rules popover when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterRulesRef.current && !filterRulesRef.current.contains(event.target as Node)) {
+        setShowFilterRules(false)
+      }
+    }
+    if (showFilterRules) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showFilterRules])
+
+  const handleToggleFilterEnabled = (val?: boolean) => {
+    const nextVal = typeof val === 'boolean' ? val : !filterEnabled
+    onChange({
+      wsConfig: {
+        ...request.wsConfig,
+        filterEnabled: nextVal
+      }
+    })
+  }
+
+  const handleAddRule = (initialPattern = '') => {
+    const newRule: WebSocketFilterRule = {
+      id: 'rule_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+      pattern: initialPattern,
+      enabled: true
+    }
+    onChange({
+      wsConfig: {
+        ...request.wsConfig,
+        filterEnabled: true,
+        filterRules: [...filterRules, newRule]
+      }
+    })
+  }
+
+  const handleUpdateRule = (id: string, updates: Partial<WebSocketFilterRule>) => {
+    const updated = filterRules.map((r) => (r.id === id ? { ...r, ...updates } : r))
+    onChange({
+      wsConfig: {
+        ...request.wsConfig,
+        filterRules: updated
+      }
+    })
+  }
+
+  const handleDeleteRule = (id: string) => {
+    const updated = filterRules.filter((r) => r.id !== id)
+    onChange({
+      wsConfig: {
+        ...request.wsConfig,
+        filterRules: updated
+      }
+    })
+  }
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const timelineContainerRef = useRef<HTMLDivElement>(null)
@@ -232,17 +305,67 @@ export const WebSocketPane: React.FC<Props> = ({
 
   // Filter messages
   const filteredMessages = useMemo(() => {
+    const activeRules = filterEnabled
+      ? filterRules.filter((r) => r.enabled && r.pattern.trim().length > 0)
+      : []
+
     return messages.filter((m) => {
       if (directionFilter !== 'all' && m.direction !== directionFilter) {
         return false
       }
       if (filterText.trim()) {
         const query = filterText.toLowerCase()
-        return (m.data || '').toLowerCase().includes(query)
+        if (!(m.data || '').toLowerCase().includes(query)) {
+          return false
+        }
       }
+
+      // 屏蔽过滤规则（针对包含内容的报文）
+      if (activeRules.length > 0 && m.data) {
+        const rawData = m.data
+        const lowerData = rawData.toLowerCase()
+
+        const isBlocked = activeRules.some((rule) => {
+          const pat = rule.pattern.trim().toLowerCase()
+          if (!pat) return false
+
+          // 1. 文本子串匹配（如包含 ticket 或 "ticket"）
+          if (lowerData.includes(pat)) {
+            return true
+          }
+
+          // 2. 深度 JSON 键名/属性名匹配
+          try {
+            const parsed = JSON.parse(rawData)
+            const matchInJson = (obj: any, targetKey: string): boolean => {
+              if (!obj || typeof obj !== 'object') return false
+              if (Array.isArray(obj)) {
+                return obj.some((item) => matchInJson(item, targetKey))
+              }
+              for (const key of Object.keys(obj)) {
+                if (key.toLowerCase() === targetKey) return true
+                if (typeof obj[key] === 'object' && matchInJson(obj[key], targetKey)) return true
+              }
+              return false
+            }
+            if (matchInJson(parsed, pat)) {
+              return true
+            }
+          } catch {
+            // Not valid JSON
+          }
+
+          return false
+        })
+
+        if (isBlocked) {
+          return false
+        }
+      }
+
       return true
     })
-  }, [messages, directionFilter, filterText])
+  }, [messages, directionFilter, filterText, filterEnabled, filterRules])
 
   // Save current composer payload as preset
   const handleSavePreset = () => {
@@ -815,6 +938,147 @@ export const WebSocketPane: React.FC<Props> = ({
               </button>
             </div>
 
+            {/* Custom Parameter Block Filter Popover and Toggle */}
+            <div className="relative" ref={filterRulesRef}>
+              <div
+                className={`flex items-center rounded border transition-colors ${
+                  filterEnabled && activeRulesCount > 0
+                    ? 'bg-amber-500/10 border-amber-500/50 text-amber-300'
+                    : 'bg-slate-950 border-slate-800 text-slate-400'
+                }`}
+              >
+                {/* Master switch shortcut */}
+                <button
+                  type="button"
+                  onClick={() => handleToggleFilterEnabled(!filterEnabled)}
+                  className={`flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium transition-colors ${
+                    filterEnabled
+                      ? 'text-amber-400 font-semibold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title={filterEnabled ? '快捷关闭消息过滤' : '快捷开启消息过滤'}
+                >
+                  <Filter className="w-3 h-3 shrink-0" />
+                  <span>{t('websocket.filterBlock')}</span>
+                  {filterRules.length > 0 && (
+                    <span
+                      className={`text-[10px] px-1 rounded font-mono ${
+                        filterEnabled && activeRulesCount > 0
+                          ? 'bg-amber-500/20 text-amber-300'
+                          : 'bg-slate-800 text-slate-500'
+                      }`}
+                    >
+                      {filterEnabled ? `${activeRulesCount}` : '关'}
+                    </span>
+                  )}
+                </button>
+
+                <div className="w-[1px] h-3.5 bg-slate-800" />
+
+                {/* Dropdown toggle for rules config */}
+                <button
+                  type="button"
+                  onClick={() => setShowFilterRules(!showFilterRules)}
+                  className={`px-1.5 py-1 text-slate-400 hover:text-slate-200 transition-colors ${
+                    showFilterRules ? 'bg-slate-800 text-slate-100' : ''
+                  }`}
+                  title="管理自定义参数过滤规则"
+                >
+                  <ChevronDown className={`w-3 h-3 transition-transform ${showFilterRules ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
+
+              {/* Filter rules popover */}
+              {showFilterRules && (
+                <div className="absolute right-0 top-full mt-1.5 z-50 w-80 bg-slate-900 border border-slate-700/80 rounded-lg shadow-2xl p-3 flex flex-col gap-2.5 backdrop-blur-md">
+                  {/* Header & Master Toggle */}
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      <Filter className="w-4 h-4 text-amber-400" />
+                      <span className="text-xs font-semibold text-slate-200">
+                        {t('websocket.filterRulesTitle')}
+                      </span>
+                    </div>
+
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs select-none">
+                      <span className="text-[11px] text-slate-400">
+                        {t('websocket.filterMasterSwitch')}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={filterEnabled}
+                        onChange={(e) => handleToggleFilterEnabled(e.target.checked)}
+                        className="accent-amber-500 rounded cursor-pointer"
+                      />
+                    </label>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 leading-tight">
+                    {t('websocket.filterRulesDesc')}
+                  </p>
+
+                  {/* Rules list */}
+                  <div className="max-h-52 overflow-y-auto flex flex-col gap-1.5 pr-0.5">
+                    {filterRules.length === 0 ? (
+                      <div className="text-center py-4 text-xs text-slate-500">
+                        {t('websocket.noFilterRules')}
+                      </div>
+                    ) : (
+                      filterRules.map((rule) => (
+                        <div
+                          key={rule.id}
+                          className="flex items-center gap-2 bg-slate-950/80 border border-slate-800/80 rounded px-2 py-1"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={rule.enabled}
+                            onChange={(e) => handleUpdateRule(rule.id, { enabled: e.target.checked })}
+                            className="accent-amber-500 rounded cursor-pointer shrink-0"
+                            title="勾选此项才过滤"
+                          />
+                          <input
+                            type="text"
+                            value={rule.pattern}
+                            onChange={(e) => handleUpdateRule(rule.id, { pattern: e.target.value })}
+                            placeholder={t('websocket.filterRulePlaceholder')}
+                            className="bg-transparent border-none outline-none text-xs text-slate-200 placeholder-slate-600 flex-1 min-w-0"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRule(rule.id)}
+                            className="text-slate-500 hover:text-rose-400 p-0.5 transition-colors"
+                            title={t('websocket.deleteRule')}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Bottom Actions */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => handleAddRule('')}
+                      className="flex items-center gap-1 text-teal-400 hover:text-teal-300 font-medium"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{t('websocket.addFilterRule')}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddRule('ticket')}
+                      className="text-slate-400 hover:text-amber-300 transition-colors"
+                    >
+                      {t('websocket.quickAddTicket')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Auto scroll toggle */}
             <label className="flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-200 cursor-pointer">
               <input
@@ -832,12 +1096,42 @@ export const WebSocketPane: React.FC<Props> = ({
             ref={timelineContainerRef}
             className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 min-h-0 select-text"
           >
+            {/* Filtered hidden messages badge bar */}
+            {filterEnabled && activeRulesCount > 0 && messages.length > filteredMessages.length && (
+              <div className="flex items-center justify-between px-2.5 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs shrink-0">
+                <span className="flex items-center gap-1.5">
+                  <Filter className="w-3 h-3" />
+                  已根据规则过滤隐藏 {messages.length - filteredMessages.length} 条消息
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleToggleFilterEnabled(false)}
+                  className="text-[11px] text-amber-400 hover:underline cursor-pointer"
+                >
+                  临时关闭过滤
+                </button>
+              </div>
+            )}
+
             {filteredMessages.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center text-slate-500 gap-2 py-12 select-none">
                 <Radio className="w-10 h-10 stroke-1 text-slate-600" />
                 <p className="text-xs max-w-sm text-center leading-relaxed">
-                  {messages.length === 0 ? t('websocket.noMessages') : '未找到匹配筛选条件的消息记录'}
+                  {messages.length === 0
+                    ? t('websocket.noMessages')
+                    : filterEnabled && activeRulesCount > 0
+                    ? `已根据过滤规则隐藏全部 ${messages.length} 条消息`
+                    : '未找到匹配筛选条件的消息记录'}
                 </p>
+                {messages.length > 0 && filterEnabled && (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFilterEnabled(false)}
+                    className="text-xs text-amber-400 hover:underline cursor-pointer"
+                  >
+                    临时关闭过滤以查看所有消息
+                  </button>
+                )}
               </div>
             ) : (
               filteredMessages.map((msg) => {

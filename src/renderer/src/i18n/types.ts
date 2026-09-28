@@ -895,6 +895,15 @@ export interface TranslationSchema {
     newWsRequest: string
     enterPayloadPlaceholder: string
     addPresetTitle: string
+    filterBlock: string
+    filterRulesTitle: string
+    filterRulesDesc: string
+    filterMasterSwitch: string
+    addFilterRule: string
+    filterRulePlaceholder: string
+    quickAddTicket: string
+    noFilterRules: string
+    deleteRule: string
   }
   helpDoc: HelpDocSchema
 }

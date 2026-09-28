@@ -892,7 +892,16 @@ export const zhCN: TranslationSchema = {
     statsSummary: '{total} 条消息 · 接收 {inCount} ({inSize}) · 发送 {outCount} ({outSize})',
     newWsRequest: '新建 WebSocket 请求',
     enterPayloadPlaceholder: '输入要发送的文本或 JSON 报文...',
-    addPresetTitle: '保存常用 WebSocket 消息预设'
+    addPresetTitle: '保存常用 WebSocket 消息预设',
+    filterBlock: '屏蔽过滤',
+    filterRulesTitle: '消息屏蔽规则',
+    filterRulesDesc: '命中勾选参数或关键词的消息将被隐藏（勾选才生效，支持自定义字段名/文本）',
+    filterMasterSwitch: '过滤总开关',
+    addFilterRule: '添加过滤项',
+    filterRulePlaceholder: '自定义参数名或关键词 (如 ticket)',
+    quickAddTicket: '+ 快捷过滤 ticket',
+    noFilterRules: '暂无过滤项，点击下方添加',
+    deleteRule: '删除规则'
   },
   helpDoc: helpDocZh
 }

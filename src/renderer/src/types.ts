@@ -9,6 +9,12 @@ export interface WebSocketMessagePreset {
   format?: 'json' | 'text'
 }
 
+export interface WebSocketFilterRule {
+  id: string
+  pattern: string
+  enabled: boolean
+}
+
 export interface WebSocketConfig {
   protocols?: string[]
   reconnect?: boolean
@@ -17,6 +23,8 @@ export interface WebSocketConfig {
   heartbeatInterval?: number
   heartbeatMessage?: string
   presets?: WebSocketMessagePreset[]
+  filterEnabled?: boolean
+  filterRules?: WebSocketFilterRule[]
 }
 
 export type WebSocketConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'disconnecting'
