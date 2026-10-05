@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 
 export const api = {
   sendRequest: (payload: any) => ipcRenderer.invoke('relay:send-request', payload),
+  cancelRequest: (requestId: string) => ipcRenderer.invoke('relay:cancel-request', requestId),
   getData: () => ipcRenderer.invoke('relay:get-data'),
   getResponseBlob: (blobId: string) => ipcRenderer.invoke('relay:get-response-blob', blobId),
   saveData: (data: any) => ipcRenderer.invoke('relay:save-data', data),

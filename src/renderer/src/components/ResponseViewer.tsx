@@ -15,7 +15,8 @@ import {
   Eye,
   ChevronUp,
   ChevronDown,
-  X
+  X,
+  XCircle
 } from 'lucide-react'
 import { ResponseData, ResponseRun } from '../types'
 import { CodeEditor } from './CodeEditor'
@@ -28,6 +29,7 @@ import { getSuggestedFileName, getFileFilters } from '../utils/fileExport'
 interface Props {
   response: ResponseData | null
   isLoading: boolean
+  onCancel?: () => void
   runs?: ResponseRun[]
   selectedRunId?: string
   onSelectRun?: (runId: string) => void
@@ -64,6 +66,7 @@ function buildJsonPathSuggestions(value: any, maxDepth = 4): string[] {
 export const ResponseViewer: React.FC<Props> = ({
   response,
   isLoading,
+  onCancel,
   runs = [],
   selectedRunId,
   onSelectRun,
@@ -187,6 +190,19 @@ export const ResponseViewer: React.FC<Props> = ({
       <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400 select-none">
         <div className="w-8 h-8 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
         <span className="text-xs tracking-wider">{t('response.sending')}</span>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            title={t('header.cancelTooltip')}
+            className="mt-1 flex items-center gap-1.5 px-3 py-1 text-xs rounded bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition-all cursor-pointer active:scale-95 shadow-sm"
+          >
+            <span>{t('header.cancel')}</span>
+            <kbd className="px-1 py-0.2 text-[10px] bg-rose-950/60 text-rose-200 rounded border border-rose-500/30 font-mono">
+              Esc
+            </kbd>
+          </button>
+        )}
       </div>
     )
   }
@@ -203,12 +219,14 @@ export const ResponseViewer: React.FC<Props> = ({
     )
   }
 
+  const isCanceled = displayResponse.statusText === 'Canceled' || (displayResponse as any).isCanceled
   const isSuccess = displayResponse.status >= 200 && displayResponse.status < 300
   const isRedirect = displayResponse.status >= 300 && displayResponse.status < 400
-  const isError = displayResponse.status >= 400 || displayResponse.status === 0
+  const isError = (displayResponse.status >= 400 || displayResponse.status === 0) && !isCanceled
 
   let statusBadgeClass = 'bg-slate-800 text-slate-200 border border-slate-700 font-semibold'
-  if (isSuccess) statusBadgeClass = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 font-semibold'
+  if (isCanceled) statusBadgeClass = 'bg-amber-500/15 text-amber-400 border border-amber-500/40 font-semibold'
+  else if (isSuccess) statusBadgeClass = 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 font-semibold'
   else if (isRedirect) statusBadgeClass = 'bg-blue-500/15 text-blue-400 border border-blue-500/40 font-semibold'
   else if (isError) statusBadgeClass = 'bg-rose-500/15 text-rose-400 border border-rose-500/40 font-semibold'
 
@@ -389,9 +407,16 @@ export const ResponseViewer: React.FC<Props> = ({
           {/* Status Badge */}
           <div className={"flex items-center gap-1 px-2.5 py-0.5 rounded border font-mono font-medium " + statusBadgeClass}>
             {displayResponse.status === 0 ? (
-              <>
-                <AlertCircle className="w-3.5 h-3.5" /> Error
-              </>
+              isCanceled ? (
+                <>
+                  <XCircle className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{t('response.canceled')}</span>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="w-3.5 h-3.5" /> Error
+                </>
+              )
             ) : (
               <>
                 <span>{displayResponse.status}</span>
@@ -633,8 +658,14 @@ export const ResponseViewer: React.FC<Props> = ({
           </div>
         )}
         {displayResponse.error && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-300 rounded text-xs mb-3 font-mono select-text">
-            {displayResponse.error}
+          <div
+            className={`p-3 border rounded text-xs mb-3 font-mono select-text ${
+              isCanceled
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+            }`}
+          >
+            {isCanceled ? t('response.canceledDesc') : displayResponse.error}
           </div>
         )}
 

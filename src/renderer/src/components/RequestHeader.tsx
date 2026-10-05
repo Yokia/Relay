@@ -32,6 +32,7 @@ interface Props {
   onExportCurl?: () => void
   onOpenCodeSnippet?: () => void
   isLoading: boolean
+  onCancel?: () => void
   constants: ConstantItem[]
   onSwitchConstant?: (name: string, value: string) => void
   onRequestSwitchConstant: (name: string, value: string | null) => void
@@ -135,6 +136,7 @@ export const RequestHeader: React.FC<Props> = ({
   onExportCurl,
   onOpenCodeSnippet,
   isLoading,
+  onCancel,
   constants,
   onRequestSwitchConstant,
   onOpenManageConstants,
@@ -920,16 +922,29 @@ export const RequestHeader: React.FC<Props> = ({
                 : t('websocket.connect')}
             </span>
           </button>
+        ) : isLoading ? (
+          <button
+            type="button"
+            onClick={() => onCancel?.()}
+            title={t('header.cancelTooltip')}
+            className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-medium px-3.5 py-1.5 rounded transition-all shadow-sm active:scale-95 shrink-0 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>{t('header.cancel')}</span>
+            <kbd className="px-1.5 py-0.2 text-[10px] bg-rose-700/80 text-rose-100 rounded border border-rose-400/40 font-mono leading-none select-none">
+              Esc
+            </kbd>
+          </button>
         ) : (
           <button
             type="button"
             onClick={() => onSend()}
-            disabled={isLoading || !request.url?.trim()}
+            disabled={!request.url?.trim()}
             title={sendShortcutStr ? `${t('header.send')} (${sendShortcutStr})` : t('header.send')}
             className="flex items-center gap-2 bg-sky-500 hover:bg-sky-600 disabled:opacity-50 text-white text-xs font-medium px-3.5 py-1.5 rounded transition-all shadow-sm active:scale-95 shrink-0 cursor-pointer disabled:cursor-not-allowed"
           >
-            <Send className={"w-3.5 h-3.5 " + (isLoading ? "animate-pulse" : "")} />
-            <span>{isLoading ? t('header.sending') : t('header.send')}</span>
+            <Send className="w-3.5 h-3.5" />
+            <span>{t('header.send')}</span>
             {sendShortcutStr && (
               <kbd className="px-1.5 py-0.2 text-[10px] bg-sky-600/70 text-sky-100 rounded border border-sky-400/40 font-mono leading-none select-none">
                 {sendShortcutStr}

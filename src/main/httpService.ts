@@ -4,6 +4,7 @@ import fs from 'fs'
 
 export interface RequestPayload {
   id?: string
+  executionId?: string
   method: string
   url: string
   headers?: { key: string; value: string; enabled: boolean }[]
@@ -40,6 +41,26 @@ export interface ResponseResult {
   time: number
   contentType: string
   error?: string
+  isCanceled?: boolean
+  timestamp?: number
+}
+
+// Active request controllers mapped by executionId / req.id
+const activeRequests = new Map<string, AbortController>()
+
+export function cancelRequest(requestId: string): boolean {
+  if (!requestId) return false
+  const controller = activeRequests.get(requestId)
+  if (controller) {
+    try {
+      controller.abort()
+    } catch (e) {
+      console.error('Failed to abort request:', e)
+    }
+    activeRequests.delete(requestId)
+    return true
+  }
+  return false
 }
 
 /**
@@ -180,6 +201,16 @@ function removeTrailingCommas(jsonStr: string): string {
 
 export async function executeRequest(req: RequestPayload): Promise<ResponseResult> {
   const startTime = Date.now()
+  const execId = req.executionId || (req.id ? `req_${req.id}` : `exec_${startTime}_${Math.random().toString(36).slice(2, 8)}`)
+  const controller = new AbortController()
+
+  activeRequests.set(execId, controller)
+  if (req.id) {
+    activeRequests.set(req.id, controller)
+  }
+  if (req.executionId) {
+    activeRequests.set(req.executionId, controller)
+  }
 
   // 1. Prepare Headers
   const headers: Record<string, string> = {}
@@ -319,6 +350,7 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
     data,
     responseType: 'arraybuffer',
     timeout: req.timeout || 30000,
+    signal: controller.signal,
     validateStatus: () => true, // Don't throw for 4xx/5xx
     transformResponse: [(resData) => resData] // Keep raw string or stream to calculate accurate size
   }
@@ -378,16 +410,22 @@ export async function executeRequest(req: RequestPayload): Promise<ResponseResul
     }
   } catch (err: any) {
     const duration = Date.now() - startTime
+    const isCanceled = axios.isCancel(err) || err.name === 'CanceledError' || err.code === 'ERR_CANCELED'
     return {
       status: 0,
-      statusText: 'Client Error',
+      statusText: isCanceled ? 'Canceled' : 'Client Error',
       headers: {},
       data: null,
       size: 0,
       time: duration,
       contentType: '',
-      error: err.message || 'Request failed',
+      error: isCanceled ? 'Request canceled by user' : (err.message || 'Request failed'),
+      isCanceled,
       timestamp: startTime
     }
+  } finally {
+    activeRequests.delete(execId)
+    if (req.id) activeRequests.delete(req.id)
+    if (req.executionId) activeRequests.delete(req.executionId)
   }
 }

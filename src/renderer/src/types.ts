@@ -144,6 +144,7 @@ export interface ResponseData {
   time: number
   contentType: string
   error?: string
+  isCanceled?: boolean
   timestamp?: number
   testResults?: TestResultItem[]
   blobId?: string

@@ -1,7 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain, dialog, screen } from 'electron'
 import { join } from 'path'
 import fs from 'fs'
-import { executeRequest, RequestPayload } from './httpService'
+import { executeRequest, cancelRequest, RequestPayload } from './httpService'
 import { executeTranslation, TranslateParams } from './translateService'
 import { StorageService } from './storage'
 import { updateService } from './updateService'
@@ -146,6 +146,10 @@ app.whenReady().then(() => {
   // IPC Handlers
   ipcMain.handle('relay:send-request', async (_, payload: RequestPayload) => {
     return await executeRequest(payload)
+  })
+
+  ipcMain.handle('relay:cancel-request', async (_, requestId: string) => {
+    return cancelRequest(requestId)
   })
 
   ipcMain.handle('relay:get-data', () => {

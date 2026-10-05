@@ -91,6 +91,9 @@ export const zhCN: TranslationSchema = {
   header: {
     send: '发送',
     sending: '发送中...',
+    cancel: '取消',
+    canceling: '取消中...',
+    cancelTooltip: '取消当前请求 (Esc)',
     save: '保存',
     benchmarkRequest: '基准压测',
     urlPlaceholder: '输入请求 URL，或输入 {{ 选择常量',
@@ -179,6 +182,8 @@ export const zhCN: TranslationSchema = {
     emptyTitle: '尚未发起请求',
     emptyDesc: '点击上方“发送”按钮或按 Ctrl+Enter 发起请求，历史响应将自动记录并保留。',
     sending: '正在发送请求...',
+    canceled: '已取消',
+    canceledDesc: '该请求已被手动取消。',
     status: '状态码',
     time: '耗时',
     size: '大小',

@@ -188,6 +188,7 @@ function MainApp({
   const currentWs = useWebSocket(currentRequest.id)
   const [response, setResponse] = useState<ResponseData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const activeExecutionIdRef = useRef<string | null>(null)
   const [isDataLoaded, setIsDataLoaded] = useState(false)
 
   const restoreStoredResponse = (storedResponse: ResponseData | null) => {
@@ -1272,7 +1273,12 @@ function MainApp({
         }
       : undefined
 
+    const execId = `exec_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    activeExecutionIdRef.current = execId
+
     const payload = {
+      id: currentRequest.id,
+      executionId: execId,
       method: effectiveRequest.method,
       url: processedUrl,
       headers: processedHeaders,
@@ -1291,6 +1297,9 @@ function MainApp({
 
     try {
       const res = await window.electronAPI.sendRequest(payload)
+      if (res.isCanceled || res.statusText === 'Canceled') {
+        addToast(t('header.requestCanceled') || '请求已取消', 'info')
+      }
       const reqTimestamp = res.timestamp || Date.now()
       let fullRes: ResponseData = {
         ...res,
@@ -1462,7 +1471,24 @@ function MainApp({
         window.electronAPI.notifyHistoryUpdated(nextHistory)
       }
     } finally {
+      activeExecutionIdRef.current = null
       setIsLoading(false)
+    }
+  }
+
+  // Cancel Active HTTP Request
+  const handleCancelRequest = async () => {
+    if (!isLoading) return
+    const currentExecId = activeExecutionIdRef.current
+    try {
+      if (currentExecId && window.electronAPI?.cancelRequest) {
+        await window.electronAPI.cancelRequest(currentExecId)
+      }
+      if (currentRequest.id && window.electronAPI?.cancelRequest) {
+        await window.electronAPI.cancelRequest(currentRequest.id)
+      }
+    } catch (e) {
+      console.error('Failed to cancel request:', e)
     }
   }
 
@@ -1795,6 +1821,9 @@ function MainApp({
   const handleSendRef = useRef(handleSend)
   handleSendRef.current = handleSend
 
+  const handleCancelRef = useRef(handleCancelRequest)
+  handleCancelRef.current = handleCancelRequest
+
   const handleSaveRef = useRef(handleSave)
   handleSaveRef.current = handleSave
 
@@ -1834,6 +1863,14 @@ function MainApp({
         isUpdateModalOpen ||
         (target && (target.closest('.fixed.inset-0') || target.closest('[role="dialog"]')))
       )
+
+      // Cancel active request when Esc is pressed and request is loading
+      if (e.key === 'Escape' && isLoading && !isModalOpen) {
+        e.preventDefault()
+        e.stopPropagation()
+        handleCancelRef.current()
+        return
+      }
 
       const effectiveKeybindings = getEffectiveKeybindings(settings.keybindings)
 
@@ -1921,7 +1958,8 @@ function MainApp({
     dataTransferState.isOpen,
     runnerState.isOpen,
     isDevToysOpen,
-    isUpdateModalOpen
+    isUpdateModalOpen,
+    isLoading
   ])
 
   // Mouse drag handlers for split & sidebar
@@ -2191,6 +2229,7 @@ function MainApp({
           onExportCurl={() => setCurlModalState({ isOpen: true, mode: 'export' })}
           onOpenCodeSnippet={() => setIsCodeSnippetOpen(true)}
           isLoading={isLoading}
+          onCancel={handleCancelRequest}
           constants={constants}
           onSwitchConstant={handleSwitchConstant}
           onRequestSwitchConstant={handleRequestSwitchConstant}
@@ -2260,6 +2299,7 @@ function MainApp({
               <ResponseViewer
                 response={response}
                 isLoading={isLoading}
+                onCancel={handleCancelRequest}
                 runs={responseHistoryMap[currentRequest.id] || []}
                 selectedRunId={selectedRunIdMap[currentRequest.id]}
                 onSelectRun={(runId) => setSelectedRunIdMap((prev) => ({ ...prev, [currentRequest.id]: runId }))}

@@ -91,6 +91,9 @@ export const enUS: TranslationSchema = {
   header: {
     send: 'Send',
     sending: 'Sending...',
+    cancel: 'Cancel',
+    canceling: 'Canceling...',
+    cancelTooltip: 'Cancel active request (Esc)',
     save: 'Save',
     benchmarkRequest: 'Benchmark',
     urlPlaceholder: 'Enter URL or type {{ to pick constant',
@@ -179,6 +182,8 @@ export const enUS: TranslationSchema = {
     emptyTitle: 'No response yet',
     emptyDesc: 'Click "Send" or press Ctrl+Enter to dispatch the request. Response history will be recorded automatically.',
     sending: 'Sending request...',
+    canceled: 'Canceled',
+    canceledDesc: 'This request was canceled manually.',
     status: 'Status',
     time: 'Time',
     size: 'Size',

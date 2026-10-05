@@ -93,6 +93,9 @@ export interface TranslationSchema {
   header: {
     send: string
     sending: string
+    cancel: string
+    canceling: string
+    cancelTooltip: string
     save: string
     benchmarkRequest: string
     urlPlaceholder: string
@@ -181,6 +184,8 @@ export interface TranslationSchema {
     emptyTitle: string
     emptyDesc: string
     sending: string
+    canceled: string
+    canceledDesc: string
     status: string
     time: string
     size: string
