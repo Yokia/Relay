@@ -37,6 +37,7 @@ import {
 import { useI18n } from '../i18n'
 import { useWebSocket } from '../utils/useWebSocket'
 import { KeyValueEditor } from './KeyValueEditor'
+import { stripJsonComments, formatJsonWithComments } from '../utils/jsonUtils'
 
 interface Props {
   request: RequestItem
@@ -308,9 +309,11 @@ export const WebSocketPane: React.FC<Props> = ({
 
   // Prettify JSON
   const handlePrettifyJson = () => {
+    if (!composerText.trim()) return
     try {
-      const parsed = JSON.parse(composerText)
-      setComposerText(JSON.stringify(parsed, null, 2))
+      const cleaned = stripJsonComments(composerText)
+      JSON.parse(cleaned)
+      setComposerText(formatJsonWithComments(composerText))
       setComposerType('json')
     } catch {
       onToast?.('Invalid JSON format', 'error')

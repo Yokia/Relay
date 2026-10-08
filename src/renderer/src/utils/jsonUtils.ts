@@ -441,3 +441,360 @@ export function lintJsonDoc(
   return diagnostics
 }
 
+export interface JsoncToken {
+  type:
+    | 'open_brace'
+    | 'close_brace'
+    | 'open_bracket'
+    | 'close_bracket'
+    | 'colon'
+    | 'comma'
+    | 'string'
+    | 'literal'
+    | 'line_comment'
+    | 'block_comment'
+  raw: string
+  leadingNewlines: number
+}
+
+export function tokenizeJsonc(jsonStr: string): JsoncToken[] {
+  const tokens: JsoncToken[] = []
+  let i = 0
+  const len = jsonStr.length
+  let leadingNewlines = 0
+
+  while (i < len) {
+    const char = jsonStr[i]
+    const nextChar = i + 1 < len ? jsonStr[i + 1] : ''
+
+    // 1. Whitespace
+    if (char === ' ' || char === '\t' || char === '\r' || char === '\n') {
+      if (char === '\n') {
+        leadingNewlines++
+      }
+      i++
+      continue
+    }
+
+    // 2. Line comment: // or #
+    if ((char === '/' && nextChar === '/') || char === '#') {
+      const isHash = char === '#'
+      let raw = isHash ? '#' : '//'
+      i += isHash ? 1 : 2
+      while (i < len && jsonStr[i] !== '\n' && jsonStr[i] !== '\r') {
+        raw += jsonStr[i]
+        i++
+      }
+      tokens.push({
+        type: 'line_comment',
+        raw,
+        leadingNewlines
+      })
+      leadingNewlines = 0
+      continue
+    }
+
+    // 3. Block comment: /* ... */
+    if (char === '/' && nextChar === '*') {
+      let raw = '/*'
+      i += 2
+      while (i < len) {
+        if (jsonStr[i] === '*' && i + 1 < len && jsonStr[i + 1] === '/') {
+          raw += '*/'
+          i += 2
+          break
+        }
+        raw += jsonStr[i]
+        i++
+      }
+      tokens.push({
+        type: 'block_comment',
+        raw,
+        leadingNewlines
+      })
+      leadingNewlines = 0
+      continue
+    }
+
+    // 4. String literal: "..." or '...'
+    if (char === '"' || char === "'") {
+      const quote = char
+      let raw = quote
+      i++
+      while (i < len) {
+        const c = jsonStr[i]
+        raw += c
+        if (c === '\\') {
+          i++
+          if (i < len) {
+            raw += jsonStr[i]
+          }
+        } else if (c === quote) {
+          i++
+          break
+        }
+        i++
+      }
+      tokens.push({
+        type: 'string',
+        raw,
+        leadingNewlines
+      })
+      leadingNewlines = 0
+      continue
+    }
+
+    // 5. Punctuations
+    if (char === '{') {
+      tokens.push({ type: 'open_brace', raw: '{', leadingNewlines })
+      leadingNewlines = 0
+      i++
+      continue
+    }
+    if (char === '}') {
+      tokens.push({ type: 'close_brace', raw: '}', leadingNewlines })
+      leadingNewlines = 0
+      i++
+      continue
+    }
+    if (char === '[') {
+      tokens.push({ type: 'open_bracket', raw: '[', leadingNewlines })
+      leadingNewlines = 0
+      i++
+      continue
+    }
+    if (char === ']') {
+      tokens.push({ type: 'close_bracket', raw: ']', leadingNewlines })
+      leadingNewlines = 0
+      i++
+      continue
+    }
+    if (char === ':') {
+      tokens.push({ type: 'colon', raw: ':', leadingNewlines })
+      leadingNewlines = 0
+      i++
+      continue
+    }
+    if (char === ',') {
+      tokens.push({ type: 'comma', raw: ',', leadingNewlines })
+      leadingNewlines = 0
+      i++
+      continue
+    }
+
+    // 6. Literals (numbers, boolean, null, unquoted text)
+    let raw = ''
+    while (i < len) {
+      const c = jsonStr[i]
+      if (
+        c === ' ' ||
+        c === '\t' ||
+        c === '\r' ||
+        c === '\n' ||
+        c === '{' ||
+        c === '}' ||
+        c === '[' ||
+        c === ']' ||
+        c === ':' ||
+        c === ',' ||
+        c === '"' ||
+        c === "'" ||
+        c === '#' ||
+        (c === '/' && (i + 1 < len && (jsonStr[i + 1] === '/' || jsonStr[i + 1] === '*')))
+      ) {
+        break
+      }
+      raw += c
+      i++
+    }
+    if (raw) {
+      tokens.push({ type: 'literal', raw, leadingNewlines })
+      leadingNewlines = 0
+    }
+  }
+
+  return tokens
+}
+
+/**
+ * Formats a JSON / JSONC string with consistent indentation while safely preserving
+ * all single-line comments (//, #) and multi-line comments (/* ... *\/).
+ */
+export function formatJsonWithComments(jsonStr: string, indentSize: number = 2): string {
+  if (!jsonStr || !jsonStr.trim()) return jsonStr
+
+  const tokens = tokenizeJsonc(jsonStr)
+  if (tokens.length === 0) return ''
+
+  let depth = 0
+  let result = ''
+  let atStartOfLine = true
+
+  const write = (str: string) => {
+    result += str
+    atStartOfLine = false
+  }
+
+  const writeIndent = () => {
+    result += ' '.repeat(depth * indentSize)
+    atStartOfLine = false
+  }
+
+  const writeNewline = (count: number = 1) => {
+    for (let c = 0; c < count; c++) {
+      result += '\n'
+    }
+    atStartOfLine = true
+  }
+
+  for (let idx = 0; idx < tokens.length; idx++) {
+    const token = tokens[idx]
+    const nextToken = tokens[idx + 1]
+
+    switch (token.type) {
+      case 'open_brace':
+      case 'open_bracket': {
+        const isBrace = token.type === 'open_brace'
+        const closeType = isBrace ? 'close_brace' : 'close_bracket'
+        const isEmpty = nextToken && nextToken.type === closeType
+
+        if (isEmpty) {
+          if (atStartOfLine) {
+            if (token.leadingNewlines > 1 && result.length > 0) writeNewline()
+            writeIndent()
+          }
+          write(token.raw + nextToken.raw)
+          idx++ // skip closing bracket
+
+          const afterNext = tokens[idx + 1]
+          if (afterNext && afterNext.type !== 'comma') {
+            const isInlineComment =
+              (afterNext.type === 'line_comment' || afterNext.type === 'block_comment') &&
+              afterNext.leadingNewlines === 0
+            if (!isInlineComment) {
+              writeNewline()
+            }
+          }
+        } else {
+          if (atStartOfLine) {
+            if (token.leadingNewlines > 1 && result.length > 0) writeNewline()
+            writeIndent()
+          }
+          write(token.raw)
+          depth++
+          writeNewline()
+        }
+        break
+      }
+
+      case 'close_brace':
+      case 'close_bracket': {
+        depth = Math.max(0, depth - 1)
+        if (!atStartOfLine) writeNewline()
+        writeIndent()
+        write(token.raw)
+
+        if (nextToken && nextToken.type !== 'comma') {
+          const isInlineComment =
+            (nextToken.type === 'line_comment' || nextToken.type === 'block_comment') &&
+            nextToken.leadingNewlines === 0
+          if (!isInlineComment) {
+            writeNewline()
+          }
+        }
+        break
+      }
+
+      case 'colon': {
+        write(': ')
+        break
+      }
+
+      case 'comma': {
+        // Drop trailing comma immediately before } or ] if no comments in between
+        if (nextToken && (nextToken.type === 'close_brace' || nextToken.type === 'close_bracket')) {
+          break
+        }
+        write(',')
+        const isInlineComment =
+          nextToken &&
+          (nextToken.type === 'line_comment' || nextToken.type === 'block_comment') &&
+          nextToken.leadingNewlines === 0
+        if (!isInlineComment && nextToken) {
+          writeNewline()
+        }
+        break
+      }
+
+      case 'string':
+      case 'literal': {
+        if (atStartOfLine) {
+          if (token.leadingNewlines > 1 && result.length > 0) writeNewline()
+          writeIndent()
+        }
+        write(token.raw)
+        break
+      }
+
+      case 'line_comment': {
+        if (token.leadingNewlines === 0 && !atStartOfLine) {
+          // Trailing comment on the same line
+          write(' ' + token.raw)
+          writeNewline()
+        } else {
+          // Comment on its own line
+          if (!atStartOfLine) writeNewline()
+          if (token.leadingNewlines > 1 && result.length > 0) writeNewline()
+          writeIndent()
+          write(token.raw)
+          writeNewline()
+        }
+        break
+      }
+
+      case 'block_comment': {
+        if (token.leadingNewlines === 0 && !atStartOfLine) {
+          write(' ' + token.raw)
+          if (nextToken && nextToken.leadingNewlines > 0) {
+            writeNewline()
+          }
+        } else {
+          if (!atStartOfLine) writeNewline()
+          if (token.leadingNewlines > 1 && result.length > 0) writeNewline()
+          if (token.raw.includes('\n')) {
+            const lines = token.raw.split('\n')
+            const baseIndent = ' '.repeat(depth * indentSize)
+            const formatted = lines
+              .map((line, lIdx) => {
+                if (lIdx === 0) return line
+                const trimmed = line.trimStart()
+                if (trimmed.startsWith('*')) {
+                  return baseIndent + ' ' + trimmed
+                }
+                return baseIndent + trimmed
+              })
+              .join('\n')
+            writeIndent()
+            write(formatted)
+          } else {
+            writeIndent()
+            write(token.raw)
+          }
+          if (
+            nextToken &&
+            (nextToken.leadingNewlines > 0 ||
+              nextToken.type === 'close_brace' ||
+              nextToken.type === 'close_bracket')
+          ) {
+            writeNewline()
+          }
+        }
+        break
+      }
+    }
+  }
+
+  return result.trimEnd()
+}
+
+

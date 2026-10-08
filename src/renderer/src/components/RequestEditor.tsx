@@ -5,7 +5,7 @@ import { ScriptEditor } from './ScriptEditor'
 import { HeaderBulkImportModal } from './HeaderBulkImportModal'
 import { RequestItem, KeyValueItem } from '../types'
 import { Sparkles, WrapText, ChevronDown, KeyRound, Plus, Trash2, FileUp, ClipboardPaste, ClipboardList } from 'lucide-react'
-import { stripJsonComments } from '../utils/jsonUtils'
+import { stripJsonComments, formatJsonWithComments } from '../utils/jsonUtils'
 import { useI18n } from '../i18n'
 import {
   createDefaultHeaders,
@@ -49,18 +49,14 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
   const [bulkImportInitialText, setBulkImportInitialText] = useState('')
 
   const handleFormatJson = () => {
-    if (!request.bodyRaw) return
+    if (!request.bodyRaw || !request.bodyRaw.trim()) return
     try {
-      const parsed = JSON.parse(request.bodyRaw)
-      onChange({ bodyRaw: JSON.stringify(parsed, null, 2) })
+      const cleaned = stripJsonComments(request.bodyRaw)
+      JSON.parse(cleaned)
+      const formatted = formatJsonWithComments(request.bodyRaw)
+      onChange({ bodyRaw: formatted })
     } catch {
-      try {
-        const cleaned = stripJsonComments(request.bodyRaw)
-        const parsed = JSON.parse(cleaned)
-        onChange({ bodyRaw: JSON.stringify(parsed, null, 2) })
-      } catch (e) {
-        alert('Invalid JSON content. Please check syntax.')
-      }
+      alert('Invalid JSON content. Please check syntax.')
     }
   }
 
