@@ -174,6 +174,67 @@ export const WebSocketPane: React.FC<Props> = ({
     })
   }
 
+  const rightPaneRef = useRef<HTMLDivElement>(null)
+  const isDraggingComposerRef = useRef(false)
+  const startDragYRef = useRef(0)
+  const startHeightRef = useRef(0)
+
+  const DEFAULT_COMPOSER_HEIGHT = 140
+  const MIN_COMPOSER_HEIGHT = 90
+
+  const [composerHeight, setComposerHeight] = useState<number>(() => {
+    const saved = localStorage.getItem('relay_ws_composer_height')
+    if (saved) {
+      const num = parseInt(saved, 10)
+      if (!isNaN(num) && num >= MIN_COMPOSER_HEIGHT && num <= 800) {
+        return num
+      }
+    }
+    return DEFAULT_COMPOSER_HEIGHT
+  })
+
+  const handleComposerResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    isDraggingComposerRef.current = true
+    startDragYRef.current = e.clientY
+    startHeightRef.current = composerHeight
+    document.body.style.cursor = 'row-resize'
+    document.body.style.userSelect = 'none'
+  }
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingComposerRef.current) return
+      const deltaY = startDragYRef.current - e.clientY
+      const rawHeight = startHeightRef.current + deltaY
+
+      const paneHeight = rightPaneRef.current?.getBoundingClientRect().height || window.innerHeight
+      const maxHeight = Math.max(200, paneHeight - 120)
+
+      const clampedHeight = Math.max(MIN_COMPOSER_HEIGHT, Math.min(maxHeight, rawHeight))
+      setComposerHeight(clampedHeight)
+    }
+
+    const handleMouseUp = () => {
+      if (isDraggingComposerRef.current) {
+        isDraggingComposerRef.current = false
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
+        setComposerHeight((current) => {
+          localStorage.setItem('relay_ws_composer_height', String(current))
+          return current
+        })
+      }
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [])
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const timelineContainerRef = useRef<HTMLDivElement>(null)
 
@@ -857,7 +918,7 @@ export const WebSocketPane: React.FC<Props> = ({
         </div>
 
         {/* Right Side: Message Stream Timeline & Message Composer */}
-        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-950">
+        <div ref={rightPaneRef} className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-950">
           {/* Timeline Filter Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 bg-slate-900/80 border-b border-slate-800 text-xs shrink-0">
             {/* Search Input */}
@@ -1246,10 +1307,26 @@ export const WebSocketPane: React.FC<Props> = ({
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Draggable Divider for Resizing Composer */}
+          <div
+            onMouseDown={handleComposerResizeMouseDown}
+            onDoubleClick={() => {
+              setComposerHeight(DEFAULT_COMPOSER_HEIGHT)
+              localStorage.setItem('relay_ws_composer_height', String(DEFAULT_COMPOSER_HEIGHT))
+            }}
+            title="按住拖拽调节编辑器高度，双击重置默认高度"
+            className="h-1.5 hover:h-2 bg-slate-900 hover:bg-teal-500/60 active:bg-teal-500 cursor-row-resize flex items-center justify-center transition-all group select-none shrink-0 z-10 border-t border-slate-800"
+          >
+            <div className="w-10 h-0.5 bg-slate-700 group-hover:bg-teal-200 rounded-full transition-colors" />
+          </div>
+
           {/* Bottom Message Composer */}
-          <div className="border-t border-slate-800 bg-slate-900/90 p-3 flex flex-col gap-2 shrink-0">
+          <div
+            style={{ height: `${composerHeight}px` }}
+            className="bg-slate-900/90 p-3 flex flex-col gap-2 shrink-0 min-h-[90px] overflow-hidden"
+          >
             {/* Composer Toolbar */}
-            <div className="flex items-center justify-between text-xs select-none">
+            <div className="flex items-center justify-between text-xs select-none shrink-0">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-slate-300">{t('websocket.composer')}</span>
 
@@ -1323,7 +1400,7 @@ export const WebSocketPane: React.FC<Props> = ({
             </div>
 
             {/* Input Textarea & Send Button */}
-            <div className="flex items-end gap-2">
+            <div className="flex-1 min-h-0 flex items-end gap-2">
               <textarea
                 value={composerText}
                 onChange={(e) => setComposerText(e.target.value)}
@@ -1340,9 +1417,8 @@ export const WebSocketPane: React.FC<Props> = ({
                     }
                   }
                 }}
-                rows={3}
                 placeholder={t('websocket.enterPayloadPlaceholder')}
-                className="flex-1 bg-slate-950 border border-slate-700/80 rounded-lg p-2.5 font-mono text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors resize-y min-h-[64px]"
+                className="flex-1 h-full bg-slate-950 border border-slate-700/80 rounded-lg p-2.5 font-mono text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors resize-none overflow-y-auto"
               />
 
               <button
@@ -1350,7 +1426,7 @@ export const WebSocketPane: React.FC<Props> = ({
                 onClick={handleSendMessage}
                 disabled={status !== 'connected' || !composerText.trim()}
                 title={sendWithCtrlEnter ? t('websocket.ctrlEnterShortcut') : t('websocket.sendShortcut')}
-                className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-40 text-white rounded-lg font-semibold text-xs transition-all shadow-sm active:scale-95 cursor-pointer disabled:cursor-not-allowed shrink-0 h-10"
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-40 text-white rounded-lg font-semibold text-xs transition-all shadow-sm active:scale-95 cursor-pointer disabled:cursor-not-allowed shrink-0 h-10 self-end"
               >
                 <Send className="w-4 h-4" />
                 <span>{t('websocket.send')}</span>
