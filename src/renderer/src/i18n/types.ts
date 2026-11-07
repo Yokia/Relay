@@ -136,6 +136,14 @@ export interface TranslationSchema {
     bodyFormData: string
     bodyUrlEncoded: string
     bodyRaw: string
+    jsonModeCode: string
+    jsonModeKeyValue: string
+    jsonKvUnsupported: string
+    jsonKvUnsupportedDesc: string
+    switchToCode: string
+    colType: string
+    colComment: string
+    commentPlaceholder: string
     formatJson: string
     wordWrap: string
     paramKeyPlaceholder: string

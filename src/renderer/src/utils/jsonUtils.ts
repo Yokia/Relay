@@ -797,4 +797,388 @@ export function formatJsonWithComments(jsonStr: string, indentSize: number = 2):
   return result.trimEnd()
 }
 
+export type JsonKvValueType = 'string' | 'number' | 'boolean' | 'null' | 'object' | 'array'
+
+export interface JsonKvEntry {
+  id: string
+  key: string
+  value: string
+  enabled: boolean
+  description?: string
+  valueType: JsonKvValueType
+  leadingComments?: string[]
+}
+
+export interface JsonKvParsedData {
+  isValid: boolean
+  headerComments: string[]
+  footerComments: string[]
+  entries: JsonKvEntry[]
+  trailingLeadingComments?: string[]
+}
+
+function countBracketBalance(str: string): number {
+  let b = 0
+  let inStr = false
+  let esc = false
+  let quote = '"'
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i]
+    if (inStr) {
+      if (esc) esc = false
+      else if (c === '\\') esc = true
+      else if (c === quote) inStr = false
+      continue
+    }
+    if (c === '"' || c === "'") {
+      inStr = true
+      quote = c
+      continue
+    }
+    if (c === '/' && i + 1 < str.length && str[i + 1] === '/') {
+      break
+    }
+    if (c === '{' || c === '[') b++
+    if (c === '}' || c === ']') b--
+  }
+  return b
+}
+
+function findTrailingCommentIndex(str: string): number {
+  let inStr = false
+  let esc = false
+  let quote = '"'
+  let braceDepth = 0
+  let bracketDepth = 0
+
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i]
+    if (inStr) {
+      if (esc) esc = false
+      else if (c === '\\') esc = true
+      else if (c === quote) inStr = false
+      continue
+    }
+    if (c === '"' || c === "'") {
+      inStr = true
+      quote = c
+      continue
+    }
+    if (c === '{') braceDepth++
+    if (c === '}') braceDepth = Math.max(0, braceDepth - 1)
+    if (c === '[') bracketDepth++
+    if (c === ']') bracketDepth = Math.max(0, bracketDepth - 1)
+
+    if (braceDepth === 0 && bracketDepth === 0) {
+      if (c === '/' && i + 1 < str.length && (str[i + 1] === '/' || str[i + 1] === '*')) {
+        return i
+      }
+      if (c === '#') {
+        return i
+      }
+    }
+  }
+  return -1
+}
+
+/**
+ * Parses a JSON/JSONC object string into structured Key-Value entries,
+ * recognizing commented-out properties (// "key": value) as disabled entries,
+ * and preserving inline comments, section comments, and value types.
+ */
+export function parseJsoncToKeyValues(jsonStr: string): JsonKvParsedData {
+  if (!jsonStr || !jsonStr.trim()) {
+    return {
+      isValid: true,
+      headerComments: [],
+      footerComments: [],
+      entries: []
+    }
+  }
+
+  const trimmedDoc = jsonStr.trim()
+  if (
+    !trimmedDoc.startsWith('{') &&
+    !trimmedDoc.startsWith('//') &&
+    !trimmedDoc.startsWith('/*') &&
+    !trimmedDoc.startsWith('#')
+  ) {
+    return {
+      isValid: false,
+      headerComments: [],
+      footerComments: [],
+      entries: []
+    }
+  }
+
+  const lines = jsonStr.split(/\r?\n/)
+  const headerComments: string[] = []
+  const footerComments: string[] = []
+  const entries: JsonKvEntry[] = []
+
+  let foundOpeningBrace = false
+  let foundClosingBrace = false
+  let pendingLeadingComments: string[] = []
+
+  let lineIdx = 0
+  while (lineIdx < lines.length) {
+    const rawLine = lines[lineIdx]
+    const trimmed = rawLine.trim()
+
+    if (!trimmed) {
+      lineIdx++
+      continue
+    }
+
+    if (!foundOpeningBrace) {
+      if (trimmed.startsWith('{')) {
+        foundOpeningBrace = true
+        const afterBrace = trimmed.slice(1).trim()
+        if (afterBrace && afterBrace !== '}') {
+          processSegment(afterBrace, lineIdx)
+        }
+        lineIdx++
+        continue
+      } else if (trimmed.startsWith('//') || trimmed.startsWith('#') || trimmed.startsWith('/*')) {
+        headerComments.push(trimmed)
+        lineIdx++
+        continue
+      } else {
+        return {
+          isValid: false,
+          headerComments: [],
+          footerComments: [],
+          entries: []
+        }
+      }
+    }
+
+    if (foundClosingBrace) {
+      if (trimmed.startsWith('//') || trimmed.startsWith('#') || trimmed.startsWith('/*')) {
+        footerComments.push(trimmed)
+      }
+      lineIdx++
+      continue
+    }
+
+    if (trimmed === '}' || (trimmed.startsWith('}') && !trimmed.includes(':'))) {
+      foundClosingBrace = true
+      const rest = trimmed.slice(1).trim()
+      if (rest.startsWith('//') || rest.startsWith('#') || rest.startsWith('/*')) {
+        footerComments.push(rest)
+      }
+      lineIdx++
+      continue
+    }
+
+    let fullSegment = trimmed
+    let balance = countBracketBalance(fullSegment)
+
+    while (balance > 0 && lineIdx + 1 < lines.length) {
+      lineIdx++
+      fullSegment += '\n' + lines[lineIdx]
+      balance = countBracketBalance(fullSegment)
+    }
+
+    processSegment(fullSegment, lineIdx)
+    lineIdx++
+  }
+
+  function processSegment(segment: string, idx: number) {
+    const trimmed = segment.trim()
+    const isLineComment = trimmed.startsWith('//') || trimmed.startsWith('#')
+    const isBlockComment = trimmed.startsWith('/*') && trimmed.endsWith('*/')
+
+    let candidate = trimmed
+    if (isLineComment) {
+      candidate = trimmed.replace(/^(\/\/|#)\s*/, '')
+    } else if (isBlockComment) {
+      candidate = trimmed.replace(/^\/\*\s*/, '').replace(/\s*\*\/$/, '')
+    }
+
+    const kvMatch = candidate.match(
+      /^("([^"\\]*(?:\\.[^"\\]*)*)"|'([^'\\]*(?:\\.[^'\\]*)*)'|([a-zA-Z0-9_$-]+))\s*:\s*([\s\S]*)$/
+    )
+
+    if (kvMatch) {
+      const rawKey =
+        kvMatch[2] !== undefined ? kvMatch[2] : kvMatch[3] !== undefined ? kvMatch[3] : kvMatch[4]
+      let rest = kvMatch[5].trim()
+
+      let description = ''
+      const commentIdx = findTrailingCommentIndex(rest)
+      if (commentIdx !== -1) {
+        const commentPart = rest.slice(commentIdx).trim()
+        description = commentPart.replace(/^(\/\/|#|\/\*)\s*/, '').replace(/\s*\*\/$/, '').trim()
+        rest = rest.slice(0, commentIdx).trim()
+      }
+
+      if (rest.endsWith(',')) {
+        rest = rest.slice(0, -1).trim()
+      }
+
+      let value = rest
+      let valueType: JsonKvValueType = 'string'
+
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        valueType = 'string'
+        try {
+          value = JSON.parse(value)
+        } catch {
+          value = value.slice(1, -1)
+        }
+      } else if (value === 'true' || value === 'false') {
+        valueType = 'boolean'
+      } else if (value === 'null') {
+        valueType = 'null'
+      } else if (!isNaN(Number(value)) && value !== '') {
+        valueType = 'number'
+      } else if (value.startsWith('{') && value.endsWith('}')) {
+        valueType = 'object'
+      } else if (value.startsWith('[') && value.endsWith(']')) {
+        valueType = 'array'
+      }
+
+      entries.push({
+        id: `kv-${idx}-${Math.random().toString(36).slice(2, 7)}`,
+        key: rawKey,
+        value: String(value),
+        enabled: !isLineComment && !isBlockComment,
+        description,
+        valueType,
+        leadingComments: pendingLeadingComments
+      })
+      pendingLeadingComments = []
+    } else {
+      pendingLeadingComments.push(trimmed)
+    }
+  }
+
+  return {
+    isValid:
+      foundOpeningBrace ||
+      entries.length > 0 ||
+      jsonStr.trim() === '' ||
+      jsonStr.trim() === '{}',
+    headerComments,
+    footerComments,
+    entries,
+    trailingLeadingComments: pendingLeadingComments
+  }
+}
+
+/**
+ * Serializes Key-Value entries back to a formatted JSONC string,
+ * preserving all comments, commented-out disabled fields, and section headers.
+ */
+export function serializeKeyValuesToJsonc(
+  parsedData: JsonKvParsedData,
+  indentSize: number = 2
+): string {
+  const {
+    headerComments = [],
+    footerComments = [],
+    entries = [],
+    trailingLeadingComments = []
+  } = parsedData
+
+  if (
+    entries.length === 0 &&
+    headerComments.length === 0 &&
+    footerComments.length === 0 &&
+    (!trailingLeadingComments || trailingLeadingComments.length === 0)
+  ) {
+    return '{\n}'
+  }
+
+  const indent = ' '.repeat(indentSize)
+  const lines: string[] = []
+
+  for (const c of headerComments) {
+    lines.push(c)
+  }
+
+  lines.push('{')
+
+  // Find last enabled entry with non-empty key or value
+  let lastEnabledIndex = -1
+  for (let i = entries.length - 1; i >= 0; i--) {
+    if (entries[i].enabled && (entries[i].key || entries[i].value)) {
+      lastEnabledIndex = i
+      break
+    }
+  }
+
+  for (let i = 0; i < entries.length; i++) {
+    const item = entries[i]
+
+    if (item.leadingComments && item.leadingComments.length > 0) {
+      for (const lc of item.leadingComments) {
+        lines.push(`${indent}${lc}`)
+      }
+    }
+
+    if (!item.key && !item.value) {
+      continue
+    }
+
+    let valStr = ''
+    if (item.valueType === 'number') {
+      valStr =
+        !isNaN(Number(item.value)) && item.value.trim() !== ''
+          ? item.value.trim()
+          : JSON.stringify(item.value)
+    } else if (item.valueType === 'boolean') {
+      valStr =
+        item.value === 'true' || (item.value as any) === true
+          ? 'true'
+          : item.value === 'false' || (item.value as any) === false
+          ? 'false'
+          : JSON.stringify(item.value)
+    } else if (item.valueType === 'null') {
+      valStr =
+        item.value === 'null' || (item.value as any) === null
+          ? 'null'
+          : JSON.stringify(item.value)
+    } else if (item.valueType === 'object' || item.valueType === 'array') {
+      try {
+        JSON.parse(item.value)
+        valStr = item.value.trim()
+      } catch {
+        valStr = JSON.stringify(item.value)
+      }
+    } else {
+      valStr = JSON.stringify(item.value)
+    }
+
+    const hasNextEnabled = i < lastEnabledIndex
+    const comma = item.enabled ? (hasNextEnabled ? ',' : '') : ''
+    const commentStr = item.description ? ` // ${item.description.trim()}` : ''
+
+    if (item.enabled) {
+      lines.push(`${indent}${JSON.stringify(item.key)}: ${valStr}${comma}${commentStr}`)
+    } else {
+      lines.push(`${indent}// ${JSON.stringify(item.key)}: ${valStr}${commentStr}`)
+    }
+  }
+
+  if (trailingLeadingComments && trailingLeadingComments.length > 0) {
+    for (const tc of trailingLeadingComments) {
+      lines.push(`${indent}${tc}`)
+    }
+  }
+
+  lines.push('}')
+
+  for (const c of footerComments) {
+    lines.push(c)
+  }
+
+  return lines.join('\n')
+}
+
+
 

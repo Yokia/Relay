@@ -3,8 +3,9 @@ import { KeyValueEditor } from './KeyValueEditor'
 import { CodeEditor } from './CodeEditor'
 import { ScriptEditor } from './ScriptEditor'
 import { HeaderBulkImportModal } from './HeaderBulkImportModal'
+import { JsonKeyValueEditor } from './JsonKeyValueEditor'
 import { RequestItem, KeyValueItem } from '../types'
-import { Sparkles, WrapText, ChevronDown, KeyRound, Plus, Trash2, FileUp, ClipboardPaste, ClipboardList } from 'lucide-react'
+import { Sparkles, WrapText, ChevronDown, KeyRound, Plus, Trash2, FileUp, ClipboardPaste, ClipboardList, Code2, ListFilter } from 'lucide-react'
 import { stripJsonComments, formatJsonWithComments } from '../utils/jsonUtils'
 import { useI18n } from '../i18n'
 import {
@@ -44,6 +45,24 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
       // ignore
     }
   }, [activeTab])
+
+  const [jsonViewMode, setJsonViewMode] = useState<'code' | 'key-value'>(() => {
+    try {
+      const saved = localStorage.getItem('relay_json_body_view_mode')
+      return saved === 'key-value' ? 'key-value' : 'code'
+    } catch {
+      return 'code'
+    }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('relay_json_body_view_mode', jsonViewMode)
+    } catch {
+      // ignore
+    }
+  }, [jsonViewMode])
+
   const [wrapLines, setWrapLines] = useState(true)
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false)
   const [bulkImportInitialText, setBulkImportInitialText] = useState('')
@@ -313,48 +332,89 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
 
         {activeTab === 'body' && (
           <div className="flex flex-col h-full p-2">
-            {/* Body Type Dropdown Selector */}
-            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80 text-xs text-slate-400">
-              <div className="flex items-center gap-2">
-                <div className="relative flex items-center">
-                  <select
-                    value={request.bodyType || 'none'}
-                    onChange={(e) => onChange({ bodyType: e.target.value as any })}
-                    className="bg-slate-800 hover:bg-slate-700/80 border border-slate-700/90 text-xs text-slate-200 rounded px-2.5 py-1 pr-7 appearance-none cursor-pointer focus:outline-none focus:border-sky-500 font-medium transition-colors shadow-sm"
-                  >
-                    <option value="none" className="bg-slate-900 text-slate-200">{t('editor.bodyNone')}</option>
-                    <option value="json" className="bg-slate-900 text-slate-200">{t('editor.bodyJson')}</option>
-                    <option value="form-data" className="bg-slate-900 text-slate-200">Form Data</option>
-                    <option value="x-www-form-urlencoded" className="bg-slate-900 text-slate-200">{t('editor.bodyUrlEncoded')}</option>
-                    <option value="raw" className="bg-slate-900 text-slate-200">{t('editor.bodyRaw')}</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
+            {/* Body Type Dropdown Selector & JSON Mode Switcher */}
+            <div
+              className="flex items-center pb-2 mb-2 border-b border-slate-800/80 text-xs text-slate-400 overflow-x-auto no-scrollbar shrink-0"
+              onWheel={(event) => {
+                if (event.deltaY !== 0) {
+                  event.currentTarget.scrollLeft += event.deltaY
+                }
+              }}
+            >
+              <div className="flex items-center justify-between min-w-max w-full gap-4">
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="relative flex items-center shrink-0">
+                    <select
+                      value={request.bodyType || 'none'}
+                      onChange={(e) => onChange({ bodyType: e.target.value as any })}
+                      className="bg-slate-800 hover:bg-slate-700/80 border border-slate-700/90 text-xs text-slate-200 rounded px-2.5 py-1 pr-7 appearance-none cursor-pointer focus:outline-none focus:border-sky-500 font-medium transition-colors shadow-sm"
+                    >
+                      <option value="none" className="bg-slate-900 text-slate-200">{t('editor.bodyNone')}</option>
+                      <option value="json" className="bg-slate-900 text-slate-200">{t('editor.bodyJson')}</option>
+                      <option value="form-data" className="bg-slate-900 text-slate-200">Form Data</option>
+                      <option value="x-www-form-urlencoded" className="bg-slate-900 text-slate-200">{t('editor.bodyUrlEncoded')}</option>
+                      <option value="raw" className="bg-slate-900 text-slate-200">{t('editor.bodyRaw')}</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 pointer-events-none" />
+                  </div>
+
+                  {/* JSON View Mode Toggle: Code vs Key-Value */}
+                  {request.bodyType === 'json' && (
+                    <div className="flex items-center bg-slate-900 border border-slate-700/70 rounded p-0.5 text-[11px] shadow-xs shrink-0 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => setJsonViewMode('code')}
+                        className={`px-2 py-0.5 rounded flex items-center gap-1 transition-colors font-medium cursor-pointer shrink-0 ${
+                          jsonViewMode === 'code'
+                            ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40 shadow-xs'
+                            : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                        }`}
+                        title={t('editor.jsonModeCode')}
+                      >
+                        <Code2 className="w-3 h-3" />
+                        <span>{t('editor.jsonModeCode')}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setJsonViewMode('key-value')}
+                        className={`px-2 py-0.5 rounded flex items-center gap-1 transition-colors font-medium cursor-pointer shrink-0 ${
+                          jsonViewMode === 'key-value'
+                            ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40 shadow-xs'
+                            : 'text-slate-400 hover:text-slate-200 border border-transparent'
+                        }`}
+                        title={t('editor.jsonModeKeyValue')}
+                      >
+                        <ListFilter className="w-3 h-3" />
+                        <span>{t('editor.jsonModeKeyValue')}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                {(request.bodyType === 'json' || request.bodyType === 'raw') && (
-                  <button
-                    type="button"
-                    onClick={() => setWrapLines((prev) => !prev)}
-                    className={"px-2 py-0.5 rounded flex items-center gap-1 text-[11px] transition-colors " + (wrapLines ? "bg-sky-500/15 text-sky-400 border border-sky-500/40 font-medium" : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/60 border border-transparent")}
-                    title={t('editor.wordWrap')}
-                  >
-                    <WrapText className="w-3 h-3" />
-                    <span>{t('editor.wordWrap')}</span>
-                  </button>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                  {((request.bodyType === 'json' && jsonViewMode === 'code') || request.bodyType === 'raw') && (
+                    <button
+                      type="button"
+                      onClick={() => setWrapLines((prev) => !prev)}
+                      className={"px-2 py-0.5 rounded flex items-center gap-1 text-[11px] transition-colors shrink-0 whitespace-nowrap " + (wrapLines ? "bg-sky-500/15 text-sky-400 border border-sky-500/40 font-medium" : "text-slate-300 hover:text-slate-100 hover:bg-slate-800/60 border border-transparent")}
+                      title={t('editor.wordWrap')}
+                    >
+                      <WrapText className="w-3 h-3" />
+                      <span>{t('editor.wordWrap')}</span>
+                    </button>
+                  )}
 
-                {request.bodyType === 'json' && (
-                  <button
-                    type="button"
-                    onClick={handleFormatJson}
-                    title={t('editor.formatJson')}
-                    className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 font-medium px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 transition-colors"
-                  >
-                    <Sparkles className="w-3 h-3" /> {t('editor.formatJson')}
-                  </button>
-                )}
+                  {request.bodyType === 'json' && (
+                    <button
+                      type="button"
+                      onClick={handleFormatJson}
+                      title={t('editor.formatJson')}
+                      className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 font-medium px-2 py-0.5 rounded bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+                    >
+                      <Sparkles className="w-3 h-3" /> {t('editor.formatJson')}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -365,7 +425,19 @@ export const RequestEditor: React.FC<Props> = ({ request, onChange }) => {
               </div>
             )}
 
-            {(request.bodyType === 'json' || request.bodyType === 'raw') && (
+            {/* JSON Key-Value Table Mode */}
+            {request.bodyType === 'json' && jsonViewMode === 'key-value' && (
+              <div className="flex-1 min-h-[240px] flex flex-col overflow-hidden bg-slate-950/40 border border-slate-800/70 rounded-lg">
+                <JsonKeyValueEditor
+                  value={request.bodyRaw || ''}
+                  onChange={(val) => onChange({ bodyRaw: val })}
+                  onSwitchToCode={() => setJsonViewMode('code')}
+                />
+              </div>
+            )}
+
+            {/* JSON Code Mode or RAW Mode */}
+            {((request.bodyType === 'json' && jsonViewMode === 'code') || request.bodyType === 'raw') && (
               <div className="flex-1 min-h-[240px] flex flex-col">
                 <CodeEditor
                   value={request.bodyRaw || ''}
